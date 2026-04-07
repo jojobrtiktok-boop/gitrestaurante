@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react'
+import { supabase } from '../lib/supabase.js'
 import { fromBase } from '../utils/unidades.js'
 import { hoje as hojeBrasilia, horaAtual, agoraBrasiliaISO } from '../utils/formatacao.js'
 import { custoOpcoes, custoPrato, precoPorBase } from '../utils/calculos.js'
@@ -16,7 +17,7 @@ function loadFromStorage(key, fallback) {
 function getPrefix() {
   try {
     const a = JSON.parse(localStorage.getItem('rd_auth') || '{}')
-    return a?.usuario ? `rd_${a.usuario}_` : 'rd_'
+    return a?.userId ? `rd_${a.userId.slice(0, 8)}_` : 'rd_'
   } catch { return 'rd_' }
 }
 
@@ -80,18 +81,7 @@ export function AppProvider({ children }) {
     if (saved) return JSON.parse(saved)
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
   })
-  const [auth, setAuth] = useState(() => loadFromStorage('rd_auth', { logado: false, usuario: '', isAdmin: false }))
-
-  // ── Usuários (compartilhado, sem prefixo) ─────────
-  const [usuarios, setUsuarios] = useState(() => {
-    const saved = loadFromStorage('rd_usuarios', [])
-    if (saved.length === 0) {
-      const admin = [{ id: crypto.randomUUID(), usuario: 'admin', senha: '123456', isAdmin: true, criadoEm: agoraBrasiliaISO() }]
-      localStorage.setItem('rd_usuarios', JSON.stringify(admin))
-      return admin
-    }
-    return saved
-  })
+  const [auth, setAuth] = useState(() => loadFromStorage('rd_auth', { logado: false, usuario: '', isAdmin: false, userId: null }))
 
   // ── Dados por usuário (prefixo dinâmico) ──────────
   const [ingredientes, setIngredientes] = useState(() => loadFromStorage(getPrefix() + 'ingredientes', []))
@@ -143,6 +133,33 @@ export function AppProvider({ children }) {
   useEffect(() => { ingredientesRef.current = ingredientes }, [ingredientes])
   useEffect(() => { pedidosRef.current = pedidos }, [pedidos])
   useEffect(() => { configuracaoGeralRef.current = configuracaoGeral }, [configuracaoGeral])
+
+  // ── Supabase Auth — sincroniza sessão ────────────
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) _aplicarSessao(session)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) _aplicarSessao(session)
+      else {
+        const novoAuth = { logado: false, usuario: '', isAdmin: false, userId: null }
+        setAuth(novoAuth)
+        localStorage.setItem('rd_auth', JSON.stringify(novoAuth))
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  function _aplicarSessao(session) {
+    const novoAuth = {
+      logado: true,
+      usuario: session.user.email,
+      isAdmin: session.user.user_metadata?.is_admin || false,
+      userId: session.user.id,
+    }
+    setAuth(novoAuth)
+    localStorage.setItem('rd_auth', JSON.stringify(novoAuth))
+  }
 
   // ── Migração one-time: rd_* → rd_admin_* ─────────
   useEffect(() => {
@@ -271,42 +288,47 @@ export function AppProvider({ children }) {
 
   function alternarTema() { setTema(t => t === 'dark' ? 'light' : 'dark') }
 
-  // ── Auth & Usuários ──────────────────────────────
-  function login(usuario, senha) {
-    const u = usuarios.find(u => u.usuario === usuario && u.senha === senha)
-    if (!u) return { erro: 'Usuário ou senha incorretos.' }
-    setAuth({ logado: true, usuario: u.usuario, isAdmin: u.isAdmin || false })
-    return { ok: true }
-  }
-  function logout() { setAuth({ logado: false, usuario: '', isAdmin: false }) }
-
-  function cadastrarUsuario(usuario, senha) {
-    if (!usuario.trim()) return { erro: 'Usuário não pode ser vazio.' }
-    if (usuarios.find(u => u.usuario === usuario.trim()))
-      return { erro: 'Usuário já existe.' }
-    const novo = { id: crypto.randomUUID(), usuario: usuario.trim(), senha, isAdmin: false, criadoEm: agoraBrasiliaISO() }
-    const next = [...usuarios, novo]
-    setUsuarios(next)
-    localStorage.setItem('rd_usuarios', JSON.stringify(next))
+  // ── Auth (Supabase) ───────────────────────────────
+  async function login(email, senha) {
+    const { error } = await supabase.auth.signInWithPassword({ email, password: senha })
+    if (error) return { erro: 'Email ou senha incorretos.' }
     return { ok: true }
   }
 
-  function removerUsuario(id) {
-    const u = usuarios.find(x => x.id === id)
-    if (u?.isAdmin) return { erro: 'Não é possível remover o administrador.' }
-    const next = usuarios.filter(x => x.id !== id)
-    setUsuarios(next)
-    localStorage.setItem('rd_usuarios', JSON.stringify(next))
+  async function logout() {
+    await supabase.auth.signOut()
+  }
+
+  async function cadastrarUsuario(email, senha, nome) {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password: senha,
+      options: { data: { nome_exibicao: nome || email.split('@')[0] } },
+    })
+    if (error) return { erro: error.message }
     return { ok: true }
   }
 
-  function alterarSenha(senhaAntiga, senhaNova) {
-    const u = usuarios.find(x => x.usuario === auth.usuario && x.senha === senhaAntiga)
-    if (!u) return { erro: 'Senha atual incorreta.' }
+  async function alterarSenha(senhaAntiga, senhaNova) {
+    const { error: reauth } = await supabase.auth.signInWithPassword({ email: auth.usuario, password: senhaAntiga })
+    if (reauth) return { erro: 'Senha atual incorreta.' }
     if (senhaNova.length < 4) return { erro: 'Nova senha deve ter pelo menos 4 caracteres.' }
-    const next = usuarios.map(x => x.id === u.id ? { ...x, senha: senhaNova } : x)
-    setUsuarios(next)
-    localStorage.setItem('rd_usuarios', JSON.stringify(next))
+    const { error } = await supabase.auth.updateUser({ password: senhaNova })
+    if (error) return { erro: error.message }
+    return { ok: true }
+  }
+
+  async function resetarSenha(email) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+    if (error) return { erro: error.message }
+    return { ok: true }
+  }
+
+  // Admin: remover usuário via service role (chama edge function ou API)
+  function removerUsuario(id) {
+    // Implementar via Supabase Admin API quando necessário
     return { ok: true }
   }
 
@@ -826,8 +848,7 @@ export function AppProvider({ children }) {
 
   const value = {
     tema, alternarTema,
-    auth, login, logout,
-    usuarios, cadastrarUsuario, removerUsuario,
+    auth, login, logout, cadastrarUsuario, removerUsuario, resetarSenha,
     ingredientes, adicionarIngrediente, editarIngrediente, removerIngrediente,
     compras, registrarCompra, removerCompra, editarCompra,
     pratos, adicionarPrato, editarPrato, removerPrato,

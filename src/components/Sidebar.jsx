@@ -121,7 +121,7 @@ export default function Sidebar() {
           <span className="flex-1 text-xs truncate" style={{ color: 'var(--text-muted)' }}>
             {perfil?.nomeExibicao || auth.usuario}
           </span>
-          <button onClick={() => { logout(); navigate('/login') }} className="btn btn-ghost p-1" title="Sair" style={{ color: '#ef4444' }}>
+          <button onClick={async () => { await logout(); navigate('/login') }} className="btn btn-ghost p-1" title="Sair" style={{ color: '#ef4444' }}>
             <LogOut size={14} />
           </button>
         </div>

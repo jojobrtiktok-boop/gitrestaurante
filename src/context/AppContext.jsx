@@ -289,11 +289,22 @@ export function AppProvider({ children }) {
   function alternarTema() { setTema(t => t === 'dark' ? 'light' : 'dark') }
 
   // ── Auth (Supabase) ───────────────────────────────
-  async function login(email, senha, manterLogado = true) {
+  async function login(emailOuUsuario, senha, manterLogado = true) {
+    let email = emailOuUsuario.trim()
+
+    // Se não tem @, é username → busca email na tabela profiles
+    if (!email.includes('@')) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('username', email.toLowerCase())
+        .maybeSingle()
+      if (!data?.email) return { erro: 'Usuário ou senha incorretos.' }
+      email = data.email
+    }
+
     const { error } = await supabase.auth.signInWithPassword({ email, password: senha })
-    if (error) return { erro: 'Email ou senha incorretos.' }
-    // Manter logado: salva preferência — Supabase persiste sessão por padrão (JWT 10 anos)
-    // Se NÃO manter, limpa sessão ao fechar o browser via flag
+    if (error) return { erro: 'Usuário ou senha incorretos.' }
     if (!manterLogado) localStorage.setItem('rd_session_temp', '1')
     else localStorage.removeItem('rd_session_temp')
     return { ok: true }
@@ -303,13 +314,28 @@ export function AppProvider({ children }) {
     await supabase.auth.signOut()
   }
 
-  async function cadastrarUsuario(email, senha, nome) {
+  async function cadastrarUsuario(email, senha, username) {
+    const nomeUsuario = username.trim().toLowerCase()
+
+    // Verificar se username já existe
+    const { data: existeUser } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('username', nomeUsuario)
+      .maybeSingle()
+    if (existeUser) return { erro: 'nome_em_uso' }
+
     const { error } = await supabase.auth.signUp({
-      email,
+      email: email.trim(),
       password: senha,
-      options: { data: { nome_exibicao: nome || email.split('@')[0] } },
+      options: { data: { username: nomeUsuario, nome_exibicao: username.trim() } },
     })
-    if (error) return { erro: error.message }
+    if (error) {
+      if (error.message.toLowerCase().includes('already registered') ||
+          error.message.toLowerCase().includes('already been registered'))
+        return { erro: 'email_em_uso' }
+      return { erro: error.message }
+    }
     return { ok: true }
   }
 

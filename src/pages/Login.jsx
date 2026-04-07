@@ -24,6 +24,8 @@ export default function Login() {
   const [confirmarSenha, setConfirmarSenha] = useState('')
   const [mostrarNovaSenha, setMostrarNovaSenha] = useState(false)
   const [erroCadastro, setErroCadastro] = useState('')
+  const [erroNome, setErroNome] = useState('')
+  const [erroEmail, setErroEmail] = useState('')
   const [carregandoCadastro, setCarregandoCadastro] = useState(false)
 
   // Reset
@@ -46,14 +48,16 @@ export default function Login() {
 
   async function handleCadastro(e) {
     e.preventDefault()
-    setErroCadastro('')
-    if (!novoNome.trim()) return setErroCadastro('Nome de usuário é obrigatório.')
-    if (!novoEmail.trim()) return setErroCadastro('Email é obrigatório.')
+    setErroCadastro(''); setErroNome(''); setErroEmail('')
+    if (!novoNome.trim()) return setErroNome('Nome de usuário é obrigatório.')
+    if (!novoEmail.trim()) return setErroEmail('Email é obrigatório.')
     if (novaSenha.length < 6) return setErroCadastro('Senha deve ter pelo menos 6 caracteres.')
     if (novaSenha !== confirmarSenha) return setErroCadastro('As senhas não coincidem.')
     setCarregandoCadastro(true)
     const res = await cadastrarUsuario(novoEmail.trim(), novaSenha, novoNome.trim())
     setCarregandoCadastro(false)
+    if (res.erro === 'nome_em_uso') return setErroNome('Este nome de usuário já está em uso.')
+    if (res.erro === 'email_em_uso') return setErroEmail('Este e-mail já está cadastrado.')
     if (res.erro) return setErroCadastro(res.erro)
     const loginRes = await login(novoEmail.trim(), novaSenha, true)
     if (loginRes.ok) navigate('/')
@@ -119,9 +123,9 @@ export default function Login() {
           <div className="card p-6">
             <form onSubmit={handleEntrar} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
-                <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>Email</label>
-                <input className="input" type="email" placeholder="seu@email.com"
-                  value={email} onChange={e => setEmail(e.target.value)} autoFocus autoComplete="email" />
+                <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>Usuário ou E-mail</label>
+                <input className="input" placeholder="usuario ou seu@email.com"
+                  value={email} onChange={e => setEmail(e.target.value)} autoFocus autoComplete="username" />
               </div>
 
               <div>
@@ -173,13 +177,19 @@ export default function Login() {
               <div>
                 <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>Nome de usuário *</label>
                 <input className="input" placeholder="Usuário"
-                  value={novoNome} onChange={e => setNovoNome(e.target.value)} autoFocus autoComplete="off" />
+                  value={novoNome} onChange={e => { setNovoNome(e.target.value); setErroNome('') }}
+                  autoFocus autoComplete="off"
+                  style={{ borderColor: erroNome ? '#ef4444' : undefined }} />
+                {erroNome && <p style={{ fontSize: 12, color: '#ef4444', margin: '4px 0 0' }}>{erroNome}</p>}
               </div>
 
               <div>
                 <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>E-mail *</label>
                 <input className="input" type="email" placeholder="seu@email.com"
-                  value={novoEmail} onChange={e => setNovoEmail(e.target.value)} autoComplete="email" />
+                  value={novoEmail} onChange={e => { setNovoEmail(e.target.value); setErroEmail('') }}
+                  autoComplete="email"
+                  style={{ borderColor: erroEmail ? '#ef4444' : undefined }} />
+                {erroEmail && <p style={{ fontSize: 12, color: '#ef4444', margin: '4px 0 0' }}>{erroEmail}</p>}
               </div>
 
               <div>

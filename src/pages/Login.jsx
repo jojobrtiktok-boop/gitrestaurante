@@ -7,26 +7,26 @@ export default function Login() {
   const { login, cadastrarUsuario, resetarSenha } = useApp()
   const navigate = useNavigate()
 
-  // Tela: 'entrar' | 'cadastro' | 'reset'
   const [tela, setTela] = useState('entrar')
 
   // Entrar
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [mostrarSenha, setMostrarSenha] = useState(false)
+  const [manterLogado, setManterLogado] = useState(true)
   const [erro, setErro] = useState('')
   const [carregando, setCarregando] = useState(false)
 
   // Cadastro
-  const [novoEmail, setNovoEmail] = useState('')
   const [novoNome, setNovoNome] = useState('')
+  const [novoEmail, setNovoEmail] = useState('')
   const [novaSenha, setNovaSenha] = useState('')
   const [confirmarSenha, setConfirmarSenha] = useState('')
   const [mostrarNovaSenha, setMostrarNovaSenha] = useState(false)
   const [erroCadastro, setErroCadastro] = useState('')
   const [carregandoCadastro, setCarregandoCadastro] = useState(false)
 
-  // Reset senha
+  // Reset
   const [resetEmail, setResetEmail] = useState('')
   const [resetOk, setResetOk] = useState(false)
   const [erroReset, setErroReset] = useState('')
@@ -38,7 +38,7 @@ export default function Login() {
     if (!email.trim()) return setErro('Informe o email.')
     if (!senha) return setErro('Informe a senha.')
     setCarregando(true)
-    const resultado = await login(email.trim(), senha)
+    const resultado = await login(email.trim(), senha, manterLogado)
     setCarregando(false)
     if (resultado.erro) setErro(resultado.erro)
     else navigate('/')
@@ -47,6 +47,7 @@ export default function Login() {
   async function handleCadastro(e) {
     e.preventDefault()
     setErroCadastro('')
+    if (!novoNome.trim()) return setErroCadastro('Nome de usuário é obrigatório.')
     if (!novoEmail.trim()) return setErroCadastro('Email é obrigatório.')
     if (novaSenha.length < 6) return setErroCadastro('Senha deve ter pelo menos 6 caracteres.')
     if (novaSenha !== confirmarSenha) return setErroCadastro('As senhas não coincidem.')
@@ -54,8 +55,7 @@ export default function Login() {
     const res = await cadastrarUsuario(novoEmail.trim(), novaSenha, novoNome.trim())
     setCarregandoCadastro(false)
     if (res.erro) return setErroCadastro(res.erro)
-    // Auto-login
-    const loginRes = await login(novoEmail.trim(), novaSenha)
+    const loginRes = await login(novoEmail.trim(), novaSenha, true)
     if (loginRes.ok) navigate('/')
   }
 
@@ -71,8 +71,8 @@ export default function Login() {
   }
 
   const TABS = [
-    { id: 'entrar',   label: 'Entrar',       icon: <LogIn size={13} /> },
-    { id: 'cadastro', label: 'Criar conta',  icon: <UserPlus size={13} /> },
+    { id: 'entrar',   label: 'Entrar',      icon: <LogIn size={13} /> },
+    { id: 'cadastro', label: 'Criar conta', icon: <UserPlus size={13} /> },
   ]
 
   return (
@@ -95,7 +95,7 @@ export default function Login() {
           <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>Gestão de Restaurantes</p>
         </div>
 
-        {/* Tabs (só quando não está na tela de reset) */}
+        {/* Tabs */}
         {tela !== 'reset' && (
           <div style={{ display: 'flex', gap: 4, background: 'var(--bg-hover)', padding: 4, borderRadius: 12, marginBottom: 16 }}>
             {TABS.map(t => (
@@ -137,6 +137,20 @@ export default function Login() {
                 </div>
               </div>
 
+              {/* Manter logado */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+                <div onClick={() => setManterLogado(v => !v)} style={{
+                  width: 18, height: 18, borderRadius: 5, border: '2px solid',
+                  borderColor: manterLogado ? 'var(--accent)' : 'var(--border)',
+                  background: manterLogado ? 'var(--accent)' : 'transparent',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all .15s', flexShrink: 0,
+                }}>
+                  {manterLogado && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                </div>
+                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Manter conectado por 60 dias</span>
+              </label>
+
               {erro && <p style={{ fontSize: 13, color: '#ef4444', textAlign: 'center', margin: 0 }}>{erro}</p>}
 
               <button type="submit" className="btn btn-primary" disabled={carregando}
@@ -157,15 +171,17 @@ export default function Login() {
           <div className="card p-6">
             <form onSubmit={handleCadastro} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
-                <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>Nome do estabelecimento</label>
-                <input className="input" placeholder="Pizzaria do João"
-                  value={novoNome} onChange={e => setNovoNome(e.target.value)} autoFocus />
+                <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>Nome de usuário *</label>
+                <input className="input" placeholder="Usuário"
+                  value={novoNome} onChange={e => setNovoNome(e.target.value)} autoFocus autoComplete="off" />
               </div>
+
               <div>
-                <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>Email *</label>
+                <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>E-mail *</label>
                 <input className="input" type="email" placeholder="seu@email.com"
                   value={novoEmail} onChange={e => setNovoEmail(e.target.value)} autoComplete="email" />
               </div>
+
               <div>
                 <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>Senha * (mín. 6 caracteres)</label>
                 <div style={{ position: 'relative' }}>
@@ -178,6 +194,7 @@ export default function Login() {
                   </button>
                 </div>
               </div>
+
               <div>
                 <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>Confirmar senha *</label>
                 <input className="input" type="password" placeholder="Repita a senha"

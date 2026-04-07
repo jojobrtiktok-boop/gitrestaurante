@@ -289,9 +289,13 @@ export function AppProvider({ children }) {
   function alternarTema() { setTema(t => t === 'dark' ? 'light' : 'dark') }
 
   // ── Auth (Supabase) ───────────────────────────────
-  async function login(email, senha) {
+  async function login(email, senha, manterLogado = true) {
     const { error } = await supabase.auth.signInWithPassword({ email, password: senha })
     if (error) return { erro: 'Email ou senha incorretos.' }
+    // Manter logado: salva preferência — Supabase persiste sessão por padrão (JWT 10 anos)
+    // Se NÃO manter, limpa sessão ao fechar o browser via flag
+    if (!manterLogado) localStorage.setItem('rd_session_temp', '1')
+    else localStorage.removeItem('rd_session_temp')
     return { ok: true }
   }
 

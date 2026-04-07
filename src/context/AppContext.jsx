@@ -241,7 +241,6 @@ export function AppProvider({ children }) {
 
   // ── Persistência de auth + usuarios ──────────────
   useEffect(() => { localStorage.setItem('rd_auth', JSON.stringify(auth)) }, [auth])
-  useEffect(() => { localStorage.setItem('rd_usuarios', JSON.stringify(usuarios)) }, [usuarios])
 
   // ── Persistência por usuário ──────────────────────
   useEffect(() => { localStorage.setItem(getPrefix() + 'ingredientes', JSON.stringify(ingredientes)) }, [ingredientes, auth.usuario])

@@ -75,7 +75,11 @@ const KANBAN_CONFIG_PADRAO = {
 }
 
 export function AppProvider({ children }) {
-  const [tema, setTema] = useState(() => loadFromStorage('rd_tema', 'dark'))
+  const [tema, setTema] = useState(() => {
+    const saved = localStorage.getItem('rd_tema')
+    if (saved) return JSON.parse(saved)
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  })
   const [auth, setAuth] = useState(() => loadFromStorage('rd_auth', { logado: false, usuario: '', isAdmin: false }))
 
   // ── Usuários (compartilhado, sem prefixo) ─────────

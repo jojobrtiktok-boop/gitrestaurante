@@ -150,11 +150,16 @@ export function AppProvider({ children }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  function _aplicarSessao(session) {
+  async function _aplicarSessao(session) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_admin, username, nome_exibicao')
+      .eq('id', session.user.id)
+      .maybeSingle()
     const novoAuth = {
       logado: true,
-      usuario: session.user.email,
-      isAdmin: session.user.user_metadata?.is_admin || false,
+      usuario: profile?.username || session.user.user_metadata?.username || session.user.email,
+      isAdmin: profile?.is_admin || session.user.user_metadata?.is_admin || false,
       userId: session.user.id,
     }
     setAuth(novoAuth)

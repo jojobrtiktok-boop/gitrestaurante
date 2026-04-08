@@ -140,19 +140,25 @@ export default function DeliveryPublico() {
   const configDelivery = useMemo(() => prefix ? loadFromStorage(prefix + 'config_delivery', {}) : {}, [prefix])
 
   // ── visual config ──────────────────────────────────────────────────────────
-  const destaque = config.corDestaque || '#16a34a'
-  const corEstrela = config.corEstrela || destaque
-  const corPreco = config.corPreco || destaque
+  const modoIfood = !!configDelivery.modoIfood
+  const destaque = modoIfood ? '#ea1d2c' : (config.corDestaque || '#16a34a')
+  const corEstrela = modoIfood ? '#f59e0b' : (config.corEstrela || destaque)
+  const corPreco = modoIfood ? '#3d3d3d' : (config.corPreco || destaque)
   const corHeader = config.corFundo || destaque
-  const modoClaro = config.modoClaro !== false
-  const fundo = modoClaro ? '#ffffff' : '#0f172a'
+  const modoClaro = modoIfood ? true : config.modoClaro !== false
+  const fundo = modoIfood ? '#f5f5f5' : (modoClaro ? '#ffffff' : '#0f172a')
   const cardBg = modoClaro ? '#ffffff' : '#1e293b'
   const corTextoBase = modoClaro ? '#111827' : '#ffffff'
   const corTextoSec = modoClaro ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.6)'
   const bordaCard = modoClaro ? '#f0f0f0' : 'rgba(255,255,255,0.08)'
-  const layoutGrade = config.layoutPadrao === 'grade'
+  const layoutGrade = modoIfood ? false : config.layoutPadrao === 'grade'
   const bannerH = config.bannerAltura || 200
   const overlapH = 56
+
+  // frete mínimo dos bairros ativos
+  const bairrosParaFrete = (configDelivery.bairros || []).filter(b => b.ativo)
+  const freteMin = bairrosParaFrete.length > 0 ? Math.min(...bairrosParaFrete.map(b => b.frete || 0)) : null
+  const freteMinLabel = freteMin === null ? null : freteMin === 0 ? 'Grátis' : formatarMoeda(freteMin)
 
   // ── catalog state ──────────────────────────────────────────────────────────
   const [filtro, setFiltro] = useState('Todas')
@@ -451,15 +457,34 @@ export default function DeliveryPublico() {
             <p style={{ fontSize: 13, color: corTextoSec, margin: '0 0 10px', padding: '0 24px' }}>{config.descricao}</p>
           )}
           {config.estrelasAtivas && (config.estrelaValor || config.estrelaQtd) && (
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: modoClaro ? '#f6f6f6' : 'rgba(255,255,255,0.08)',
-              borderRadius: 20, padding: '5px 14px',
-            }}>
-              <IcoStar fill={corEstrela} color={corEstrela} />
-              {config.estrelaValor && <span style={{ fontSize: 13, fontWeight: 700, color: corTextoBase }}>{Number(config.estrelaValor).toFixed(1)}</span>}
-              {config.estrelaQtd && <span style={{ fontSize: 12, color: corTextoSec }}>({config.estrelaQtd} {config.estrelaQtd === 1 ? 'avaliação' : 'avaliações'})</span>}
-            </div>
+            <>
+              {modoIfood && <div style={{ height: 1, background: '#ebebeb', margin: '10px 20px' }} />}
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: modoIfood ? 'transparent' : (modoClaro ? '#f6f6f6' : 'rgba(255,255,255,0.08)'),
+                borderRadius: 20, padding: '5px 14px',
+              }}>
+                <IcoStar fill={corEstrela} color={corEstrela} />
+                {config.estrelaValor && <span style={{ fontSize: 13, fontWeight: 700, color: corTextoBase }}>{Number(config.estrelaValor).toFixed(1)}</span>}
+                {config.estrelaQtd && <span style={{ fontSize: 12, color: corTextoSec }}>({config.estrelaQtd} {config.estrelaQtd === 1 ? 'avaliação' : 'avaliações'})</span>}
+              </div>
+            </>
+          )}
+
+          {/* Info row: Padrão • tempo • frete */}
+          {(configDelivery.tempoEstimado || freteMinLabel || configDelivery.tipoEntrega) && (
+            <>
+              {modoIfood && <div style={{ height: 1, background: '#ebebeb', margin: '10px 20px' }} />}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flexWrap: 'wrap', padding: '6px 20px 2px', fontSize: 13, color: corTextoSec }}>
+                {configDelivery.tipoEntrega && (
+                  <span style={{ fontWeight: 700, color: corTextoBase }}>{configDelivery.tipoEntrega}</span>
+                )}
+                {configDelivery.tipoEntrega && configDelivery.tempoEstimado && <span>•</span>}
+                {configDelivery.tempoEstimado && <span>{configDelivery.tempoEstimado}</span>}
+                {freteMinLabel && <span>•</span>}
+                {freteMinLabel && <span style={{ fontWeight: 600, color: corTextoBase }}>{freteMinLabel}</span>}
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -471,10 +496,13 @@ export default function DeliveryPublico() {
             <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: corTextoSec, display: 'flex' }}>
               <IcoSearch />
             </span>
-            <input placeholder="O que você quer comer hoje?" value={busca} onChange={e => setBusca(e.target.value)}
+            <input
+              placeholder={modoIfood ? `Buscar em ${config.nomeRestaurante || 'Delivery'}` : 'O que você quer comer hoje?'}
+              value={busca} onChange={e => setBusca(e.target.value)}
               style={{
                 width: '100%', boxSizing: 'border-box', paddingLeft: 36, paddingRight: 16, paddingTop: 9, paddingBottom: 9,
-                background: modoClaro ? '#f4f4f4' : 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 12,
+                background: modoIfood ? '#f0f0f0' : (modoClaro ? '#f4f4f4' : 'rgba(255,255,255,0.08)'),
+                border: 'none', borderRadius: modoIfood ? 20 : 12,
                 fontSize: 13, color: corTextoBase, outline: 'none',
               }} />
           </div>
@@ -494,7 +522,7 @@ export default function DeliveryPublico() {
         </div>
       </div>
 
-      {/* ── Product list (same layout as MenuPublico) ── */}
+      {/* ── Product list ── */}
       <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 0 40px' }}>
         {pratos.filter(p => p.disponivel !== false).length === 0 ? (
           <div style={{ textAlign: 'center', padding: '80px 16px', color: corTextoSec }}>
@@ -507,10 +535,18 @@ export default function DeliveryPublico() {
           </div>
         ) : (
           pratosPorCategoria.map(({ cat, itens }) => (
-            <div key={cat}>
-              <div style={{ padding: '20px 16px 10px' }}>
-                <h2 style={{ fontSize: 15, fontWeight: 800, color: corTextoBase, margin: 0 }}>{cat}</h2>
+            <div key={cat} style={modoIfood ? { background: '#fff', marginBottom: 8 } : {}}>
+              {/* Category header */}
+              <div style={modoIfood
+                ? { padding: '18px 16px 10px' }
+                : { padding: '20px 16px 10px' }}>
+                <h2 style={modoIfood
+                  ? { fontSize: 18, fontWeight: 800, color: '#1a1a1a', margin: 0 }
+                  : { fontSize: 15, fontWeight: 800, color: corTextoBase, margin: 0 }}>
+                  {cat}
+                </h2>
               </div>
+
               {layoutGrade ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, padding: '0 12px' }}>
                   {itens.map(prato => {
@@ -528,15 +564,39 @@ export default function DeliveryPublico() {
                             fontWeight: 600, fontSize: 11, color: corTextoBase, margin: '0 0 3px', lineHeight: 1.35,
                             display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                           }}>{prato.nome}</p>
-                          <p style={{ fontWeight: 800, fontSize: 12, color: corPreco, margin: 0 }}>
-                            {formatarMoeda(preco)}
-                          </p>
+                          <p style={{ fontWeight: 800, fontSize: 12, color: corPreco, margin: 0 }}>{formatarMoeda(preco)}</p>
                         </div>
                       </div>
                     )
                   })}
                 </div>
+              ) : modoIfood ? (
+                /* ── Modo iFood: lista estilo iFood ── */
+                itens.map((prato, idx) => {
+                  const preco = prato.precoVenda ?? prato.preco ?? 0
+                  return (
+                    <div key={prato.id} onClick={() => abrirModal(prato)} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '16px 16px', gap: 16, cursor: 'pointer', background: '#fff',
+                      borderTop: idx === 0 ? 'none' : '1px solid #f0f0f0',
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontWeight: 600, fontSize: 15, color: '#1a1a1a', margin: '0 0 4px', lineHeight: 1.3 }}>{prato.nome}</p>
+                        <p style={{ fontWeight: 700, fontSize: 14, color: '#3d3d3d', margin: 0 }}>{formatarMoeda(preco)}</p>
+                      </div>
+                      {prato.foto
+                        ? <div style={{ width: 88, height: 88, borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
+                            <img src={prato.foto} alt={prato.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          </div>
+                        : <div style={{ width: 88, height: 88, borderRadius: 8, background: '#f5f5f5', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <IcoUtensils />
+                          </div>
+                      }
+                    </div>
+                  )
+                })
               ) : (
+                /* ── Modo normal: lista padrão ── */
                 itens.map(prato => {
                   const preco = prato.precoVenda ?? prato.preco ?? 0
                   return (
@@ -552,9 +612,7 @@ export default function DeliveryPublico() {
                             display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                           }}>{prato.descricao}</p>
                         )}
-                        <p style={{ fontWeight: 800, fontSize: 14, color: corPreco, margin: 0 }}>
-                          {formatarMoeda(preco)}
-                        </p>
+                        <p style={{ fontWeight: 800, fontSize: 14, color: corPreco, margin: 0 }}>{formatarMoeda(preco)}</p>
                       </div>
                       {prato.foto && (
                         <div style={{ width: 88, height: 88, borderRadius: 12, overflow: 'hidden', flexShrink: 0 }}>

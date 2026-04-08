@@ -105,6 +105,18 @@ export default function DeliveryGerenciar() {
           </button>
         </div>
 
+        {/* Modo iFood */}
+        <div className="card p-5 flex items-center justify-between gap-4" style={{ border: cfg.modoIfood ? '2px solid #ea1d2c' : undefined }}>
+          <div>
+            <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Modo iFood</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Visual idêntico ao iFood — fundo branco, lista estilo app, cores adaptadas</p>
+          </div>
+          <button onClick={() => atualizarConfiguracaoDelivery({ modoIfood: !cfg.modoIfood })}
+            style={{ color: cfg.modoIfood ? '#ea1d2c' : 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>
+            {cfg.modoIfood ? <ToggleRight size={38} /> : <ToggleLeft size={38} />}
+          </button>
+        </div>
+
         {/* Link */}
         <div className="card p-5">
           <div className="flex items-center gap-2 mb-4">
@@ -203,9 +215,15 @@ export default function DeliveryGerenciar() {
               </div>
               <div>
                 <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>Tempo estimado</label>
-                <input className="input" placeholder="30-45 min" value={cfg.tempoEstimado || ''}
+                <input className="input" placeholder="60-70 min" value={cfg.tempoEstimado || ''}
                   onChange={e => atualizarConfiguracaoDelivery({ tempoEstimado: e.target.value })} />
               </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>Tipo de entrega (ex: Padrão, Expresso)</label>
+              <input className="input" placeholder="Padrão" value={cfg.tipoEntrega || ''}
+                onChange={e => atualizarConfiguracaoDelivery({ tipoEntrega: e.target.value })} />
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Aparece como "Padrão • 60-70 min • R$ 9,00" abaixo das estrelas</p>
             </div>
 
             <div>

@@ -524,10 +524,19 @@ export function AppProvider({ children }) {
 
   // ── Supabase Auth ─────────────────────────────────────────────────────
   useEffect(() => {
-    // onAuthStateChange dispara imediatamente com INITIAL_SESSION
+    // onAuthStateChange dispara imediatamente com INITIAL_SESSION (sem rede)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
-        _aplicarSessao(session).finally(() => setAuthLoading(false))
+        // Resolve imediatamente com dados da sessão em cache (sem esperar rede)
+        setAuth({
+          logado: true,
+          usuario: session.user.user_metadata?.username || session.user.email,
+          isAdmin: session.user.user_metadata?.is_admin || false,
+          userId: session.user.id,
+        })
+        setAuthLoading(false)
+        // Enriquece com dados do perfil em background (não bloqueia)
+        _aplicarSessao(session)
       } else {
         setAuth({ logado: false, usuario: '', isAdmin: false, userId: null })
         _limparDados()
@@ -543,13 +552,13 @@ export function AppProvider({ children }) {
       .select('is_admin, username, nome_exibicao')
       .eq('id', session.user.id)
       .maybeSingle()
-    setAuth({
-      logado: true,
-      usuario: profile?.username || session.user.user_metadata?.username || session.user.email,
-      isAdmin: profile?.is_admin || session.user.user_metadata?.is_admin || false,
-      userId: session.user.id,
-    })
-    if (profile?.nome_exibicao) setPerfil(prev => ({ ...prev, nomeExibicao: profile.nome_exibicao }))
+    if (!profile) return
+    setAuth(prev => ({
+      ...prev,
+      usuario: profile.username || prev.usuario,
+      isAdmin: profile.is_admin || prev.isAdmin,
+    }))
+    if (profile.nome_exibicao) setPerfil(prev => ({ ...prev, nomeExibicao: profile.nome_exibicao }))
   }
 
   function _limparDados() {

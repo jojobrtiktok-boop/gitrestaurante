@@ -431,14 +431,17 @@ export default function DeliveryPublico() {
         }
 
         <div style={{
-          background: fundo, borderRadius: '24px 24px 0 0', marginTop: -overlapH,
-          position: 'relative', zIndex: 2, paddingTop: 54, paddingBottom: 20,
-          textAlign: 'center', boxShadow: modoClaro ? '0 -4px 20px rgba(0,0,0,0.08)' : '0 -4px 20px rgba(0,0,0,0.3)',
+          background: '#fff', borderRadius: '24px 24px 0 0', marginTop: -overlapH,
+          position: 'relative', zIndex: 2,
+          paddingTop: modoIfood ? 60 : 54,
+          paddingBottom: modoIfood ? 0 : 20,
+          textAlign: modoIfood ? 'left' : 'center',
+          boxShadow: modoClaro ? '0 -4px 20px rgba(0,0,0,0.08)' : '0 -4px 20px rgba(0,0,0,0.3)',
         }}>
           {/* Logo */}
           <div style={{
             position: 'absolute', top: -(overlapH / 2 + 20), left: '50%', transform: 'translateX(-50%)',
-            width: 90, height: 90, borderRadius: '50%', border: '4px solid ' + fundo,
+            width: 90, height: 90, borderRadius: '50%', border: '4px solid #fff',
             overflow: 'hidden', background: config.logo ? 'transparent' : destaque,
             boxShadow: '0 4px 18px rgba(0,0,0,0.22)', zIndex: 3,
           }}>
@@ -450,40 +453,66 @@ export default function DeliveryPublico() {
             }
           </div>
 
-          <h1 style={{ fontSize: 22, fontWeight: 900, color: corTextoBase, margin: '0 0 4px', letterSpacing: '-0.4px', padding: '0 24px' }}>
-            {config.nomeRestaurante || 'Delivery'}
-          </h1>
-          {config.descricao && (
-            <p style={{ fontSize: 13, color: corTextoSec, margin: '0 0 10px', padding: '0 24px' }}>{config.descricao}</p>
-          )}
-          {config.estrelasAtivas && (config.estrelaValor || config.estrelaQtd) && (
-            <>
-              {modoIfood && <div style={{ height: 1, background: '#ebebeb', margin: '10px 20px' }} />}
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                background: modoIfood ? 'transparent' : (modoClaro ? '#f6f6f6' : 'rgba(255,255,255,0.08)'),
-                borderRadius: 20, padding: '5px 14px',
-              }}>
-                <IcoStar fill={corEstrela} color={corEstrela} />
-                {config.estrelaValor && <span style={{ fontSize: 13, fontWeight: 700, color: corTextoBase }}>{Number(config.estrelaValor).toFixed(1)}</span>}
-                {config.estrelaQtd && <span style={{ fontSize: 12, color: corTextoSec }}>({config.estrelaQtd} {config.estrelaQtd === 1 ? 'avaliação' : 'avaliações'})</span>}
-              </div>
-            </>
-          )}
+          {modoIfood ? (
+            /* ── iFood card: left-aligned, dark text, dividers ── */
+            <div style={{ padding: '0 20px 16px' }}>
+              <p style={{ fontSize: 24, fontWeight: 900, color: '#1a1a1a', margin: '0 0 2px', letterSpacing: '-0.5px' }}>
+                {config.nomeRestaurante || 'Delivery'}
+              </p>
+              {config.descricao && (
+                <p style={{ fontSize: 13, color: '#717171', margin: '0 0 12px' }}>{config.descricao}</p>
+              )}
 
-          {/* Info row: Padrão • tempo • frete */}
-          {(configDelivery.tempoEstimado || freteMinLabel || configDelivery.tipoEntrega) && (
+              {config.estrelasAtivas && (config.estrelaValor || config.estrelaQtd) && (
+                <>
+                  <div style={{ height: 1, background: '#ebebeb', margin: '12px 0' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <IcoStar fill="#f59e0b" color="#f59e0b" />
+                    {config.estrelaValor && <span style={{ fontSize: 14, fontWeight: 700, color: '#1a1a1a' }}>{Number(config.estrelaValor).toFixed(1)}</span>}
+                    {config.estrelaQtd && <span style={{ fontSize: 13, color: '#717171' }}>({config.estrelaQtd} {config.estrelaQtd === 1 ? 'avaliação' : 'avaliações'})</span>}
+                  </div>
+                </>
+              )}
+
+              {(configDelivery.tempoEstimado || freteMinLabel || configDelivery.tipoEntrega) && (
+                <>
+                  <div style={{ height: 1, background: '#ebebeb', margin: '12px 0' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1a1a1a' }}>
+                    {configDelivery.tipoEntrega && <span style={{ fontWeight: 700 }}>{configDelivery.tipoEntrega}</span>}
+                    {configDelivery.tipoEntrega && configDelivery.tempoEstimado && <span style={{ color: '#717171' }}>•</span>}
+                    {configDelivery.tempoEstimado && <span>{configDelivery.tempoEstimado}</span>}
+                    {freteMinLabel && <span style={{ color: '#717171' }}>•</span>}
+                    {freteMinLabel && <span style={{ fontWeight: 600 }}>{freteMinLabel}</span>}
+                  </div>
+                </>
+              )}
+              <div style={{ height: 1, background: '#ebebeb', margin: '12px 0 0' }} />
+            </div>
+          ) : (
+            /* ── Modo normal: centered ── */
             <>
-              {modoIfood && <div style={{ height: 1, background: '#ebebeb', margin: '10px 20px' }} />}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flexWrap: 'wrap', padding: '6px 20px 2px', fontSize: 13, color: corTextoSec }}>
-                {configDelivery.tipoEntrega && (
-                  <span style={{ fontWeight: 700, color: corTextoBase }}>{configDelivery.tipoEntrega}</span>
-                )}
-                {configDelivery.tipoEntrega && configDelivery.tempoEstimado && <span>•</span>}
-                {configDelivery.tempoEstimado && <span>{configDelivery.tempoEstimado}</span>}
-                {freteMinLabel && <span>•</span>}
-                {freteMinLabel && <span style={{ fontWeight: 600, color: corTextoBase }}>{freteMinLabel}</span>}
-              </div>
+              <h1 style={{ fontSize: 22, fontWeight: 900, color: corTextoBase, margin: '0 0 4px', letterSpacing: '-0.4px', padding: '0 24px' }}>
+                {config.nomeRestaurante || 'Delivery'}
+              </h1>
+              {config.descricao && (
+                <p style={{ fontSize: 13, color: corTextoSec, margin: '0 0 10px', padding: '0 24px' }}>{config.descricao}</p>
+              )}
+              {config.estrelasAtivas && (config.estrelaValor || config.estrelaQtd) && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: modoClaro ? '#f6f6f6' : 'rgba(255,255,255,0.08)', borderRadius: 20, padding: '5px 14px' }}>
+                  <IcoStar fill={corEstrela} color={corEstrela} />
+                  {config.estrelaValor && <span style={{ fontSize: 13, fontWeight: 700, color: corTextoBase }}>{Number(config.estrelaValor).toFixed(1)}</span>}
+                  {config.estrelaQtd && <span style={{ fontSize: 12, color: corTextoSec }}>({config.estrelaQtd} {config.estrelaQtd === 1 ? 'avaliação' : 'avaliações'})</span>}
+                </div>
+              )}
+              {(configDelivery.tempoEstimado || freteMinLabel || configDelivery.tipoEntrega) && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flexWrap: 'wrap', padding: '6px 20px 2px', fontSize: 13, color: corTextoSec }}>
+                  {configDelivery.tipoEntrega && <span style={{ fontWeight: 700, color: corTextoBase }}>{configDelivery.tipoEntrega}</span>}
+                  {configDelivery.tipoEntrega && configDelivery.tempoEstimado && <span>•</span>}
+                  {configDelivery.tempoEstimado && <span>{configDelivery.tempoEstimado}</span>}
+                  {freteMinLabel && <span>•</span>}
+                  {freteMinLabel && <span style={{ fontWeight: 600, color: corTextoBase }}>{freteMinLabel}</span>}
+                </div>
+              )}
             </>
           )}
         </div>

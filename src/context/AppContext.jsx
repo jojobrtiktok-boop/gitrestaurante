@@ -666,12 +666,12 @@ export function AppProvider({ children }) {
     const uid = auth.userId
     const channel = supabase
       .channel(`rt-${uid}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos', filter: `user_id=eq.${uid}` }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, () => {
         supabase.from('pedidos').select('*').eq('user_id', uid).then(({ data }) => {
           if (data) setPedidos(data.map(rowToPedido))
         })
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas', filter: `user_id=eq.${uid}` }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas' }, () => {
         supabase.from('mesas').select('*').eq('user_id', uid).then(({ data }) => {
           if (data) setMesas(data.map(rowToMesa))
         })

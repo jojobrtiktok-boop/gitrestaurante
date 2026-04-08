@@ -728,9 +728,9 @@ function CardapioDigitalConfig() {
     setTimeout(() => setCopiado(null), 2000)
   }
 
-  function salvarSlug() {
+  async function salvarSlug() {
     setErroSlug(''); setOkSlug(false)
-    const res = definirSlugCardapio(slugInput)
+    const res = await definirSlugCardapio(slugInput)
     if (res.erro) return setErroSlug(res.erro)
     setOkSlug(true)
     setTimeout(() => setOkSlug(false), 2500)
@@ -1555,8 +1555,8 @@ function DeliveryConfig() {
 
   const urlDelivery = cfg.slugDelivery ? `${base}/delivery/${cfg.slugDelivery}` : null
 
-  function salvarSlug() {
-    const res = definirSlugDelivery(slugInput)
+  async function salvarSlug() {
+    const res = await definirSlugDelivery(slugInput)
     if (res.erro) { setErroSlug(res.erro); return }
     setOkSlug(true); setTimeout(() => setOkSlug(false), 2500)
   }

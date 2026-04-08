@@ -6,21 +6,6 @@ import { custoOpcoes, custoPrato, precoPorBase } from '../utils/calculos.js'
 
 const AppContext = createContext(null)
 
-function loadFromStorage(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key)
-    return raw ? JSON.parse(raw) : fallback
-  } catch { return fallback }
-}
-
-// ── Prefixo de dados por usuário ─────────────────────
-function getPrefix() {
-  try {
-    const a = JSON.parse(localStorage.getItem('rd_auth') || '{}')
-    return a?.userId ? `rd_${a.userId.slice(0, 8)}_` : 'rd_'
-  } catch { return 'rd_' }
-}
-
 const CONFIG_PADRAO = {
   nomeRestaurante: 'Meu Restaurante',
   descricao: '',
@@ -78,66 +63,452 @@ const KANBAN_CONFIG_PADRAO = {
 const DELIVERY_CONFIG_PADRAO = {
   ativo: false,
   slugDelivery: '',
+  municipioId: '',
+  uf: '',
   cidade: '',
   bairros: [],
   pedidoMinimo: 0,
   tempoEstimado: '30-45 min',
+  tipoEntrega: 'Padrão',
   formasPagamento: ['dinheiro', 'pix', 'cartao'],
   telefone: '',
   mensagemIntro: 'Olá! Gostaria de fazer um pedido:',
+  modoIfood: false,
+  corDestaqueIfood: '#ea1d2c',
 }
 
+// ── Mappers JS ↔ Supabase ─────────────────────────────────────────────────
+
+function ingToRow(ing, uid) {
+  return {
+    id: ing.id,
+    user_id: uid,
+    nome: ing.nome,
+    unidade: ing.unidade || 'kg',
+    preco: ing.preco || 0,
+    quantidade_estoque: ing.quantidadeEstoque || 0,
+    estoque_minimo: ing.estoqueMinimo || 0,
+    fator_correcao: ing.fatorCorrecao || 1,
+    criado_em: ing.criadoEm || new Date().toISOString(),
+  }
+}
+function rowToIng(row) {
+  return {
+    id: row.id,
+    nome: row.nome,
+    unidade: row.unidade,
+    preco: Number(row.preco || 0),
+    quantidadeEstoque: Number(row.quantidade_estoque || 0),
+    estoqueMinimo: Number(row.estoque_minimo || 0),
+    fatorCorrecao: Number(row.fator_correcao || 1),
+    criadoEm: row.criado_em,
+  }
+}
+
+function pratoToRow(p, uid) {
+  return {
+    id: p.id,
+    user_id: uid,
+    nome: p.nome,
+    preco_venda: p.precoVenda || 0,
+    categoria: p.categoria || '',
+    em_destaque: p.emDestaque || false,
+    mais_pedido: p.maisPedido || false,
+    foto: p.foto || null,
+    ingredientes: p.ingredientes || [],
+    grupos: p.grupos || [],
+    variacoes: p.variacoes || [],
+    criado_em: p.criadoEm || new Date().toISOString(),
+  }
+}
+function rowToPrato(row) {
+  return {
+    id: row.id,
+    nome: row.nome,
+    precoVenda: Number(row.preco_venda || 0),
+    categoria: row.categoria || '',
+    emDestaque: row.em_destaque || false,
+    maisPedido: row.mais_pedido || false,
+    foto: row.foto || null,
+    ingredientes: row.ingredientes || [],
+    grupos: row.grupos || [],
+    variacoes: row.variacoes || [],
+    criadoEm: row.criado_em,
+  }
+}
+
+function compraToRow(c, uid) {
+  return {
+    id: c.id,
+    user_id: uid,
+    ingrediente_id: c.ingredienteId,
+    data: c.data,
+    quantidade: c.quantidade,
+    preco_unitario: c.precoUnitario,
+    criado_em: c.criadoEm || new Date().toISOString(),
+  }
+}
+function rowToCompra(row) {
+  return {
+    id: row.id,
+    ingredienteId: row.ingrediente_id,
+    data: row.data,
+    quantidade: Number(row.quantidade),
+    precoUnitario: Number(row.preco_unitario),
+    criadoEm: row.criado_em,
+  }
+}
+
+function despesaToRow(d, uid) {
+  return {
+    id: d.id,
+    user_id: uid,
+    descricao: d.descricao,
+    categoria: d.categoria || '',
+    valor: d.valor,
+    data: d.data,
+    criado_em: d.criadoEm || new Date().toISOString(),
+  }
+}
+function rowToDespesa(row) {
+  return {
+    id: row.id,
+    descricao: row.descricao,
+    categoria: row.categoria || '',
+    valor: Number(row.valor),
+    data: row.data,
+    criadoEm: row.criado_em,
+  }
+}
+
+function despesaFixaToRow(d, uid) {
+  return {
+    id: d.id,
+    user_id: uid,
+    descricao: d.descricao,
+    categoria: d.categoria || '',
+    valor: d.valor,
+    criado_em: d.criadoEm || new Date().toISOString(),
+  }
+}
+function rowToDespesaFixa(row) {
+  return {
+    id: row.id,
+    descricao: row.descricao,
+    categoria: row.categoria || '',
+    valor: Number(row.valor),
+    criadoEm: row.criado_em,
+  }
+}
+
+function impostoToRow(imp, uid) {
+  return {
+    id: imp.id,
+    user_id: uid,
+    nome: imp.nome,
+    percentual: imp.percentual,
+    base: imp.base || 'faturamento',
+    criado_em: imp.criadoEm || new Date().toISOString(),
+  }
+}
+function rowToImposto(row) {
+  return {
+    id: row.id,
+    nome: row.nome,
+    percentual: Number(row.percentual),
+    base: row.base || 'faturamento',
+    criadoEm: row.criado_em,
+  }
+}
+
+function garconToRow(g, uid) {
+  return { id: g.id, user_id: uid, nome: g.nome, token: g.token }
+}
+function rowToGarcon(row) {
+  return { id: row.id, nome: row.nome, token: row.token }
+}
+
+function clienteToRow(c, uid) {
+  return {
+    id: c.id,
+    user_id: uid,
+    nome: c.nome,
+    criado_em: c.criadoEm || new Date().toISOString(),
+  }
+}
+function rowToCliente(row) {
+  return { id: row.id, nome: row.nome, criadoEm: row.criado_em }
+}
+
+function mesaToRow(m, uid) {
+  return {
+    id: m.id,
+    user_id: uid,
+    nome: m.nome,
+    capacidade: m.capacidade || 4,
+    status: m.status || 'livre',
+    inicio_sessao: m.inicioSessao || null,
+    nome_cliente: m.nomeCliente || null,
+  }
+}
+function rowToMesa(row) {
+  return {
+    id: row.id,
+    nome: row.nome,
+    capacidade: Number(row.capacidade || 4),
+    status: row.status || 'livre',
+    inicioSessao: row.inicio_sessao || null,
+    nomeCliente: row.nome_cliente || null,
+  }
+}
+
+function sessaoMesaToRow(s, uid) {
+  return {
+    id: s.id,
+    user_id: uid,
+    mesa_id: s.mesaId,
+    mesa_nome: s.mesaNome,
+    nome_cliente: s.nomeCliente || null,
+    inicio: s.inicio,
+    fim: s.fim,
+    total: s.total || 0,
+  }
+}
+function rowToSessaoMesa(row) {
+  return {
+    id: row.id,
+    mesaId: row.mesa_id,
+    mesaNome: row.mesa_nome,
+    nomeCliente: row.nome_cliente || null,
+    inicio: row.inicio,
+    fim: row.fim,
+    total: Number(row.total || 0),
+  }
+}
+
+function pedidoToRow(p, uid) {
+  return {
+    id: p.id,
+    user_id: uid,
+    garcon_id: p.garconId || null,
+    mesa_id: p.mesaId || null,
+    cliente_id: p.clienteId || null,
+    itens: p.itens || [],
+    obs: p.obs || '',
+    data: p.data,
+    hora: p.hora || '',
+    status: p.status || 'novo',
+    pago: p.pago || false,
+    cancelado: p.cancelado || false,
+    timestamps: p.timestamps || {},
+  }
+}
+function rowToPedido(row) {
+  return {
+    id: row.id,
+    garconId: row.garcon_id,
+    mesaId: row.mesa_id,
+    clienteId: row.cliente_id,
+    itens: row.itens || [],
+    obs: row.obs || '',
+    data: row.data,
+    hora: row.hora || '',
+    status: row.status || 'novo',
+    pago: row.pago || false,
+    cancelado: row.cancelado || false,
+    timestamps: row.timestamps || {},
+  }
+}
+
+function registroVendaToRow(r, uid) {
+  return {
+    id: r.id,
+    user_id: uid,
+    prato_id: r.pratoId,
+    data: r.data,
+    quantidade: r.quantidade,
+  }
+}
+function rowToRegistroVenda(row) {
+  return {
+    id: row.id,
+    pratoId: row.prato_id,
+    data: row.data,
+    quantidade: Number(row.quantidade),
+  }
+}
+
+function entradaVendaToRow(e, uid) {
+  return {
+    id: e.id,
+    user_id: uid,
+    prato_id: e.pratoId,
+    data: e.data,
+    hora: e.hora || '',
+    quantidade: e.quantidade,
+    garcon_id: e.garconId || null,
+    extras_unit: e.extrasUnit || 0,
+    extras_custo_unit: e.extrasCustoUnit || 0,
+    custo_prato_unit: e.custoPratoUnit ?? null,
+    ingredientes_snapshot: e.ingredientesSnapshot || null,
+    preco_venda_unit: e.precoVendaUnit ?? null,
+  }
+}
+function rowToEntradaVenda(row) {
+  return {
+    id: row.id,
+    pratoId: row.prato_id,
+    data: row.data,
+    hora: row.hora || '',
+    quantidade: Number(row.quantidade),
+    garconId: row.garcon_id,
+    extrasUnit: Number(row.extras_unit || 0),
+    extrasCustoUnit: Number(row.extras_custo_unit || 0),
+    custoPratoUnit: row.custo_prato_unit != null ? Number(row.custo_prato_unit) : null,
+    ingredientesSnapshot: row.ingredientes_snapshot || null,
+    precoVendaUnit: row.preco_venda_unit != null ? Number(row.preco_venda_unit) : null,
+  }
+}
+
+function listaCompraToRow(item, uid) {
+  return {
+    id: item.id,
+    user_id: uid,
+    ingrediente_id: item.ingredienteId || null,
+    nome: item.nome,
+    unidade: item.unidade || '',
+    quantidade: item.quantidade || 0,
+    observacao: item.observacao || '',
+    checked: item.checked || false,
+  }
+}
+function rowToListaCompra(row) {
+  return {
+    id: row.id,
+    ingredienteId: row.ingrediente_id,
+    nome: row.nome,
+    unidade: row.unidade || '',
+    quantidade: Number(row.quantidade || 0),
+    observacao: row.observacao || '',
+    checked: row.checked || false,
+  }
+}
+
+function caixaInicialToRow(c, uid) {
+  return { id: c.id, user_id: uid, data: c.data, valor: c.valor }
+}
+function rowToCaixaInicial(row) {
+  return { id: row.id, data: row.data, valor: Number(row.valor) }
+}
+
+function rowToCardapioConfig(row) {
+  if (!row) return CONFIG_PADRAO
+  return { ...CONFIG_PADRAO, ...(row.config || {}) }
+}
+
+function rowToKanbanConfig(row) {
+  if (!row) return KANBAN_CONFIG_PADRAO
+  return { ...KANBAN_CONFIG_PADRAO, ...(row.config || {}) }
+}
+
+function rowToDeliveryConfig(row) {
+  if (!row) return DELIVERY_CONFIG_PADRAO
+  return {
+    ativo: row.ativo || false,
+    slugDelivery: row.slug_delivery || '',
+    municipioId: row.municipio_id || '',
+    uf: row.uf || '',
+    cidade: row.cidade || '',
+    bairros: row.bairros || [],
+    pedidoMinimo: Number(row.pedido_minimo || 0),
+    tempoEstimado: row.tempo_estimado || '30-45 min',
+    tipoEntrega: row.tipo_entrega || 'Padrão',
+    formasPagamento: row.formas_pagamento || ['dinheiro', 'pix', 'cartao'],
+    telefone: row.telefone || '',
+    mensagemIntro: row.mensagem_intro || 'Olá! Gostaria de fazer um pedido:',
+    modoIfood: row.modo_ifood || false,
+    corDestaqueIfood: row.cor_destaque_ifood || '#ea1d2c',
+  }
+}
+
+function deliveryConfigToRow(cfg, uid) {
+  return {
+    user_id: uid,
+    ativo: cfg.ativo || false,
+    slug_delivery: cfg.slugDelivery || null,
+    municipio_id: cfg.municipioId || '',
+    uf: cfg.uf || '',
+    cidade: cfg.cidade || '',
+    bairros: cfg.bairros || [],
+    pedido_minimo: cfg.pedidoMinimo || 0,
+    tempo_estimado: cfg.tempoEstimado || '',
+    tipo_entrega: cfg.tipoEntrega || 'Padrão',
+    formas_pagamento: cfg.formasPagamento || ['dinheiro', 'pix', 'cartao'],
+    telefone: cfg.telefone || '',
+    mensagem_intro: cfg.mensagemIntro || '',
+    modo_ifood: cfg.modoIfood || false,
+    cor_destaque_ifood: cfg.corDestaqueIfood || '#ea1d2c',
+  }
+}
+
+function rowToNotifConfig(row) {
+  if (!row) return NOTIF_CONFIG_PADRAO
+  return {
+    pushAtivo: row.push_ativo || false,
+    notifVendas: row.notif_vendas !== false,
+    notifInsumos: row.notif_insumos !== false,
+    notifDemora: row.notif_demora !== false,
+    demoraMinutos: Number(row.demora_minutos || 20),
+  }
+}
+
+function notifConfigToRow(cfg, uid) {
+  return {
+    user_id: uid,
+    push_ativo: cfg.pushAtivo || false,
+    notif_vendas: cfg.notifVendas !== false,
+    notif_insumos: cfg.notifInsumos !== false,
+    notif_demora: cfg.notifDemora !== false,
+    demora_minutos: cfg.demoraMinutos || 20,
+  }
+}
+
+// ── Helper Supabase fire-and-forget ───────────────────────────────────────
+function sbWrite(promise) {
+  promise.then(({ error }) => { if (error) console.error('[supabase]', error) })
+}
+
+// ── AppProvider ───────────────────────────────────────────────────────────
 export function AppProvider({ children }) {
   const [tema, setTema] = useState(() => {
-    const saved = localStorage.getItem('rd_tema')
-    if (saved) return JSON.parse(saved)
-    return 'light'
+    try { return JSON.parse(localStorage.getItem('rd_tema')) || 'light' } catch { return 'light' }
   })
-  const [auth, setAuth] = useState(() => loadFromStorage('rd_auth', { logado: false, usuario: '', isAdmin: false, userId: null }))
+  const [auth, setAuth] = useState({ logado: false, usuario: '', isAdmin: false, userId: null })
+  const [loading, setLoading] = useState(false)
 
-  // ── Dados por usuário (prefixo dinâmico) ──────────
-  const [ingredientes, setIngredientes] = useState(() => loadFromStorage(getPrefix() + 'ingredientes', []))
-  const [pratos, setPratos] = useState(() => loadFromStorage(getPrefix() + 'pratos', []))
-  const [registrosVendas, setRegistrosVendas] = useState(() => loadFromStorage(getPrefix() + 'registros_vendas', []))
-  const [entradasVendas, setEntradasVendas] = useState(() => loadFromStorage(getPrefix() + 'entradas_vendas', []))
-  const [cardapioConfig, setCardapioConfig] = useState(() => loadFromStorage(getPrefix() + 'cardapio_config', CONFIG_PADRAO))
-  const [garcons, setGarcons] = useState(() => loadFromStorage(getPrefix() + 'garcons', []))
-  const [clientes, setClientes] = useState(() => loadFromStorage(getPrefix() + 'clientes', []))
-  const [pedidos, setPedidos] = useState(() => loadFromStorage(getPrefix() + 'pedidos', []))
-  const [compras, setCompras] = useState(() => loadFromStorage(getPrefix() + 'compras', []))
-  const [caixaInicial, setCaixaInicialState] = useState(() => loadFromStorage(getPrefix() + 'caixa_inicial', []))
-  const [mesas, setMesas] = useState(() => loadFromStorage(getPrefix() + 'mesas', []))
-  const [sessoesMesas, setSessoesMesas] = useState(() => loadFromStorage(getPrefix() + 'sessoes_mesas', []))
-  const [kanbanConfig, setKanbanConfig] = useState(() => {
-    const saved = loadFromStorage(getPrefix() + 'kanban_config', {})
-    return { ...KANBAN_CONFIG_PADRAO, ...saved }
-  })
-  const [configuracaoGeral, setConfiguracaoGeral] = useState(() =>
-    loadFromStorage(getPrefix() + 'configuracao_geral', { estoqueMinimoPadrao: 0 })
-  )
-  const [configuracaoDelivery, setConfiguracaoDelivery] = useState(() =>
-    loadFromStorage(getPrefix() + 'config_delivery', DELIVERY_CONFIG_PADRAO)
-  )
-  const [listaCompras, setListaCompras] = useState(() =>
-    loadFromStorage(getPrefix() + 'lista_compras', [])
-  )
-  const [despesas, setDespesas] = useState(() =>
-    loadFromStorage(getPrefix() + 'despesas', [])
-  )
-  const [despesasFixas, setDespesasFixas] = useState(() =>
-    loadFromStorage(getPrefix() + 'despesas_fixas', [])
-  )
-  const [impostosConfig, setImpostosConfig] = useState(() =>
-    loadFromStorage(getPrefix() + 'impostos_config', [])
-  )
-  const [notifConfig, setNotifConfig] = useState(() =>
-    loadFromStorage(getPrefix() + 'notif_config', NOTIF_CONFIG_PADRAO)
-  )
-  const [perfil, setPerfil] = useState(() =>
-    loadFromStorage(getPrefix() + 'perfil', { foto: null, nomeExibicao: '' })
-  )
+  const [ingredientes, setIngredientes] = useState([])
+  const [pratos, setPratos] = useState([])
+  const [registrosVendas, setRegistrosVendas] = useState([])
+  const [entradasVendas, setEntradasVendas] = useState([])
+  const [cardapioConfig, setCardapioConfig] = useState(CONFIG_PADRAO)
+  const [garcons, setGarcons] = useState([])
+  const [clientes, setClientes] = useState([])
+  const [pedidos, setPedidos] = useState([])
+  const [compras, setCompras] = useState([])
+  const [caixaInicial, setCaixaInicialState] = useState([])
+  const [mesas, setMesas] = useState([])
+  const [sessoesMesas, setSessoesMesas] = useState([])
+  const [kanbanConfig, setKanbanConfig] = useState(KANBAN_CONFIG_PADRAO)
+  const [configuracaoGeral, setConfiguracaoGeral] = useState({ estoqueMinimoPadrao: 0 })
+  const [configuracaoDelivery, setConfiguracaoDelivery] = useState(DELIVERY_CONFIG_PADRAO)
+  const [listaCompras, setListaCompras] = useState([])
+  const [despesas, setDespesas] = useState([])
+  const [despesasFixas, setDespesasFixas] = useState([])
+  const [impostosConfig, setImpostosConfig] = useState([])
+  const [notifConfig, setNotifConfig] = useState(NOTIF_CONFIG_PADRAO)
+  const [perfil, setPerfil] = useState({ foto: null, nomeExibicao: '' })
 
-  // Refs for notification callbacks (avoid stale closures)
+  const userIdRef = useRef(null)
   const notifConfigRef = useRef(notifConfig)
   const cardapioConfigRef = useRef(cardapioConfig)
   const ingredientesRef = useRef(ingredientes)
@@ -149,7 +520,7 @@ export function AppProvider({ children }) {
   useEffect(() => { pedidosRef.current = pedidos }, [pedidos])
   useEffect(() => { configuracaoGeralRef.current = configuracaoGeral }, [configuracaoGeral])
 
-  // ── Supabase Auth — sincroniza sessão ────────────
+  // ── Supabase Auth ─────────────────────────────────────────────────────
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) _aplicarSessao(session)
@@ -157,9 +528,8 @@ export function AppProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) _aplicarSessao(session)
       else {
-        const novoAuth = { logado: false, usuario: '', isAdmin: false, userId: null }
-        setAuth(novoAuth)
-        localStorage.setItem('rd_auth', JSON.stringify(novoAuth))
+        setAuth({ logado: false, usuario: '', isAdmin: false, userId: null })
+        _limparDados()
       }
     })
     return () => subscription.unsubscribe()
@@ -171,88 +541,145 @@ export function AppProvider({ children }) {
       .select('is_admin, username, nome_exibicao')
       .eq('id', session.user.id)
       .maybeSingle()
-    const novoAuth = {
+    setAuth({
       logado: true,
       usuario: profile?.username || session.user.user_metadata?.username || session.user.email,
       isAdmin: profile?.is_admin || session.user.user_metadata?.is_admin || false,
       userId: session.user.id,
-    }
-    setAuth(novoAuth)
-    localStorage.setItem('rd_auth', JSON.stringify(novoAuth))
+    })
+    if (profile?.nome_exibicao) setPerfil(prev => ({ ...prev, nomeExibicao: profile.nome_exibicao }))
   }
 
-  // ── Migração one-time: rd_* → rd_admin_* ─────────
-  useEffect(() => {
-    if (localStorage.getItem('rd_migration_v2')) return
-    const keys = ['ingredientes', 'pratos', 'registros_vendas', 'entradas_vendas',
-      'cardapio_config', 'garcons', 'pedidos', 'compras', 'caixa_inicial',
-      'mesas', 'sessoes_mesas', 'kanban_config']
-    keys.forEach(k => {
-      const old = localStorage.getItem(`rd_${k}`)
-      if (old && !localStorage.getItem(`rd_admin_${k}`))
-        localStorage.setItem(`rd_admin_${k}`, old)
-    })
-    localStorage.setItem('rd_migration_v2', '1')
-  }, [])
+  function _limparDados() {
+    userIdRef.current = null
+    setIngredientes([])
+    setPratos([])
+    setRegistrosVendas([])
+    setEntradasVendas([])
+    setCardapioConfig(CONFIG_PADRAO)
+    setGarcons([])
+    setClientes([])
+    setPedidos([])
+    setCompras([])
+    setCaixaInicialState([])
+    setMesas([])
+    setSessoesMesas([])
+    setKanbanConfig(KANBAN_CONFIG_PADRAO)
+    setConfiguracaoGeral({ estoqueMinimoPadrao: 0 })
+    setConfiguracaoDelivery(DELIVERY_CONFIG_PADRAO)
+    setListaCompras([])
+    setDespesas([])
+    setDespesasFixas([])
+    setImpostosConfig([])
+    setNotifConfig(NOTIF_CONFIG_PADRAO)
+    setPerfil({ foto: null, nomeExibicao: '' })
+  }
 
-  // ── Migração: congelar preços históricos em entradas antigas ──
+  // ── Carregar todos os dados quando userId muda ────────────────────────
   useEffect(() => {
-    if (!auth.usuario || !pratos.length) return
-    const flagKey = getPrefix() + 'migration_snapshots_v1'
-    if (localStorage.getItem(flagKey)) return
-    setEntradasVendas(prev => {
-      const migrated = prev.map(e => {
-        if (e.precoVendaUnit !== null && e.precoVendaUnit !== undefined &&
-            e.custoPratoUnit !== null && e.custoPratoUnit !== undefined) return e
-        const prato = pratos.find(p => p.id === e.pratoId)
-        if (!prato) return e
-        const updates = {}
-        if (e.precoVendaUnit === null || e.precoVendaUnit === undefined)
-          updates.precoVendaUnit = prato.precoVenda || 0
-        if (e.custoPratoUnit === null || e.custoPratoUnit === undefined)
-          updates.custoPratoUnit = custoPrato(prato, ingredientes)
-        if (!e.ingredientesSnapshot && prato.ingredientes?.length) {
-          updates.ingredientesSnapshot = prato.ingredientes.map(linha => {
-            const ing = ingredientes.find(i => i.id === linha.ingredienteId)
-            if (!ing) return null
-            return { ingredienteId: linha.ingredienteId, custo: precoPorBase(ing) * linha.quantidade }
-          }).filter(Boolean)
-        }
-        return Object.keys(updates).length ? { ...e, ...updates } : e
+    if (!auth.userId) return
+    userIdRef.current = auth.userId
+    _loadAllData(auth.userId)
+  }, [auth.userId])
+
+  async function _loadAllData(uid) {
+    setLoading(true)
+    try {
+      const [
+        { data: ings },
+        { data: prts },
+        { data: rvs },
+        { data: evs },
+        { data: ccs },
+        { data: gars },
+        { data: clis },
+        { data: peds },
+        { data: coms },
+        { data: cxs },
+        { data: mss },
+        { data: sess },
+        { data: kbc },
+        { data: cg },
+        { data: cd },
+        { data: lc },
+        { data: desp },
+        { data: df },
+        { data: imp },
+        { data: nc },
+        { data: prof },
+      ] = await Promise.all([
+        supabase.from('ingredientes').select('*').eq('user_id', uid),
+        supabase.from('pratos').select('*').eq('user_id', uid),
+        supabase.from('registros_vendas').select('*').eq('user_id', uid),
+        supabase.from('entradas_vendas').select('*').eq('user_id', uid),
+        supabase.from('cardapio_config').select('*').eq('user_id', uid).maybeSingle(),
+        supabase.from('garcons').select('*').eq('user_id', uid),
+        supabase.from('clientes').select('*').eq('user_id', uid),
+        supabase.from('pedidos').select('*').eq('user_id', uid),
+        supabase.from('compras').select('*').eq('user_id', uid),
+        supabase.from('caixa_inicial').select('*').eq('user_id', uid),
+        supabase.from('mesas').select('*').eq('user_id', uid),
+        supabase.from('sessoes_mesas').select('*').eq('user_id', uid),
+        supabase.from('kanban_config').select('*').eq('user_id', uid).maybeSingle(),
+        supabase.from('configuracao_geral').select('*').eq('user_id', uid).maybeSingle(),
+        supabase.from('config_delivery').select('*').eq('user_id', uid).maybeSingle(),
+        supabase.from('lista_compras').select('*').eq('user_id', uid),
+        supabase.from('despesas').select('*').eq('user_id', uid),
+        supabase.from('despesas_fixas').select('*').eq('user_id', uid),
+        supabase.from('impostos_config').select('*').eq('user_id', uid),
+        supabase.from('notif_config').select('*').eq('user_id', uid).maybeSingle(),
+        supabase.from('profiles').select('nome_exibicao').eq('id', uid).maybeSingle(),
+      ])
+
+      if (ings) setIngredientes(ings.map(rowToIng))
+      if (prts) setPratos(prts.map(rowToPrato))
+      if (rvs) setRegistrosVendas(rvs.map(rowToRegistroVenda))
+      if (evs) setEntradasVendas(evs.map(rowToEntradaVenda))
+      setCardapioConfig(rowToCardapioConfig(ccs))
+      if (gars) setGarcons(gars.map(rowToGarcon))
+      if (clis) setClientes(clis.map(rowToCliente))
+      if (peds) setPedidos(peds.map(rowToPedido))
+      if (coms) setCompras(coms.map(rowToCompra))
+      if (cxs) setCaixaInicialState(cxs.map(rowToCaixaInicial))
+      if (mss) setMesas(mss.map(rowToMesa))
+      if (sess) setSessoesMesas(sess.map(rowToSessaoMesa))
+      setKanbanConfig(rowToKanbanConfig(kbc))
+      setConfiguracaoGeral(cg ? { estoqueMinimoPadrao: Number(cg.estoque_minimo_padrao || 0) } : { estoqueMinimoPadrao: 0 })
+      setConfiguracaoDelivery(rowToDeliveryConfig(cd))
+      if (lc) setListaCompras(lc.map(rowToListaCompra))
+      if (desp) setDespesas(desp.map(rowToDespesa))
+      if (df) setDespesasFixas(df.map(rowToDespesaFixa))
+      if (imp) setImpostosConfig(imp.map(rowToImposto))
+      setNotifConfig(rowToNotifConfig(nc))
+      if (prof?.nome_exibicao) setPerfil(prev => ({ ...prev, nomeExibicao: prof.nome_exibicao }))
+    } catch (e) {
+      console.error('[loadAllData]', e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ── Realtime: pedidos e mesas ─────────────────────────────────────────
+  useEffect(() => {
+    if (!auth.userId) return
+    const uid = auth.userId
+    const channel = supabase
+      .channel(`rt-${uid}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos', filter: `user_id=eq.${uid}` }, () => {
+        supabase.from('pedidos').select('*').eq('user_id', uid).then(({ data }) => {
+          if (data) setPedidos(data.map(rowToPedido))
+        })
       })
-      return migrated
-    })
-    localStorage.setItem(flagKey, '1')
-  }, [auth.usuario, pratos, ingredientes])
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas', filter: `user_id=eq.${uid}` }, () => {
+        supabase.from('mesas').select('*').eq('user_id', uid).then(({ data }) => {
+          if (data) setMesas(data.map(rowToMesa))
+        })
+      })
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [auth.userId])
 
-  // ── Recarregar dados quando usuário muda ──────────
-  useEffect(() => {
-    if (!auth.usuario) return
-    const p = getPrefix()
-    setIngredientes(loadFromStorage(p + 'ingredientes', []))
-    setPratos(loadFromStorage(p + 'pratos', []))
-    setRegistrosVendas(loadFromStorage(p + 'registros_vendas', []))
-    setEntradasVendas(loadFromStorage(p + 'entradas_vendas', []))
-    setCardapioConfig(loadFromStorage(p + 'cardapio_config', CONFIG_PADRAO))
-    setGarcons(loadFromStorage(p + 'garcons', []))
-    setClientes(loadFromStorage(p + 'clientes', []))
-    setPedidos(loadFromStorage(p + 'pedidos', []))
-    setCompras(loadFromStorage(p + 'compras', []))
-    setCaixaInicialState(loadFromStorage(p + 'caixa_inicial', []))
-    setMesas(loadFromStorage(p + 'mesas', []))
-    setSessoesMesas(loadFromStorage(p + 'sessoes_mesas', []))
-    setKanbanConfig({ ...KANBAN_CONFIG_PADRAO, ...loadFromStorage(p + 'kanban_config', {}) })
-    setConfiguracaoGeral(loadFromStorage(p + 'configuracao_geral', { estoqueMinimoPadrao: 0 }))
-    setConfiguracaoDelivery(loadFromStorage(p + 'config_delivery', DELIVERY_CONFIG_PADRAO))
-    setListaCompras(loadFromStorage(p + 'lista_compras', []))
-    setDespesas(loadFromStorage(p + 'despesas', []))
-    setDespesasFixas(loadFromStorage(p + 'despesas_fixas', []))
-    setImpostosConfig(loadFromStorage(p + 'impostos_config', []))
-    setNotifConfig(loadFromStorage(p + 'notif_config', NOTIF_CONFIG_PADRAO))
-    setPerfil(loadFromStorage(p + 'perfil', { foto: null, nomeExibicao: '' }))
-  }, [auth.usuario])
-
-  // ── Tema ──────────────────────────────────────────
+  // ── Tema (mantido em localStorage — preferência de UI) ────────────────
   useEffect(() => {
     const html = document.documentElement
     if (tema === 'light') html.classList.add('light')
@@ -260,70 +687,16 @@ export function AppProvider({ children }) {
     localStorage.setItem('rd_tema', JSON.stringify(tema))
   }, [tema])
 
-  // ── Persistência de auth + usuarios ──────────────
-  useEffect(() => { localStorage.setItem('rd_auth', JSON.stringify(auth)) }, [auth])
-
-  // ── Persistência por usuário ──────────────────────
-  useEffect(() => { localStorage.setItem(getPrefix() + 'ingredientes', JSON.stringify(ingredientes)) }, [ingredientes, auth.usuario])
-  useEffect(() => { localStorage.setItem(getPrefix() + 'pratos', JSON.stringify(pratos)) }, [pratos, auth.usuario])
-  useEffect(() => { localStorage.setItem(getPrefix() + 'registros_vendas', JSON.stringify(registrosVendas)) }, [registrosVendas, auth.usuario])
-  useEffect(() => { localStorage.setItem(getPrefix() + 'entradas_vendas', JSON.stringify(entradasVendas)) }, [entradasVendas, auth.usuario])
-  useEffect(() => { localStorage.setItem(getPrefix() + 'cardapio_config', JSON.stringify(cardapioConfig)) }, [cardapioConfig, auth.usuario])
-  useEffect(() => { localStorage.setItem(getPrefix() + 'garcons', JSON.stringify(garcons)) }, [garcons, auth.usuario])
-  useEffect(() => { localStorage.setItem(getPrefix() + 'clientes', JSON.stringify(clientes)) }, [clientes, auth.usuario])
-  useEffect(() => { localStorage.setItem(getPrefix() + 'pedidos', JSON.stringify(pedidos)) }, [pedidos, auth.usuario])
-  useEffect(() => { localStorage.setItem(getPrefix() + 'compras', JSON.stringify(compras)) }, [compras, auth.usuario])
-  useEffect(() => { localStorage.setItem(getPrefix() + 'caixa_inicial', JSON.stringify(caixaInicial)) }, [caixaInicial, auth.usuario])
-  useEffect(() => { localStorage.setItem(getPrefix() + 'mesas', JSON.stringify(mesas)) }, [mesas, auth.usuario])
-  useEffect(() => { localStorage.setItem(getPrefix() + 'sessoes_mesas', JSON.stringify(sessoesMesas)) }, [sessoesMesas, auth.usuario])
-  useEffect(() => { localStorage.setItem(getPrefix() + 'kanban_config', JSON.stringify(kanbanConfig)) }, [kanbanConfig, auth.usuario])
-  useEffect(() => { localStorage.setItem(getPrefix() + 'configuracao_geral', JSON.stringify(configuracaoGeral)) }, [configuracaoGeral, auth.usuario])
-  useEffect(() => { localStorage.setItem(getPrefix() + 'config_delivery', JSON.stringify(configuracaoDelivery)) }, [configuracaoDelivery, auth.usuario])
-  useEffect(() => { localStorage.setItem(getPrefix() + 'lista_compras', JSON.stringify(listaCompras)) }, [listaCompras, auth.usuario])
-  useEffect(() => { localStorage.setItem(getPrefix() + 'despesas', JSON.stringify(despesas)) }, [despesas, auth.usuario])
-  useEffect(() => { localStorage.setItem(getPrefix() + 'despesas_fixas', JSON.stringify(despesasFixas)) }, [despesasFixas, auth.usuario])
-  useEffect(() => { localStorage.setItem(getPrefix() + 'impostos_config', JSON.stringify(impostosConfig)) }, [impostosConfig, auth.usuario])
-  useEffect(() => { localStorage.setItem(getPrefix() + 'notif_config', JSON.stringify(notifConfig)) }, [notifConfig, auth.usuario])
-  useEffect(() => { localStorage.setItem(getPrefix() + 'perfil', JSON.stringify(perfil)) }, [perfil, auth.usuario])
-
-  // ── Sincronização entre abas (cross-tab) ──────────
-  // O evento 'storage' só dispara nas OUTRAS abas quando uma aba grava no localStorage.
-  // Isso faz o Kanban/Cozinha/Caixa/Vendas atualizarem em tempo real sem F5.
-  useEffect(() => {
-    function onStorage(e) {
-      const p = getPrefix()
-      if (!e.key) return
-      if (e.key === p + 'pedidos')         setPedidos(loadFromStorage(p + 'pedidos', []))
-      if (e.key === p + 'mesas')           setMesas(loadFromStorage(p + 'mesas', []))
-      if (e.key === p + 'sessoes_mesas')   setSessoesMesas(loadFromStorage(p + 'sessoes_mesas', []))
-      if (e.key === p + 'kanban_config')   setKanbanConfig({ ...KANBAN_CONFIG_PADRAO, ...loadFromStorage(p + 'kanban_config', {}) })
-      if (e.key === p + 'registros_vendas') setRegistrosVendas(loadFromStorage(p + 'registros_vendas', []))
-      if (e.key === p + 'entradas_vendas') setEntradasVendas(loadFromStorage(p + 'entradas_vendas', []))
-      if (e.key === p + 'clientes')        setClientes(loadFromStorage(p + 'clientes', []))
-      if (e.key === p + 'garcons')         setGarcons(loadFromStorage(p + 'garcons', []))
-      if (e.key === p + 'pratos')          setPratos(loadFromStorage(p + 'pratos', []))
-    }
-    window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
-  }, [auth.usuario])
-
   function alternarTema() { setTema(t => t === 'dark' ? 'light' : 'dark') }
 
-  // ── Auth (Supabase) ───────────────────────────────
+  // ── Auth ──────────────────────────────────────────────────────────────
   async function login(emailOuUsuario, senha, manterLogado = true) {
     let email = emailOuUsuario.trim()
-
-    // Se não tem @, é username → busca email na tabela profiles
     if (!email.includes('@')) {
-      const { data } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('username', email.toLowerCase())
-        .maybeSingle()
+      const { data } = await supabase.from('profiles').select('email').eq('username', email.toLowerCase()).maybeSingle()
       if (!data?.email) return { erro: 'Usuário ou senha incorretos.' }
       email = data.email
     }
-
     const { error } = await supabase.auth.signInWithPassword({ email, password: senha })
     if (error) return { erro: 'Usuário ou senha incorretos.' }
     if (!manterLogado) localStorage.setItem('rd_session_temp', '1')
@@ -337,23 +710,15 @@ export function AppProvider({ children }) {
 
   async function cadastrarUsuario(email, senha, username) {
     const nomeUsuario = username.trim().toLowerCase()
-
-    // Verificar se username já existe
-    const { data: existeUser } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('username', nomeUsuario)
-      .maybeSingle()
+    const { data: existeUser } = await supabase.from('profiles').select('id').eq('username', nomeUsuario).maybeSingle()
     if (existeUser) return { erro: 'nome_em_uso' }
-
     const { error } = await supabase.auth.signUp({
       email: email.trim(),
       password: senha,
       options: { data: { username: nomeUsuario, nome_exibicao: username.trim() } },
     })
     if (error) {
-      if (error.message.toLowerCase().includes('already registered') ||
-          error.message.toLowerCase().includes('already been registered'))
+      if (error.message.toLowerCase().includes('already registered') || error.message.toLowerCase().includes('already been registered'))
         return { erro: 'email_em_uso' }
       return { erro: error.message }
     }
@@ -370,44 +735,57 @@ export function AppProvider({ children }) {
   }
 
   async function resetarSenha(email) {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    })
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` })
     if (error) return { erro: error.message }
     return { ok: true }
   }
 
-  // Admin: remover usuário via service role (chama edge function ou API)
-  function removerUsuario(id) {
-    // Implementar via Supabase Admin API quando necessário
-    return { ok: true }
-  }
+  function removerUsuario() { return { ok: true } }
 
-  function atualizarNotifConfig(updates) {
-    setNotifConfig(prev => ({ ...prev, ...updates }))
-  }
-
+  // ── Perfil ────────────────────────────────────────────────────────────
   function atualizarPerfil(updates) {
     setPerfil(prev => ({ ...prev, ...updates }))
+    if (!auth.userId) return
+    sbWrite(supabase.from('profiles').update({
+      nome_exibicao: updates.nomeExibicao,
+    }).eq('id', auth.userId))
   }
 
-  // ── Insumos CRUD ──────────────────────────────────────────────
+  // ── Notif Config ──────────────────────────────────────────────────────
+  function atualizarNotifConfig(updates) {
+    setNotifConfig(prev => {
+      const novo = { ...prev, ...updates }
+      if (auth.userId) sbWrite(supabase.from('notif_config').upsert(notifConfigToRow(novo, auth.userId), { onConflict: 'user_id' }))
+      return novo
+    })
+  }
+
+  // ── Insumos CRUD ──────────────────────────────────────────────────────
   function adicionarIngrediente(dados) {
     const novo = { ...dados, id: crypto.randomUUID(), criadoEm: agoraBrasiliaISO() }
     setIngredientes(prev => [...prev, novo])
+    if (auth.userId) sbWrite(supabase.from('ingredientes').insert(ingToRow(novo, auth.userId)))
     return novo
   }
+
   function editarIngrediente(id, dados) {
-    setIngredientes(prev => prev.map(i => i.id === id ? { ...i, ...dados } : i))
+    setIngredientes(prev => prev.map(i => {
+      if (i.id !== id) return i
+      const updated = { ...i, ...dados }
+      if (auth.userId) sbWrite(supabase.from('ingredientes').update(ingToRow(updated, auth.userId)).eq('id', id))
+      return updated
+    }))
   }
+
   function removerIngrediente(id) {
     const emUso = pratos.some(p => p.ingredientes?.some(l => l.ingredienteId === id))
     if (emUso) return { erro: 'Insumo está em uso em uma ou mais receitas. Remova-o das receitas antes de excluir.' }
     setIngredientes(prev => prev.filter(i => i.id !== id))
+    if (auth.userId) sbWrite(supabase.from('ingredientes').delete().eq('id', id).eq('user_id', auth.userId))
     return { ok: true }
   }
 
-  // ── Compras / Entrada de Estoque ──────────────────────────────
+  // ── Compras / Entrada de Estoque ──────────────────────────────────────
   function registrarCompra(ingredienteId, quantidade, precoUnitario, data) {
     const now = data || hojeBrasilia()
     const compra = {
@@ -419,6 +797,7 @@ export function AppProvider({ children }) {
       criadoEm: agoraBrasiliaISO(),
     }
     setCompras(prev => [...prev, compra])
+    if (auth.userId) sbWrite(supabase.from('compras').insert(compraToRow(compra, auth.userId)))
 
     setIngredientes(prev => prev.map(ing => {
       if (ing.id !== ingredienteId) return ing
@@ -428,7 +807,9 @@ export function AppProvider({ children }) {
       const novoPreco = novoEstoque > 0
         ? ((estoqueAtual * precoAtual) + (Number(quantidade) * Number(precoUnitario))) / novoEstoque
         : Number(precoUnitario)
-      return { ...ing, quantidadeEstoque: novoEstoque, preco: novoPreco }
+      const updated = { ...ing, quantidadeEstoque: novoEstoque, preco: novoPreco }
+      if (auth.userId) sbWrite(supabase.from('ingredientes').update(ingToRow(updated, auth.userId)).eq('id', ing.id))
+      return updated
     }))
     return compra
   }
@@ -437,6 +818,8 @@ export function AppProvider({ children }) {
     const compra = compras.find(c => c.id === id)
     if (!compra) return
     setCompras(prev => prev.filter(c => c.id !== id))
+    if (auth.userId) sbWrite(supabase.from('compras').delete().eq('id', id).eq('user_id', auth.userId))
+
     setIngredientes(prev => prev.map(ing => {
       if (ing.id !== compra.ingredienteId) return ing
       const estoqueAtual = ing.quantidadeEstoque || 0
@@ -445,51 +828,68 @@ export function AppProvider({ children }) {
       const precoAntes = estoqueAntes > 0
         ? ((precoAtual * estoqueAtual) - (compra.quantidade * compra.precoUnitario)) / estoqueAntes
         : precoAtual
-      return { ...ing, quantidadeEstoque: estoqueAntes, preco: Math.max(0, precoAntes) }
+      const updated = { ...ing, quantidadeEstoque: estoqueAntes, preco: Math.max(0, precoAntes) }
+      if (auth.userId) sbWrite(supabase.from('ingredientes').update(ingToRow(updated, auth.userId)).eq('id', ing.id))
+      return updated
     }))
   }
 
   function editarCompra(id, novosDados) {
     const compraAntiga = compras.find(c => c.id === id)
     if (!compraAntiga) return
-    // Reverse old, apply new
-    setCompras(prev => prev.map(c => c.id === id ? { ...c, ...novosDados, quantidade: Number(novosDados.quantidade), precoUnitario: Number(novosDados.precoUnitario) } : c))
+    const compraAtualizada = { ...compraAntiga, ...novosDados, quantidade: Number(novosDados.quantidade), precoUnitario: Number(novosDados.precoUnitario) }
+    setCompras(prev => prev.map(c => c.id === id ? compraAtualizada : c))
+    if (auth.userId) sbWrite(supabase.from('compras').update(compraToRow(compraAtualizada, auth.userId)).eq('id', id))
+
     setIngredientes(prev => prev.map(ing => {
       if (ing.id !== compraAntiga.ingredienteId) return ing
       const estoqueAtual = ing.quantidadeEstoque || 0
       const precoAtual = ing.preco || 0
-      // reverse old
       const estoqueRevertido = estoqueAtual - compraAntiga.quantidade
       const precoRevertido = estoqueRevertido > 0
         ? ((precoAtual * estoqueAtual) - (compraAntiga.quantidade * compraAntiga.precoUnitario)) / estoqueRevertido
         : precoAtual
-      // apply new
       const novaQtd = Number(novosDados.quantidade)
       const novoPrecoUnit = Number(novosDados.precoUnitario)
       const novoEstoque = estoqueRevertido + novaQtd
       const novoPreco = novoEstoque > 0
         ? ((Math.max(0, precoRevertido) * estoqueRevertido) + (novaQtd * novoPrecoUnit)) / novoEstoque
         : novoPrecoUnit
-      return { ...ing, quantidadeEstoque: novoEstoque, preco: Math.max(0, novoPreco) }
+      const updated = { ...ing, quantidadeEstoque: novoEstoque, preco: Math.max(0, novoPreco) }
+      if (auth.userId) sbWrite(supabase.from('ingredientes').update(ingToRow(updated, auth.userId)).eq('id', ing.id))
+      return updated
     }))
   }
 
-  // ── Receitas CRUD ─────────────────────────────────────────────
+  // ── Receitas CRUD ─────────────────────────────────────────────────────
   function adicionarPrato(dados) {
     const novo = { ...dados, id: crypto.randomUUID(), criadoEm: agoraBrasiliaISO() }
     setPratos(prev => [...prev, novo])
+    if (auth.userId) sbWrite(supabase.from('pratos').insert(pratoToRow(novo, auth.userId)))
     return novo
   }
+
   function editarPrato(id, dados) {
-    setPratos(prev => prev.map(p => p.id === id ? { ...p, ...dados } : p))
+    setPratos(prev => prev.map(p => {
+      if (p.id !== id) return p
+      const updated = { ...p, ...dados }
+      if (auth.userId) sbWrite(supabase.from('pratos').update(pratoToRow(updated, auth.userId)).eq('id', id))
+      return updated
+    }))
   }
+
   function removerPrato(id) {
     setPratos(prev => prev.filter(p => p.id !== id))
     setRegistrosVendas(prev => prev.filter(r => r.pratoId !== id))
     setEntradasVendas(prev => prev.filter(e => e.pratoId !== id))
+    if (auth.userId) {
+      sbWrite(supabase.from('pratos').delete().eq('id', id).eq('user_id', auth.userId))
+      sbWrite(supabase.from('registros_vendas').delete().eq('prato_id', id).eq('user_id', auth.userId))
+      sbWrite(supabase.from('entradas_vendas').delete().eq('prato_id', id).eq('user_id', auth.userId))
+    }
   }
 
-  // ── Registros de Vendas ───────────────────────────────────────
+  // ── Registros de Vendas ───────────────────────────────────────────────
   function registrarVendas(pratoId, data, quantidade) {
     const novaQtd = Number(quantidade)
     const existente = registrosVendas.find(r => r.pratoId === pratoId && r.data === data)
@@ -499,8 +899,14 @@ export function AppProvider({ children }) {
 
     setRegistrosVendas(prev => {
       const ex = prev.find(r => r.pratoId === pratoId && r.data === data)
-      if (ex) return prev.map(r => r.pratoId === pratoId && r.data === data ? { ...r, quantidade: novaQtd } : r)
-      return [...prev, { id: crypto.randomUUID(), pratoId, data, quantidade: novaQtd }]
+      if (ex) {
+        const updated = { ...ex, quantidade: novaQtd }
+        if (auth.userId) sbWrite(supabase.from('registros_vendas').update({ quantidade: novaQtd }).eq('id', ex.id))
+        return prev.map(r => r.pratoId === pratoId && r.data === data ? updated : r)
+      }
+      const novo = { id: crypto.randomUUID(), pratoId, data, quantidade: novaQtd }
+      if (auth.userId) sbWrite(supabase.from('registros_vendas').insert(registroVendaToRow(novo, auth.userId)))
+      return [...prev, novo]
     })
 
     const prato = pratos.find(p => p.id === pratoId)
@@ -509,7 +915,9 @@ export function AppProvider({ children }) {
       const linha = prato.ingredientes.find(l => l.ingredienteId === ing.id)
       if (!linha) return ing
       const ajuste = fromBase(linha.quantidade, ing.unidade) * diff
-      return { ...ing, quantidadeEstoque: ing.quantidadeEstoque - ajuste }
+      const updated = { ...ing, quantidadeEstoque: ing.quantidadeEstoque - ajuste }
+      if (auth.userId) sbWrite(supabase.from('ingredientes').update({ quantidade_estoque: updated.quantidadeEstoque }).eq('id', ing.id))
+      return updated
     }))
   }
 
@@ -518,14 +926,12 @@ export function AppProvider({ children }) {
     return reg ? reg.quantidade : 0
   }
 
-  // ── Entradas de Vendas ────────────────────────────────────────
+  // ── Entradas de Vendas ────────────────────────────────────────────────
   function adicionarEntradaVenda(pratoId, quantidade, garconId, extrasUnit = 0, extrasCustoUnit = 0, custoPratoUnit = null, ingredientesSnapshot = null, precoVendaUnit = null) {
-    const dataAtual = hojeBrasilia()
-    const hora = horaAtual()
-    setEntradasVendas(prev => [...prev, {
+    const nova = {
       id: crypto.randomUUID(), pratoId,
-      data: dataAtual,
-      hora,
+      data: hojeBrasilia(),
+      hora: horaAtual(),
       quantidade: Number(quantidade),
       garconId: garconId || null,
       extrasUnit: Number(extrasUnit) || 0,
@@ -533,19 +939,20 @@ export function AppProvider({ children }) {
       custoPratoUnit: custoPratoUnit !== null ? Number(custoPratoUnit) : null,
       ingredientesSnapshot: ingredientesSnapshot || null,
       precoVendaUnit: precoVendaUnit !== null ? Number(precoVendaUnit) : null,
-    }])
+    }
+    setEntradasVendas(prev => [...prev, nova])
+    if (auth.userId) sbWrite(supabase.from('entradas_vendas').insert(entradaVendaToRow(nova, auth.userId)))
   }
+
   function removerEntradaVenda(id) {
     const entrada = entradasVendas.find(e => e.id === id)
     if (!entrada) return
-
     setEntradasVendas(prev => prev.filter(e => e.id !== id))
+    if (auth.userId) sbWrite(supabase.from('entradas_vendas').delete().eq('id', id).eq('user_id', auth.userId))
 
     const qtdAtual = buscarVendasDia(entrada.pratoId, entrada.data)
     const novaQtd = Math.max(0, qtdAtual - entrada.quantidade)
-    if (novaQtd < qtdAtual) {
-      registrarVendas(entrada.pratoId, entrada.data, novaQtd)
-    }
+    if (novaQtd < qtdAtual) registrarVendas(entrada.pratoId, entrada.data, novaQtd)
 
     const pedidoVinculado = pedidos.find(p =>
       p.data === entrada.data &&
@@ -554,114 +961,156 @@ export function AppProvider({ children }) {
     )
     if (pedidoVinculado) {
       setPedidos(prev => prev.filter(p => p.id !== pedidoVinculado.id))
+      if (auth.userId) sbWrite(supabase.from('pedidos').delete().eq('id', pedidoVinculado.id).eq('user_id', auth.userId))
       if (pedidoVinculado.mesaId) {
-        setMesas(prev => prev.map(m =>
-          m.id === pedidoVinculado.mesaId
-            ? { ...m, status: 'livre', inicioSessao: null, nomeCliente: null }
-            : m
-        ))
+        setMesas(prev => prev.map(m => {
+          if (m.id !== pedidoVinculado.mesaId) return m
+          const updated = { ...m, status: 'livre', inicioSessao: null, nomeCliente: null }
+          if (auth.userId) sbWrite(supabase.from('mesas').update(mesaToRow(updated, auth.userId)).eq('id', m.id))
+          return updated
+        }))
       }
     }
   }
 
-  // ── Cardápio Digital Config ───────────────────────────────────
+  // ── Cardápio Digital Config ───────────────────────────────────────────
   function atualizarCardapioConfig(cfg) {
-    setCardapioConfig(prev => ({ ...prev, ...cfg }))
+    setCardapioConfig(prev => {
+      const novo = { ...prev, ...cfg }
+      if (auth.userId) sbWrite(supabase.from('cardapio_config').upsert({ user_id: auth.userId, config: novo }, { onConflict: 'user_id' }))
+      return novo
+    })
   }
 
-  function definirSlugCardapio(novoSlug) {
+  async function definirSlugCardapio(novoSlug) {
     const slug = novoSlug.trim().toLowerCase()
     if (!slug) return { erro: 'O slug não pode ser vazio.' }
     if (!/^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/.test(slug) && !/^[a-z0-9]{3,30}$/.test(slug))
       return { erro: 'Use apenas letras minúsculas, números e hífens (3–30 caracteres).' }
 
-    // Verifica se já está em uso por outro usuário
-    const registro = loadFromStorage('rd_menu_slugs', {})
-    const prefixKey = auth.userId ? auth.userId.slice(0, 8) : auth.usuario
-    const dono = registro[slug]
-    if (dono && dono !== prefixKey && dono !== auth.usuario) return { erro: `O slug "${slug}" já está em uso.` }
+    // Verifica se slug já existe para outro usuário
+    const { data: existente } = await supabase.from('menu_slugs').select('user_id').eq('slug', slug).maybeSingle()
+    if (existente && existente.user_id !== auth.userId) return { erro: `O slug "${slug}" já está em uso.` }
 
-    // Remove slug antigo do registro
+    // Remove slug antigo
     const slugAtual = cardapioConfig.slugCardapio
     if (slugAtual && slugAtual !== slug) {
-      delete registro[slugAtual]
+      await supabase.from('menu_slugs').delete().eq('slug', slugAtual)
     }
-    // Registra novo slug com prefixKey baseado em userId
-    registro[slug] = prefixKey
-    localStorage.setItem('rd_menu_slugs', JSON.stringify(registro))
-    setCardapioConfig(prev => ({ ...prev, slugCardapio: slug }))
+
+    // Registra novo slug
+    const { error } = await supabase.from('menu_slugs').upsert({ slug, user_id: auth.userId })
+    if (error) return { erro: 'Erro ao salvar slug.' }
+
+    setCardapioConfig(prev => {
+      const novo = { ...prev, slugCardapio: slug }
+      sbWrite(supabase.from('cardapio_config').upsert({ user_id: auth.userId, config: novo }, { onConflict: 'user_id' }))
+      return novo
+    })
     return { ok: true }
   }
 
-  // ── Kanban Config ─────────────────────────────────────────────
+  // ── Kanban Config ─────────────────────────────────────────────────────
   function atualizarKanbanConfig(cfg) {
-    setKanbanConfig(prev => ({ ...prev, ...cfg }))
+    setKanbanConfig(prev => {
+      const novo = { ...prev, ...cfg }
+      if (auth.userId) sbWrite(supabase.from('kanban_config').upsert({ user_id: auth.userId, config: novo }, { onConflict: 'user_id' }))
+      return novo
+    })
   }
+
+  function _gerarToken() { return crypto.randomUUID().replace(/-/g, '').slice(0, 16) }
+
   function gerarTokenCozinha() {
-    const token = crypto.randomUUID().replace(/-/g, '').slice(0, 16)
-    setKanbanConfig(prev => ({ ...prev, cozinhaToken: token }))
+    const token = _gerarToken()
+    atualizarKanbanConfig({ cozinhaToken: token })
     return token
   }
   function gerarTokenCaixa() {
-    const token = crypto.randomUUID().replace(/-/g, '').slice(0, 16)
-    setKanbanConfig(prev => ({ ...prev, caixaToken: token }))
+    const token = _gerarToken()
+    atualizarKanbanConfig({ caixaToken: token })
     return token
   }
   function gerarTokenTelao() {
-    const token = crypto.randomUUID().replace(/-/g, '').slice(0, 16)
-    setKanbanConfig(prev => ({ ...prev, telaoToken: token }))
+    const token = _gerarToken()
+    atualizarKanbanConfig({ telaoToken: token })
     return token
   }
   function gerarTokenPedidosDisplay() {
-    const token = crypto.randomUUID().replace(/-/g, '').slice(0, 16)
-    setKanbanConfig(prev => ({ ...prev, pedidosDisplayToken: token }))
+    const token = _gerarToken()
+    atualizarKanbanConfig({ pedidosDisplayToken: token })
     return token
   }
 
-  // ── Configuração Geral ────────────────────────────────────────
+  // ── Configuração Geral ────────────────────────────────────────────────
   function atualizarConfiguracaoGeral(dados) {
-    setConfiguracaoGeral(prev => ({ ...prev, ...dados }))
+    setConfiguracaoGeral(prev => {
+      const novo = { ...prev, ...dados }
+      if (auth.userId) sbWrite(supabase.from('configuracao_geral').upsert({ user_id: auth.userId, estoque_minimo_padrao: novo.estoqueMinimoPadrao || 0 }, { onConflict: 'user_id' }))
+      return novo
+    })
   }
 
-  // ── Delivery Config ───────────────────────────────────────────
+  // ── Delivery Config ───────────────────────────────────────────────────
   function atualizarConfiguracaoDelivery(dados) {
-    setConfiguracaoDelivery(prev => ({ ...prev, ...dados }))
+    setConfiguracaoDelivery(prev => {
+      const novo = { ...prev, ...dados }
+      if (auth.userId) sbWrite(supabase.from('config_delivery').upsert(deliveryConfigToRow(novo, auth.userId), { onConflict: 'user_id' }))
+      return novo
+    })
   }
 
-  function definirSlugDelivery(novoSlug) {
+  async function definirSlugDelivery(novoSlug) {
     const slug = novoSlug.trim().toLowerCase()
     if (!slug) return { erro: 'O slug não pode ser vazio.' }
     if (!/^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/.test(slug) && !/^[a-z0-9]{3,30}$/.test(slug))
       return { erro: 'Use apenas letras minúsculas, números e hífens (3–30 caracteres).' }
-    const registro = loadFromStorage('rd_delivery_slugs', {})
-    const prefixKey = auth.userId ? auth.userId.slice(0, 8) : auth.usuario
-    const dono = registro[slug]
-    if (dono && dono !== prefixKey) return { erro: `O slug "${slug}" já está em uso.` }
+
+    const { data: existente } = await supabase.from('delivery_slugs').select('user_id').eq('slug', slug).maybeSingle()
+    if (existente && existente.user_id !== auth.userId) return { erro: `O slug "${slug}" já está em uso.` }
+
     const slugAtual = configuracaoDelivery.slugDelivery
-    if (slugAtual && slugAtual !== slug) delete registro[slugAtual]
-    registro[slug] = prefixKey
-    localStorage.setItem('rd_delivery_slugs', JSON.stringify(registro))
-    setConfiguracaoDelivery(prev => ({ ...prev, slugDelivery: slug }))
+    if (slugAtual && slugAtual !== slug) {
+      await supabase.from('delivery_slugs').delete().eq('slug', slugAtual)
+    }
+
+    const { error } = await supabase.from('delivery_slugs').upsert({ slug, user_id: auth.userId })
+    if (error) return { erro: 'Erro ao salvar slug.' }
+
+    setConfiguracaoDelivery(prev => {
+      const novo = { ...prev, slugDelivery: slug }
+      sbWrite(supabase.from('config_delivery').upsert(deliveryConfigToRow(novo, auth.userId), { onConflict: 'user_id' }))
+      return novo
+    })
     return { ok: true }
   }
 
   function adicionarBairro({ nome, frete }) {
     const novo = { id: crypto.randomUUID(), nome: nome.trim(), frete: Number(frete) || 0, ativo: true }
-    setConfiguracaoDelivery(prev => ({ ...prev, bairros: [...(prev.bairros || []), novo] }))
+    setConfiguracaoDelivery(prev => {
+      const updated = { ...prev, bairros: [...(prev.bairros || []), novo] }
+      if (auth.userId) sbWrite(supabase.from('config_delivery').upsert(deliveryConfigToRow(updated, auth.userId), { onConflict: 'user_id' }))
+      return updated
+    })
   }
 
   function editarBairro(id, dados) {
-    setConfiguracaoDelivery(prev => ({
-      ...prev,
-      bairros: (prev.bairros || []).map(b => b.id === id ? { ...b, ...dados } : b),
-    }))
+    setConfiguracaoDelivery(prev => {
+      const updated = { ...prev, bairros: (prev.bairros || []).map(b => b.id === id ? { ...b, ...dados } : b) }
+      if (auth.userId) sbWrite(supabase.from('config_delivery').upsert(deliveryConfigToRow(updated, auth.userId), { onConflict: 'user_id' }))
+      return updated
+    })
   }
 
   function removerBairro(id) {
-    setConfiguracaoDelivery(prev => ({ ...prev, bairros: (prev.bairros || []).filter(b => b.id !== id) }))
+    setConfiguracaoDelivery(prev => {
+      const updated = { ...prev, bairros: (prev.bairros || []).filter(b => b.id !== id) }
+      if (auth.userId) sbWrite(supabase.from('config_delivery').upsert(deliveryConfigToRow(updated, auth.userId), { onConflict: 'user_id' }))
+      return updated
+    })
   }
 
-  // ── Lista de Compras ──────────────────────────────────────────
+  // ── Lista de Compras ──────────────────────────────────────────────────
   function gerarListaComprasAutomatica() {
     const minPadrao = configuracaoGeral.estoqueMinimoPadrao || 0
     const novos = ingredientes
@@ -676,64 +1125,97 @@ export function AppProvider({ children }) {
         checked: false,
       }))
     setListaCompras(novos)
+    if (auth.userId) {
+      sbWrite(supabase.from('lista_compras').delete().eq('user_id', auth.userId))
+      if (novos.length) sbWrite(supabase.from('lista_compras').insert(novos.map(i => listaCompraToRow(i, auth.userId))))
+    }
     return novos
   }
+
   function adicionarItemLista(item) {
-    setListaCompras(prev => [...prev, { ...item, id: crypto.randomUUID(), checked: false }])
-  }
-  function toggleItemLista(id) {
-    setListaCompras(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i))
-  }
-  function editarItemLista(id, dados) {
-    setListaCompras(prev => prev.map(i => i.id === id ? { ...i, ...dados } : i))
-  }
-  function removerItemLista(id) {
-    setListaCompras(prev => prev.filter(i => i.id !== id))
+    const novo = { ...item, id: crypto.randomUUID(), checked: false }
+    setListaCompras(prev => [...prev, novo])
+    if (auth.userId) sbWrite(supabase.from('lista_compras').insert(listaCompraToRow(novo, auth.userId)))
   }
 
-  // ── Garçons ──────────────────────────────────────────────────
+  function toggleItemLista(id) {
+    setListaCompras(prev => prev.map(i => {
+      if (i.id !== id) return i
+      const updated = { ...i, checked: !i.checked }
+      if (auth.userId) sbWrite(supabase.from('lista_compras').update({ checked: updated.checked }).eq('id', id))
+      return updated
+    }))
+  }
+
+  function editarItemLista(id, dados) {
+    setListaCompras(prev => prev.map(i => {
+      if (i.id !== id) return i
+      const updated = { ...i, ...dados }
+      if (auth.userId) sbWrite(supabase.from('lista_compras').update(listaCompraToRow(updated, auth.userId)).eq('id', id))
+      return updated
+    }))
+  }
+
+  function removerItemLista(id) {
+    setListaCompras(prev => prev.filter(i => i.id !== id))
+    if (auth.userId) sbWrite(supabase.from('lista_compras').delete().eq('id', id).eq('user_id', auth.userId))
+  }
+
+  // ── Garçons ───────────────────────────────────────────────────────────
   function adicionarGarcon(nome) {
     const novo = { id: crypto.randomUUID(), nome: nome.trim(), token: crypto.randomUUID().replace(/-/g, '').slice(0, 12) }
     setGarcons(prev => [...prev, novo])
+    if (auth.userId) sbWrite(supabase.from('garcons').insert(garconToRow(novo, auth.userId)))
     return novo
   }
+
   function removerGarcon(id) {
     setGarcons(prev => prev.filter(g => g.id !== id))
     setPedidos(prev => prev.filter(p => p.garconId !== id))
+    if (auth.userId) sbWrite(supabase.from('garcons').delete().eq('id', id).eq('user_id', auth.userId))
   }
 
-  // ── Clientes ──────────────────────────────────────────────────
+  // ── Clientes ──────────────────────────────────────────────────────────
   function adicionarCliente(nome) {
     const novo = { id: crypto.randomUUID(), nome: nome.trim(), criadoEm: agoraBrasiliaISO() }
     setClientes(prev => [...prev, novo])
+    if (auth.userId) sbWrite(supabase.from('clientes').insert(clienteToRow(novo, auth.userId)))
     return novo
   }
+
   function removerCliente(id) {
     setClientes(prev => prev.filter(c => c.id !== id))
+    if (auth.userId) sbWrite(supabase.from('clientes').delete().eq('id', id).eq('user_id', auth.userId))
   }
 
-  // ── Caixa Inicial / Troco ─────────────────────────────────────
+  // ── Caixa Inicial ─────────────────────────────────────────────────────
   function registrarCaixaInicial(data, valor) {
     setCaixaInicialState(prev => {
       const ex = prev.find(c => c.data === data)
-      if (ex) return prev.map(c => c.data === data ? { ...c, valor: Number(valor) } : c)
-      return [...prev, { id: crypto.randomUUID(), data, valor: Number(valor) }]
+      if (ex) {
+        const updated = { ...ex, valor: Number(valor) }
+        if (auth.userId) sbWrite(supabase.from('caixa_inicial').update({ valor: Number(valor) }).eq('id', ex.id))
+        return prev.map(c => c.data === data ? updated : c)
+      }
+      const novo = { id: crypto.randomUUID(), data, valor: Number(valor) }
+      if (auth.userId) sbWrite(supabase.from('caixa_inicial').insert(caixaInicialToRow(novo, auth.userId)))
+      return [...prev, novo]
     })
   }
+
   function getCaixaInicial(data) {
     return caixaInicial.find(c => c.data === data)?.valor ?? null
   }
-  function getCaixaInicialPeriodo(dataInicio, dataFim) {
-    // Caixa inicial é o valor de abertura do primeiro dia — não soma com os demais
+
+  function getCaixaInicialPeriodo(dataInicio) {
     return getCaixaInicial(dataInicio) ?? 0
   }
 
-  // ── Pedidos ───────────────────────────────────────────────────
+  // ── Pedidos ───────────────────────────────────────────────────────────
   function adicionarPedido(garconId, itens, obs, mesaId = null, clienteId = null) {
     const dataAtual = hojeBrasilia()
     const hora = horaAtual()
     const agora = agoraBrasiliaISO()
-    // Snapshot do preço de cada insumo no momento do pedido
     const itensComCusto = itens.map(item => ({
       ...item,
       opcoes: (item.opcoes || []).map(o => {
@@ -752,11 +1234,20 @@ export function AppProvider({ children }) {
       hora,
       status: 'novo',
       pago: false,
+      cancelado: false,
       timestamps: { novo: agora, preparando: null, completo: null },
     }
-    if (mesaId) setMesas(prev => prev.map(m => m.id === mesaId ? { ...m, status: 'ocupada', inicioSessao: m.inicioSessao || agoraBrasiliaISO() } : m))
+    if (mesaId) {
+      setMesas(prev => prev.map(m => {
+        if (m.id !== mesaId) return m
+        const updated = { ...m, status: 'ocupada', inicioSessao: m.inicioSessao || agoraBrasiliaISO() }
+        if (auth.userId) sbWrite(supabase.from('mesas').update(mesaToRow(updated, auth.userId)).eq('id', m.id))
+        return updated
+      }))
+    }
     setPedidos(prev => [...prev, pedido])
-    const data = pedido.data
+    if (auth.userId) sbWrite(supabase.from('pedidos').insert(pedidoToRow(pedido, auth.userId)))
+
     itensComCusto.forEach(({ pratoId, quantidade, opcoes }) => {
       const extrasUnit = (opcoes || []).reduce((s, o) => s + (o.precoExtra || 0), 0)
       const extrasCustoUnit = custoOpcoes(opcoes || [], ingredientes)
@@ -769,11 +1260,12 @@ export function AppProvider({ children }) {
             return { ingredienteId: linha.ingredienteId, custo: precoPorBase(ing) * linha.quantidade }
           }).filter(Boolean)
         : null
-      const atual = registrosVendas.find(r => r.pratoId === pratoId && r.data === data)
-      registrarVendas(pratoId, data, (atual?.quantidade || 0) + quantidade)
+      const atual = registrosVendas.find(r => r.pratoId === pratoId && r.data === dataAtual)
+      registrarVendas(pratoId, dataAtual, (atual?.quantidade || 0) + quantidade)
       const precoVendaUnit = prato ? (prato.precoVenda || 0) : 0
       adicionarEntradaVenda(pratoId, quantidade, garconId, extrasUnit, extrasCustoUnit, custoPratoUnit, ingredientesSnapshot, precoVendaUnit)
     })
+
     itensComCusto.forEach(({ opcoes, quantidade }) => {
       if (!opcoes?.length) return
       setIngredientes(prev => prev.map(ing => {
@@ -782,24 +1274,36 @@ export function AppProvider({ children }) {
           return s + o.quantidadeUsada * quantidade
         }, 0)
         if (total === 0) return ing
-        return { ...ing, quantidadeEstoque: ing.quantidadeEstoque - total }
+        const updated = { ...ing, quantidadeEstoque: ing.quantidadeEstoque - total }
+        if (auth.userId) sbWrite(supabase.from('ingredientes').update({ quantidade_estoque: updated.quantidadeEstoque }).eq('id', ing.id))
+        return updated
       }))
     })
     return pedido
   }
 
-  // ── Mesas ─────────────────────────────────────────────────────
+  // ── Mesas ─────────────────────────────────────────────────────────────
   function adicionarMesa(nome, capacidade) {
     const nova = { id: crypto.randomUUID(), nome: nome.trim(), capacidade: Number(capacidade) || 4, status: 'livre', inicioSessao: null, nomeCliente: null }
     setMesas(prev => [...prev, nova])
+    if (auth.userId) sbWrite(supabase.from('mesas').insert(mesaToRow(nova, auth.userId)))
     return nova
   }
+
   function editarMesa(id, dados) {
-    setMesas(prev => prev.map(m => m.id === id ? { ...m, ...dados } : m))
+    setMesas(prev => prev.map(m => {
+      if (m.id !== id) return m
+      const updated = { ...m, ...dados }
+      if (auth.userId) sbWrite(supabase.from('mesas').update(mesaToRow(updated, auth.userId)).eq('id', id))
+      return updated
+    }))
   }
+
   function removerMesa(id) {
     setMesas(prev => prev.filter(m => m.id !== id))
+    if (auth.userId) sbWrite(supabase.from('mesas').delete().eq('id', id).eq('user_id', auth.userId))
   }
+
   function setStatusMesa(id, status, nomeCliente = null) {
     const mesa = mesas.find(m => m.id === id)
     if (mesa?.status === 'ocupada' && status === 'livre' && mesa.inicioSessao) {
@@ -810,22 +1314,30 @@ export function AppProvider({ children }) {
           const extras = (item.opcoes || []).reduce((e, o) => e + (o.precoExtra || 0), 0)
           return ss + ((pr?.precoVenda || 0) + extras) * item.quantidade
         }, 0), 0)
-      setSessoesMesas(prev => [...prev, {
+      const sessao = {
         id: crypto.randomUUID(),
         mesaId: id,
         mesaNome: mesa.nome,
         nomeCliente: mesa.nomeCliente || null,
         inicio: mesa.inicioSessao,
-            fim: agoraBrasiliaISO(),
+        fim: agoraBrasiliaISO(),
         total,
-      }])
+      }
+      setSessoesMesas(prev => [...prev, sessao])
+      if (auth.userId) sbWrite(supabase.from('sessoes_mesas').insert(sessaoMesaToRow(sessao, auth.userId)))
     }
-    setMesas(prev => prev.map(m => m.id === id ? {
-      ...m, status,
-          inicioSessao: status === 'ocupada' ? agoraBrasiliaISO() : (status === 'livre' ? null : m.inicioSessao),
-      nomeCliente: status === 'ocupada' ? (nomeCliente || null) : (status === 'livre' ? null : m.nomeCliente),
-    } : m))
+    setMesas(prev => prev.map(m => {
+      if (m.id !== id) return m
+      const updated = {
+        ...m, status,
+        inicioSessao: status === 'ocupada' ? agoraBrasiliaISO() : (status === 'livre' ? null : m.inicioSessao),
+        nomeCliente: status === 'ocupada' ? (nomeCliente || null) : (status === 'livre' ? null : m.nomeCliente),
+      }
+      if (auth.userId) sbWrite(supabase.from('mesas').update(mesaToRow(updated, auth.userId)).eq('id', id))
+      return updated
+    }))
   }
+
   function alternarStatusMesa(id) {
     const mesa = mesas.find(m => m.id === id)
     if (!mesa) return
@@ -835,7 +1347,9 @@ export function AppProvider({ children }) {
   function atualizarStatusPedido(id, status) {
     setPedidos(prev => prev.map(p => {
       if (p.id !== id) return p
-      return { ...p, status, timestamps: { ...p.timestamps, [status]: agoraBrasiliaISO() } }
+      const updated = { ...p, status, timestamps: { ...p.timestamps, [status]: agoraBrasiliaISO() } }
+      if (auth.userId) sbWrite(supabase.from('pedidos').update({ status: updated.status, timestamps: updated.timestamps }).eq('id', id))
+      return updated
     }))
   }
 
@@ -843,102 +1357,143 @@ export function AppProvider({ children }) {
     const pedido = pedidos.find(p => p.id === id)
     if (!pedido || pedido.cancelado) return
     if (pedido.status === 'novo') {
-      // Remove pedido e limpa entradas de venda vinculadas
       setPedidos(prev => prev.filter(p => p.id !== id))
+      if (auth.userId) sbWrite(supabase.from('pedidos').delete().eq('id', id).eq('user_id', auth.userId))
+
       pedido.itens?.forEach(item => {
         const entrada = entradasVendas.find(e =>
           e.data === pedido.data && e.hora === pedido.hora && e.pratoId === item.pratoId
         )
         if (!entrada) return
         setEntradasVendas(prev => prev.filter(e => e.id !== entrada.id))
+        if (auth.userId) sbWrite(supabase.from('entradas_vendas').delete().eq('id', entrada.id).eq('user_id', auth.userId))
+
         setRegistrosVendas(prev => {
           const reg = prev.find(r => r.pratoId === item.pratoId && r.data === pedido.data)
           if (!reg) return prev
           const nova = Math.max(0, reg.quantidade - item.quantidade)
-          return nova > 0
-            ? prev.map(r => r.id === reg.id ? { ...r, quantidade: nova } : r)
-            : prev.filter(r => r.id !== reg.id)
+          if (nova > 0) {
+            if (auth.userId) sbWrite(supabase.from('registros_vendas').update({ quantidade: nova }).eq('id', reg.id))
+            return prev.map(r => r.id === reg.id ? { ...r, quantidade: nova } : r)
+          }
+          if (auth.userId) sbWrite(supabase.from('registros_vendas').delete().eq('id', reg.id).eq('user_id', auth.userId))
+          return prev.filter(r => r.id !== reg.id)
         })
+
         const prato = pratos.find(p => p.id === item.pratoId)
         if (prato?.ingredientes?.length) {
           setIngredientes(prev => prev.map(ing => {
             const linha = prato.ingredientes.find(l => l.ingredienteId === ing.id)
             if (!linha) return ing
-            return { ...ing, quantidadeEstoque: ing.quantidadeEstoque + fromBase(linha.quantidade, ing.unidade) * item.quantidade }
+            const updated = { ...ing, quantidadeEstoque: ing.quantidadeEstoque + fromBase(linha.quantidade, ing.unidade) * item.quantidade }
+            if (auth.userId) sbWrite(supabase.from('ingredientes').update({ quantidade_estoque: updated.quantidadeEstoque }).eq('id', ing.id))
+            return updated
           }))
         }
       })
     } else {
-      setPedidos(prev => prev.map(p => p.id === id ? { ...p, cancelado: true } : p))
+      setPedidos(prev => prev.map(p => {
+        if (p.id !== id) return p
+        const updated = { ...p, cancelado: true }
+        if (auth.userId) sbWrite(supabase.from('pedidos').update({ cancelado: true }).eq('id', id))
+        return updated
+      }))
     }
   }
 
   function marcarPedidoPago(id) {
+    setPedidos(prev => prev.map(p => {
+      if (p.id !== id) return p
+      const updated = { ...p, pago: true }
+      if (auth.userId) sbWrite(supabase.from('pedidos').update({ pago: true }).eq('id', id))
+      return updated
+    }))
     const pedido = pedidos.find(p => p.id === id)
-    setPedidos(prev => prev.map(p => p.id === id ? { ...p, pago: true } : p))
-    // Se o pedido é de uma mesa, verifica se todos os outros pedidos da mesa já estão pagos
     if (pedido?.mesaId) {
-      const outrosSemPagar = pedidos.filter(p =>
-        p.mesaId === pedido.mesaId && p.id !== id && !p.pago && !p.cancelado
-      )
-      if (outrosSemPagar.length === 0) {
-        setStatusMesa(pedido.mesaId, 'livre')
-      }
+      const outrosSemPagar = pedidos.filter(p => p.mesaId === pedido.mesaId && p.id !== id && !p.pago && !p.cancelado)
+      if (outrosSemPagar.length === 0) setStatusMesa(pedido.mesaId, 'livre')
     }
   }
 
   function pagarMesa(mesaId) {
-    const mesa = mesas.find(m => m.id === mesaId)
-    if (!mesa) return
     const h = hojeBrasilia()
-    setPedidos(prev => prev.map(p =>
-      p.mesaId === mesaId && p.data === h && !p.pago && !p.cancelado
-        ? { ...p, pago: true }
-        : p
-    ))
+    setPedidos(prev => prev.map(p => {
+      if (p.mesaId !== mesaId || p.data !== h || p.pago || p.cancelado) return p
+      const updated = { ...p, pago: true }
+      if (auth.userId) sbWrite(supabase.from('pedidos').update({ pago: true }).eq('id', p.id))
+      return updated
+    }))
     setStatusMesa(mesaId, 'livre')
   }
 
-  // ── Despesas ──────────────────────────────────────────────────
+  // ── Despesas ──────────────────────────────────────────────────────────
   function adicionarDespesa({ descricao, categoria, valor, data }) {
     const novo = { id: crypto.randomUUID(), descricao: descricao.trim(), categoria, valor: Number(valor), data, criadoEm: agoraBrasiliaISO() }
     setDespesas(prev => [...prev, novo])
+    if (auth.userId) sbWrite(supabase.from('despesas').insert(despesaToRow(novo, auth.userId)))
     return novo
   }
+
   function editarDespesa(id, dados) {
-    setDespesas(prev => prev.map(d => d.id === id ? { ...d, ...dados } : d))
-  }
-  function removerDespesa(id) {
-    setDespesas(prev => prev.filter(d => d.id !== id))
+    setDespesas(prev => prev.map(d => {
+      if (d.id !== id) return d
+      const updated = { ...d, ...dados }
+      if (auth.userId) sbWrite(supabase.from('despesas').update(despesaToRow(updated, auth.userId)).eq('id', id))
+      return updated
+    }))
   }
 
-  // ── Despesas Fixas Mensais ────────────────────────────────────
+  function removerDespesa(id) {
+    setDespesas(prev => prev.filter(d => d.id !== id))
+    if (auth.userId) sbWrite(supabase.from('despesas').delete().eq('id', id).eq('user_id', auth.userId))
+  }
+
+  // ── Despesas Fixas ────────────────────────────────────────────────────
   function adicionarDespesaFixa({ descricao, categoria, valor }) {
     const novo = { id: crypto.randomUUID(), descricao: descricao.trim(), categoria, valor: Number(valor), criadoEm: agoraBrasiliaISO() }
     setDespesasFixas(prev => [...prev, novo])
-  }
-  function editarDespesaFixa(id, dados) {
-    setDespesasFixas(prev => prev.map(d => d.id === id ? { ...d, ...dados } : d))
-  }
-  function removerDespesaFixa(id) {
-    setDespesasFixas(prev => prev.filter(d => d.id !== id))
+    if (auth.userId) sbWrite(supabase.from('despesas_fixas').insert(despesaFixaToRow(novo, auth.userId)))
   }
 
-  // ── Impostos Config ───────────────────────────────────────────
+  function editarDespesaFixa(id, dados) {
+    setDespesasFixas(prev => prev.map(d => {
+      if (d.id !== id) return d
+      const updated = { ...d, ...dados }
+      if (auth.userId) sbWrite(supabase.from('despesas_fixas').update(despesaFixaToRow(updated, auth.userId)).eq('id', id))
+      return updated
+    }))
+  }
+
+  function removerDespesaFixa(id) {
+    setDespesasFixas(prev => prev.filter(d => d.id !== id))
+    if (auth.userId) sbWrite(supabase.from('despesas_fixas').delete().eq('id', id).eq('user_id', auth.userId))
+  }
+
+  // ── Impostos Config ───────────────────────────────────────────────────
   function adicionarImposto({ nome, percentual, base }) {
     const novo = { id: crypto.randomUUID(), nome: nome.trim(), percentual: Number(percentual), base: base || 'faturamento', criadoEm: agoraBrasiliaISO() }
     setImpostosConfig(prev => [...prev, novo])
+    if (auth.userId) sbWrite(supabase.from('impostos_config').insert(impostoToRow(novo, auth.userId)))
   }
+
   function editarImposto(id, dados) {
-    setImpostosConfig(prev => prev.map(d => d.id === id ? { ...d, ...dados } : d))
+    setImpostosConfig(prev => prev.map(d => {
+      if (d.id !== id) return d
+      const updated = { ...d, ...dados }
+      if (auth.userId) sbWrite(supabase.from('impostos_config').update(impostoToRow(updated, auth.userId)).eq('id', id))
+      return updated
+    }))
   }
+
   function removerImposto(id) {
     setImpostosConfig(prev => prev.filter(d => d.id !== id))
+    if (auth.userId) sbWrite(supabase.from('impostos_config').delete().eq('id', id).eq('user_id', auth.userId))
   }
 
   const value = {
     tema, alternarTema,
     auth, login, logout, cadastrarUsuario, removerUsuario, resetarSenha,
+    loading,
     ingredientes, adicionarIngrediente, editarIngrediente, removerIngrediente,
     compras, registrarCompra, removerCompra, editarCompra,
     pratos, adicionarPrato, editarPrato, removerPrato,

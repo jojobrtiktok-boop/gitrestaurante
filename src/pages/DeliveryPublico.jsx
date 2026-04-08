@@ -1,14 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
+import { supabase } from '../lib/supabase.js'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
-
-function loadFromStorage(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key)
-    return raw ? JSON.parse(raw) : fallback
-  } catch { return fallback }
-}
 
 function formatarMoeda(v) {
   return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -130,14 +124,58 @@ function FotoPlaceholder() {
 
 export default function DeliveryPublico() {
   const { slug } = useParams()
+  const [pratos, setPratos] = useState([])
+  const [config, setConfig] = useState({})
+  const [configDelivery, setConfigDelivery] = useState({})
+  const [userId, setUserId] = useState(null)
+  const [carregando, setCarregando] = useState(true)
 
-  const registro = loadFromStorage('rd_delivery_slugs', {})
-  const dono = slug ? registro[slug.toLowerCase()] : null
-  const prefix = dono ? `rd_${dono}_` : null
-
-  const pratos = useMemo(() => prefix ? loadFromStorage(prefix + 'pratos', []) : [], [prefix])
-  const config = useMemo(() => prefix ? loadFromStorage(prefix + 'cardapio_config', {}) : {}, [prefix])
-  const configDelivery = useMemo(() => prefix ? loadFromStorage(prefix + 'config_delivery', {}) : {}, [prefix])
+  useEffect(() => {
+    if (!slug) { setCarregando(false); return }
+    async function carregar() {
+      const { data: slugRow } = await supabase
+        .from('delivery_slugs')
+        .select('user_id')
+        .eq('slug', slug.toLowerCase())
+        .maybeSingle()
+      if (!slugRow) { setCarregando(false); return }
+      setUserId(slugRow.user_id)
+      const [{ data: prtsData }, { data: cfgData }, { data: cdData }] = await Promise.all([
+        supabase.from('pratos').select('*').eq('user_id', slugRow.user_id),
+        supabase.from('cardapio_config').select('config').eq('user_id', slugRow.user_id).maybeSingle(),
+        supabase.from('config_delivery').select('*').eq('user_id', slugRow.user_id).maybeSingle(),
+      ])
+      if (prtsData) setPratos(prtsData.map(row => ({
+        id: row.id,
+        nome: row.nome,
+        precoVenda: Number(row.preco_venda || 0),
+        categoria: row.categoria || '',
+        emDestaque: row.em_destaque || false,
+        maisPedido: row.mais_pedido || false,
+        foto: row.foto || null,
+        ingredientes: row.ingredientes || [],
+        grupos: row.grupos || [],
+        variacoes: row.variacoes || [],
+      })))
+      if (cfgData?.config) setConfig(cfgData.config)
+      if (cdData) setConfigDelivery({
+        ativo: cdData.ativo || false,
+        slugDelivery: cdData.slug_delivery || '',
+        cidade: cdData.cidade || '',
+        bairros: cdData.bairros || [],
+        pedidoMinimo: Number(cdData.pedido_minimo || 0),
+        tempoEstimado: cdData.tempo_estimado || '',
+        tipoEntrega: cdData.tipo_entrega || 'Padrão',
+        formasPagamento: cdData.formas_pagamento || ['dinheiro', 'pix', 'cartao'],
+        telefone: cdData.telefone || '',
+        mensagemIntro: cdData.mensagem_intro || '',
+        modoIfood: cdData.modo_ifood || false,
+        corDestaqueIfood: cdData.cor_destaque_ifood || '#ea1d2c',
+      })
+      setCarregando(false)
+    }
+    carregar()
+  }, [slug])
 
   // ── visual config ──────────────────────────────────────────────────────────
   const modoIfood = !!configDelivery.modoIfood
@@ -188,8 +226,16 @@ export default function DeliveryPublico() {
   const [erros, setErros] = useState({})
   const [pedidoEnviado, setPedidoEnviado] = useState(false)
 
-  // ── guard: slug não encontrado ou delivery inativo ─────────────────────────
-  if (!dono || !configDelivery.ativo) {
+  // ── guard: carregando / slug não encontrado / delivery inativo ───────────────
+  if (carregando) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a' }}>
+        <div style={{ color: '#94a3b8', fontSize: 16 }}>Carregando...</div>
+      </div>
+    )
+  }
+
+  if (!userId || !configDelivery.ativo) {
     return (
       <div style={{
         minHeight: '100vh', display: 'flex', flexDirection: 'column',

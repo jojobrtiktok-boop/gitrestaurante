@@ -1,13 +1,7 @@
-﻿import { useState } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { Search, UtensilsCrossed, Star, X, ChevronLeft } from 'lucide-react'
-
-function loadFromStorage(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key)
-    return raw ? JSON.parse(raw) : fallback
-  } catch { return fallback }
-}
+import { supabase } from '../lib/supabase.js'
 
 function FotoPlaceholder() {
   return (
@@ -19,27 +13,57 @@ function FotoPlaceholder() {
 
 export default function MenuPublico() {
   const { slug } = useParams()
+  const [pratos, setPratos] = useState([])
+  const [config, setConfig] = useState({})
+  const [userId, setUserId] = useState(null)
+  const [carregando, setCarregando] = useState(true)
 
-  const registro = loadFromStorage('rd_menu_slugs', {})
-  const dono = slug ? registro[slug.toLowerCase()] : null
-  const prefix = dono ? `rd_${dono}_` : null
-
-  const [pratos] = useState(() =>
-    prefix ? loadFromStorage(prefix + 'pratos', []) : []
-  )
-  const [config] = useState(() =>
-    prefix ? loadFromStorage(prefix + 'cardapio_config', {
-      nomeRestaurante: 'Cardapio', descricao: '', corFundo: '#16a34a',
-      corDestaque: '#16a34a', mostrarPrecos: true, logo: null,
-    }) : {}
-  )
+  useEffect(() => {
+    if (!slug) { setCarregando(false); return }
+    async function carregar() {
+      const { data: slugRow } = await supabase
+        .from('menu_slugs')
+        .select('user_id')
+        .eq('slug', slug.toLowerCase())
+        .maybeSingle()
+      if (!slugRow) { setCarregando(false); return }
+      setUserId(slugRow.user_id)
+      const [{ data: prtsData }, { data: cfgData }] = await Promise.all([
+        supabase.from('pratos').select('*').eq('user_id', slugRow.user_id),
+        supabase.from('cardapio_config').select('config').eq('user_id', slugRow.user_id).maybeSingle(),
+      ])
+      if (prtsData) setPratos(prtsData.map(row => ({
+        id: row.id,
+        nome: row.nome,
+        precoVenda: Number(row.preco_venda || 0),
+        categoria: row.categoria || '',
+        emDestaque: row.em_destaque || false,
+        maisPedido: row.mais_pedido || false,
+        foto: row.foto || null,
+        ingredientes: row.ingredientes || [],
+        grupos: row.grupos || [],
+        variacoes: row.variacoes || [],
+      })))
+      if (cfgData?.config) setConfig(cfgData.config)
+      setCarregando(false)
+    }
+    carregar()
+  }, [slug])
 
   const [filtro, setFiltro] = useState('Todas')
   const [busca, setBusca] = useState('')
   const [pratoDetalhe, setPratoDetalhe] = useState(null)
   const layoutGrade = config.layoutPadrao === 'grade'
 
-  if (!dono) {
+  if (carregando) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a' }}>
+        <div style={{ color: '#94a3b8', fontSize: 16 }}>Carregando...</div>
+      </div>
+    )
+  }
+
+  if (!userId) {
     return (
       <div style={{
         minHeight: '100vh', display: 'flex', flexDirection: 'column',

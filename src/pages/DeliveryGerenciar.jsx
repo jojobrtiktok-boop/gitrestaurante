@@ -122,8 +122,8 @@ export default function DeliveryGerenciar() {
         <div className="card p-5" style={{ border: cfg.modoIfood ? `2px solid ${cfg.corDestaqueIfood || '#ea1d2c'}` : undefined }}>
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Modo iFood</p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Visual idêntico ao iFood — fundo cinza, lista estilo app, cores adaptadas</p>
+              <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Modo Natural</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Visual idêntico ao app que as pessoas costumam usar em deliverys — fundo cinza, lista estilo app, cores adaptadas</p>
             </div>
             <button onClick={() => atualizarConfiguracaoDelivery({ modoIfood: !cfg.modoIfood })}
               style={{ color: cfg.modoIfood ? (cfg.corDestaqueIfood || '#ea1d2c') : 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>

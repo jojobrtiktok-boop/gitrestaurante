@@ -14,12 +14,15 @@ export default function DeliveryGerenciar() {
 
   const [novoBairroNome, setNovoBairroNome] = useState('')
   const [novoBairroFrete, setNovoBairroFrete] = useState('')
+  const [bairroNaoListadoAberto, setBairroNaoListadoAberto] = useState(false)
 
   // IBGE
   const [estados, setEstados] = useState([])
   const [cidades, setCidades] = useState([])
   const [ufSelecionada, setUfSelecionada] = useState(cfg.uf || '')
   const [carregandoCidades, setCarregandoCidades] = useState(false)
+  const [bairrosCidade, setBairrosCidade] = useState([])
+  const [carregandoBairros, setCarregandoBairros] = useState(false)
 
   const urlDelivery = cfg.slugDelivery ? `${base}/delivery/${cfg.slugDelivery}` : null
 
@@ -39,13 +42,23 @@ export default function DeliveryGerenciar() {
       .catch(() => setCarregandoCidades(false))
   }, [ufSelecionada])
 
+  useEffect(() => {
+    if (!cfg.municipioId) { setBairrosCidade([]); return }
+    setCarregandoBairros(true)
+    fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/municipios/${cfg.municipioId}/subdistritos`)
+      .then(r => r.json())
+      .then(data => { setBairrosCidade(Array.isArray(data) ? data : []); setCarregandoBairros(false) })
+      .catch(() => { setBairrosCidade([]); setCarregandoBairros(false) })
+  }, [cfg.municipioId])
+
   function handleUfChange(uf) {
     setUfSelecionada(uf)
-    atualizarConfiguracaoDelivery({ uf, cidade: '' })
+    atualizarConfiguracaoDelivery({ uf, cidade: '', municipioId: null })
+    setBairrosCidade([])
   }
 
-  function handleCidadeChange(cidade) {
-    atualizarConfiguracaoDelivery({ cidade })
+  function handleCidadeChange(cidade, municipioId) {
+    atualizarConfiguracaoDelivery({ cidade, municipioId: municipioId || null })
   }
 
   function salvarSlug() {
@@ -218,7 +231,10 @@ export default function DeliveryGerenciar() {
                 <div style={{ position: 'relative' }}>
                   <select
                     value={cfg.cidade || ''}
-                    onChange={e => handleCidadeChange(e.target.value)}
+                    onChange={e => {
+                      const sel = cidades.find(c => c.nome === e.target.value)
+                      handleCidadeChange(e.target.value, sel?.id)
+                    }}
                     className="input"
                     style={{ paddingRight: 28, appearance: 'none' }}
                     disabled={!ufSelecionada || carregandoCidades}
@@ -298,12 +314,45 @@ export default function DeliveryGerenciar() {
             </span>
           </div>
 
-          <div className="flex flex-col gap-2 mb-4">
-            {(cfg.bairros || []).length === 0 ? (
-              <p className="text-xs text-center py-4" style={{ color: 'var(--text-muted)' }}>Nenhum bairro cadastrado.</p>
-            ) : (
-              (cfg.bairros || []).map(b => (
-                <div key={b.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+          {carregandoBairros ? (
+            <p className="text-xs text-center py-4" style={{ color: 'var(--text-muted)' }}>Carregando bairros da cidade...</p>
+          ) : bairrosCidade.length > 1 ? (
+            /* ── Lista vinda do IBGE ── */
+            <div className="flex flex-col gap-2 mb-3">
+              {bairrosCidade.map(b => {
+                const conf = (cfg.bairros || []).find(cb => cb.nome.toLowerCase() === b.nome.toLowerCase())
+                const ativo = !!conf?.ativo
+                return (
+                  <div key={b.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                    style={{ background: 'var(--bg-hover)', border: `1px solid ${ativo ? 'var(--accent)' : 'var(--border)'}` }}>
+                    <button
+                      onClick={() => {
+                        if (conf) {
+                          editarBairro(conf.id, { ativo: !conf.ativo })
+                        } else {
+                          adicionarBairro({ nome: b.nome, frete: 0 })
+                        }
+                      }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: ativo ? 'var(--accent)' : 'var(--text-muted)', display: 'flex', flexShrink: 0 }}>
+                      {ativo ? <ToggleRight size={22} /> : <ToggleLeft size={22} />}
+                    </button>
+                    <span className="flex-1 text-sm font-medium" style={{ color: ativo ? 'var(--text-primary)' : 'var(--text-muted)' }}>{b.nome}</span>
+                    {ativo && conf && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>R$</span>
+                        <input type="number" min="0" value={conf.frete}
+                          onChange={e => editarBairro(conf.id, { frete: Number(e.target.value) })}
+                          style={{ width: 64, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: 13, textAlign: 'right' }} />
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+
+              {/* Bairros manuais que não estão na lista do IBGE */}
+              {(cfg.bairros || []).filter(cb => !bairrosCidade.some(b => b.nome.toLowerCase() === cb.nome.toLowerCase())).map(b => (
+                <div key={b.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                  style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
                   <button onClick={() => editarBairro(b.id, { ativo: !b.ativo })}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: b.ativo ? 'var(--accent)' : 'var(--text-muted)', display: 'flex', flexShrink: 0 }}>
                     {b.ativo ? <ToggleRight size={22} /> : <ToggleLeft size={22} />}
@@ -319,28 +368,70 @@ export default function DeliveryGerenciar() {
                     <Trash2 size={13} />
                   </button>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            /* ── Sem dados IBGE: lista manual ── */
+            <div className="flex flex-col gap-2 mb-3">
+              {(cfg.bairros || []).length === 0 ? (
+                <p className="text-xs text-center py-3" style={{ color: 'var(--text-muted)' }}>
+                  {cfg.cidade ? 'Nenhum bairro cadastrado.' : 'Selecione uma cidade para ver os bairros.'}
+                </p>
+              ) : (
+                (cfg.bairros || []).map(b => (
+                  <div key={b.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+                    <button onClick={() => editarBairro(b.id, { ativo: !b.ativo })}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: b.ativo ? 'var(--accent)' : 'var(--text-muted)', display: 'flex', flexShrink: 0 }}>
+                      {b.ativo ? <ToggleRight size={22} /> : <ToggleLeft size={22} />}
+                    </button>
+                    <span className="flex-1 text-sm font-medium" style={{ color: b.ativo ? 'var(--text-primary)' : 'var(--text-muted)' }}>{b.nome}</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>R$</span>
+                      <input type="number" min="0" value={b.frete}
+                        onChange={e => editarBairro(b.id, { frete: Number(e.target.value) })}
+                        style={{ width: 64, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: 13, textAlign: 'right' }} />
+                    </div>
+                    <button onClick={() => removerBairro(b.id)} className="btn btn-ghost p-1" style={{ color: '#ef4444', flexShrink: 0 }}>
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
 
-          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
-            <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Adicionar bairro</p>
-            <div className="flex gap-2">
-              <input className="input flex-1" placeholder="Nome do bairro" value={novoBairroNome}
-                onChange={e => setNovoBairroNome(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAdicionarBairro()} />
-              <div className="flex items-center gap-1" style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0 8px', background: 'var(--bg-card)' }}>
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>R$</span>
-                <input type="number" min="0" placeholder="0" value={novoBairroFrete}
-                  onChange={e => setNovoBairroFrete(e.target.value)}
-                  style={{ width: 60, border: 'none', background: 'transparent', color: 'var(--text-primary)', fontSize: 13, outline: 'none', padding: '6px 0' }} />
+          {/* + Bairro não listado */}
+          {!bairroNaoListadoAberto ? (
+            <button
+              onClick={() => setBairroNaoListadoAberto(true)}
+              className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl text-sm font-semibold"
+              style={{ background: 'none', border: '2px dashed var(--border)', cursor: 'pointer', color: 'var(--accent)' }}>
+              <Plus size={14} /> Bairro não listado
+            </button>
+          ) : (
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+              <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Adicionar bairro manualmente</p>
+              <div className="flex gap-2">
+                <input className="input flex-1" placeholder="Nome do bairro" value={novoBairroNome}
+                  onChange={e => setNovoBairroNome(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleAdicionarBairro()} />
+                <div className="flex items-center gap-1" style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0 8px', background: 'var(--bg-card)' }}>
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>R$</span>
+                  <input type="number" min="0" placeholder="0" value={novoBairroFrete}
+                    onChange={e => setNovoBairroFrete(e.target.value)}
+                    style={{ width: 60, border: 'none', background: 'transparent', color: 'var(--text-primary)', fontSize: 13, outline: 'none', padding: '6px 0' }} />
+                </div>
+                <button className="btn btn-primary shrink-0" onClick={() => { handleAdicionarBairro(); setBairroNaoListadoAberto(false) }}>
+                  <Plus size={14} /> Adicionar
+                </button>
               </div>
-              <button className="btn btn-primary shrink-0" onClick={handleAdicionarBairro}>
-                <Plus size={14} /> Adicionar
+              <button onClick={() => { setBairroNaoListadoAberto(false); setNovoBairroNome(''); setNovoBairroFrete('') }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
+                Cancelar
               </button>
             </div>
-            <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>Frete 0 = entrega grátis nesse bairro.</p>
-          </div>
+          )}
+          <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>Frete 0 = entrega grátis nesse bairro.</p>
         </div>
 
       </div>

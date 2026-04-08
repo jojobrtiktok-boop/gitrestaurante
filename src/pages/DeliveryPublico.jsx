@@ -141,7 +141,7 @@ export default function DeliveryPublico() {
 
   // ── visual config ──────────────────────────────────────────────────────────
   const modoIfood = !!configDelivery.modoIfood
-  const destaque = modoIfood ? '#ea1d2c' : (config.corDestaque || '#16a34a')
+  const destaque = modoIfood ? (configDelivery.corDestaqueIfood || '#ea1d2c') : (config.corDestaque || '#16a34a')
   const corEstrela = modoIfood ? '#f59e0b' : (config.corEstrela || destaque)
   const corPreco = modoIfood ? '#3d3d3d' : (config.corPreco || destaque)
   const corHeader = config.corFundo || destaque
@@ -487,6 +487,7 @@ export default function DeliveryPublico() {
                 </>
               )}
               <div style={{ height: 1, background: '#ebebeb', margin: '12px 0 0' }} />
+              <p style={{ fontSize: 13, color: '#717171', margin: '8px 0 4px' }}>Mais opções disponíveis na sacola</p>
             </div>
           ) : (
             /* ── Modo normal: centered ── */
@@ -551,6 +552,43 @@ export default function DeliveryPublico() {
         </div>
       </div>
 
+      {/* ── Destaques (iFood mode only — categoria "Destaques" ou itens com emDestaque) ── */}
+      {modoIfood && (() => {
+        const catNome = catsOrdenadas.find(c => c.toLowerCase() === 'destaques')
+        const itensDestaques = catNome
+          ? pratos.filter(p => p.disponivel !== false && p.categoria === catNome && p.nome.toLowerCase().includes(busca.toLowerCase()))
+          : pratos.filter(p => p.disponivel !== false && p.emDestaque && p.nome.toLowerCase().includes(busca.toLowerCase()))
+        if (itensDestaques.length === 0) return null
+        return (
+          <div style={{ background: '#fff', marginBottom: 8, maxWidth: 640, margin: '0 auto 8px' }}>
+            <div style={{ padding: '18px 16px 10px' }}>
+              <h2 style={{ fontSize: 18, fontWeight: 800, color: '#1a1a1a', margin: 0 }}>Destaques</h2>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, padding: '0 12px 16px' }}>
+              {itensDestaques.map(prato => {
+                const preco = prato.precoVenda ?? prato.preco ?? 0
+                return (
+                  <div key={prato.id} onClick={() => abrirModal(prato)} style={{ cursor: 'pointer' }}>
+                    <div style={{ position: 'relative', width: '100%', aspectRatio: '1', borderRadius: 10, overflow: 'hidden', background: '#f0f0f0' }}>
+                      {prato.foto
+                        ? <img src={prato.foto} alt={prato.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        : <FotoPlaceholder />}
+                      {prato.maisPedido && (
+                        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.62)', padding: '4px 7px' }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#fff' }}>Mais pedido</span>
+                        </div>
+                      )}
+                    </div>
+                    <p style={{ fontWeight: 800, fontSize: 13, color: '#1a1a1a', margin: '6px 0 1px' }}>{formatarMoeda(preco)}</p>
+                    <p style={{ fontSize: 11, color: '#717171', margin: 0, lineHeight: 1.3 }}>{prato.nome}</p>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })()}
+
       {/* ── Product list ── */}
       <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 0 40px' }}>
         {pratos.filter(p => p.disponivel !== false).length === 0 ? (
@@ -610,8 +648,16 @@ export default function DeliveryPublico() {
                       borderTop: idx === 0 ? 'none' : '1px solid #f0f0f0',
                     }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontWeight: 600, fontSize: 15, color: '#1a1a1a', margin: '0 0 4px', lineHeight: 1.3 }}>{prato.nome}</p>
-                        <p style={{ fontWeight: 700, fontSize: 14, color: '#3d3d3d', margin: 0 }}>{formatarMoeda(preco)}</p>
+                        <p style={{ fontWeight: 700, fontSize: 15, color: '#1a1a1a', margin: '0 0 4px', lineHeight: 1.3 }}>{prato.nome}</p>
+                        {prato.descricao && (
+                          <p style={{ fontSize: 12, color: '#717171', margin: '0 0 4px', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{prato.descricao}</p>
+                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <p style={{ fontWeight: 700, fontSize: 14, color: '#1a1a1a', margin: 0 }}>{formatarMoeda(preco)}</p>
+                          {prato.maisPedido && (
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', background: destaque, borderRadius: 4, padding: '2px 6px' }}>Mais pedido</span>
+                          )}
+                        </div>
                       </div>
                       {prato.foto
                         ? <div style={{ width: 88, height: 88, borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>

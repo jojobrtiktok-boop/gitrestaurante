@@ -106,15 +106,41 @@ export default function DeliveryGerenciar() {
         </div>
 
         {/* Modo iFood */}
-        <div className="card p-5 flex items-center justify-between gap-4" style={{ border: cfg.modoIfood ? '2px solid #ea1d2c' : undefined }}>
-          <div>
-            <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Modo iFood</p>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Visual idêntico ao iFood — fundo branco, lista estilo app, cores adaptadas</p>
+        <div className="card p-5" style={{ border: cfg.modoIfood ? `2px solid ${cfg.corDestaqueIfood || '#ea1d2c'}` : undefined }}>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Modo iFood</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Visual idêntico ao iFood — fundo cinza, lista estilo app, cores adaptadas</p>
+            </div>
+            <button onClick={() => atualizarConfiguracaoDelivery({ modoIfood: !cfg.modoIfood })}
+              style={{ color: cfg.modoIfood ? (cfg.corDestaqueIfood || '#ea1d2c') : 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>
+              {cfg.modoIfood ? <ToggleRight size={38} /> : <ToggleLeft size={38} />}
+            </button>
           </div>
-          <button onClick={() => atualizarConfiguracaoDelivery({ modoIfood: !cfg.modoIfood })}
-            style={{ color: cfg.modoIfood ? '#ea1d2c' : 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>
-            {cfg.modoIfood ? <ToggleRight size={38} /> : <ToggleLeft size={38} />}
-          </button>
+
+          {cfg.modoIfood && (
+            <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+              <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Cor de destaque</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <input
+                  type="color"
+                  value={cfg.corDestaqueIfood || '#ea1d2c'}
+                  onChange={e => atualizarConfiguracaoDelivery({ corDestaqueIfood: e.target.value })}
+                  style={{ width: 38, height: 34, borderRadius: 8, border: '1px solid var(--border)', cursor: 'pointer', padding: 2, background: 'none' }}
+                />
+                <div style={{ display: 'flex', gap: 7 }}>
+                  {['#ea1d2c', '#ff6b00', '#6c31f7', '#0f9d58', '#1a73e8', '#e91e8c'].map(cor => {
+                    const ativa = (cfg.corDestaqueIfood || '#ea1d2c') === cor
+                    return (
+                      <button key={cor} onClick={() => atualizarConfiguracaoDelivery({ corDestaqueIfood: cor })}
+                        style={{ width: 26, height: 26, borderRadius: '50%', background: cor, border: 'none', cursor: 'pointer', outline: ativa ? `3px solid ${cor}` : 'none', outlineOffset: 2, boxShadow: ativa ? '0 0 0 2px #fff inset' : 'none' }} />
+                    )
+                  })}
+                </div>
+              </div>
+              <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>Cor dos botões, categorias e carrinho</p>
+            </div>
+          )}
         </div>
 
         {/* Link */}

@@ -6,7 +6,7 @@ import { hoje, formatarHora, horaAtual } from '../utils/formatacao.js'
 
 export default function TelaoDisplay() {
   const { token } = useParams()
-  const { pedidos, mesas, pratos, kanbanConfig, cardapioConfig, loading } = useApp()
+  const { pedidos, mesas, pratos, kanbanConfig, cardapioConfig, loading, authLoading } = useApp()
   const cfg = kanbanConfig
 
   const [, setTick] = useState(0)
@@ -16,7 +16,7 @@ export default function TelaoDisplay() {
     return () => clearInterval(id)
   }, [cfg.telaoRefreshSeg])
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: '#94a3b8' }}>
         Carregando...

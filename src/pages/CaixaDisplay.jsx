@@ -399,7 +399,7 @@ function MesasBoard({ mesas, pedidos, pratos, hj, cfg, adicionarMesa, setStatusM
 // ── Página principal ──────────────────────────────────────────────────────────
 export default function CaixaDisplay() {
   const { token } = useParams()
-  const { pedidos, pratos, garcons, mesas, clientes, kanbanConfig, atualizarStatusPedido, marcarPedidoPago, pagarMesa, cancelarPedido, adicionarMesa, setStatusMesa, adicionarCliente, loading } = useApp()
+  const { pedidos, pratos, garcons, mesas, clientes, kanbanConfig, atualizarStatusPedido, marcarPedidoPago, pagarMesa, cancelarPedido, adicionarMesa, setStatusMesa, adicionarCliente, loading, authLoading } = useApp()
   const cfg = kanbanConfig
 
   const [abaAtiva, setAbaAtiva] = useState('pedidos') // 'pedidos' | 'novo-pedido'
@@ -445,7 +445,7 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
     return () => clearInterval(id)
   }, [cfg.autoRefreshSeg])
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-page)', color: 'var(--text-muted)' }}>
         Carregando...

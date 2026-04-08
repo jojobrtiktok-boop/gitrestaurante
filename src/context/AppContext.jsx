@@ -91,7 +91,7 @@ export function AppProvider({ children }) {
   const [tema, setTema] = useState(() => {
     const saved = localStorage.getItem('rd_tema')
     if (saved) return JSON.parse(saved)
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    return 'light'
   })
   const [auth, setAuth] = useState(() => loadFromStorage('rd_auth', { logado: false, usuario: '', isAdmin: false, userId: null }))
 

@@ -593,9 +593,36 @@ export function AppProvider({ children }) {
     _loadAllData(auth.userId)
   }, [auth.userId])
 
+  function _cacheKey(uid) { return `rd_cache_${uid}` }
+  function _saveCache(uid, d) {
+    try { localStorage.setItem(_cacheKey(uid), JSON.stringify({ t: Date.now(), d })) } catch {}
+  }
+  function _loadCache(uid) {
+    try {
+      const raw = localStorage.getItem(_cacheKey(uid))
+      if (!raw) return null
+      const { t, d } = JSON.parse(raw)
+      if (Date.now() - t > 15 * 60 * 1000) return null // 15 min TTL
+      return d
+    } catch { return null }
+  }
+
   async function _loadAllData(uid) {
     setLoading(true)
     setDisplayReady(false)
+
+    // ── Cache: mostra dados salvos instantaneamente enquanto busca do Supabase ──
+    const cached = _loadCache(uid)
+    if (cached) {
+      if (cached.kbc) setKanbanConfig(cached.kbc)
+      if (cached.prts) setPratos(cached.prts)
+      if (cached.gars) setGarcons(cached.gars)
+      if (cached.mss) setMesas(cached.mss)
+      if (cached.clis) setClientes(cached.clis)
+      if (cached.ccs) setCardapioConfig(cached.ccs)
+      setDisplayReady(true) // mostra instantâneo do cache
+    }
+
     try {
       // ── Estágio 1: dados críticos para displays (rápido) ──────────────
       const [
@@ -615,14 +642,22 @@ export function AppProvider({ children }) {
         supabase.from('clientes').select('*').eq('user_id', uid),
         supabase.from('cardapio_config').select('*').eq('user_id', uid).maybeSingle(),
       ])
-      setKanbanConfig(rowToKanbanConfig(kbc))
+      const kbcData = rowToKanbanConfig(kbc)
+      const prtsData = prts ? prts.map(rowToPrato) : []
+      const garsData = gars ? gars.map(rowToGarcon) : []
+      const mssData  = mss  ? mss.map(rowToMesa)   : []
+      const clisData = clis ? clis.map(rowToCliente): []
+      const ccsData  = rowToCardapioConfig(ccs)
+      setKanbanConfig(kbcData)
       if (peds) setPedidos(peds.map(rowToPedido))
-      if (prts) setPratos(prts.map(rowToPrato))
-      if (gars) setGarcons(gars.map(rowToGarcon))
-      if (mss) setMesas(mss.map(rowToMesa))
-      if (clis) setClientes(clis.map(rowToCliente))
-      setCardapioConfig(rowToCardapioConfig(ccs))
-      setDisplayReady(true) // displays e comanda podem abrir agora
+      setPratos(prtsData)
+      setGarcons(garsData)
+      setMesas(mssData)
+      setClientes(clisData)
+      setCardapioConfig(ccsData)
+      setDisplayReady(true)
+      // Salva cache para próxima abertura (exceto pedidos — sempre frescos)
+      _saveCache(uid, { kbc: kbcData, prts: prtsData, gars: garsData, mss: mssData, clis: clisData, ccs: ccsData })
 
       // ── Estágio 2: resto dos dados (background) ───────────────────────
       const [
@@ -677,7 +712,7 @@ export function AppProvider({ children }) {
     }
   }
 
-  // ── Realtime: pedidos e mesas ─────────────────────────────────────────
+  // ── Realtime: pedidos, mesas, entradas_vendas ────────────────────────
   useEffect(() => {
     if (!auth.userId) return
     const uid = auth.userId
@@ -691,6 +726,11 @@ export function AppProvider({ children }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas' }, () => {
         supabase.from('mesas').select('*').eq('user_id', uid).then(({ data }) => {
           if (data) setMesas(data.map(rowToMesa))
+        })
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'entradas_vendas' }, () => {
+        supabase.from('entradas_vendas').select('*').eq('user_id', uid).then(({ data }) => {
+          if (data) setEntradasVendas(data.map(rowToEntradaVenda))
         })
       })
       .subscribe()
@@ -723,6 +763,7 @@ export function AppProvider({ children }) {
   }
 
   async function logout() {
+    if (auth.userId) try { localStorage.removeItem(_cacheKey(auth.userId)) } catch {}
     await supabase.auth.signOut()
   }
 

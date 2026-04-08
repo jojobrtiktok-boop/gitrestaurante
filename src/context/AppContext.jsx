@@ -611,7 +611,7 @@ export function AppProvider({ children }) {
     setLoading(true)
     setDisplayReady(false)
 
-    // ── Cache: mostra dados salvos instantaneamente enquanto busca do Supabase ──
+    // ── Cache: mostra dados instantaneamente enquanto busca do Supabase ──
     const cached = _loadCache(uid)
     if (cached) {
       if (cached.kbc) setKanbanConfig(cached.kbc)
@@ -620,91 +620,48 @@ export function AppProvider({ children }) {
       if (cached.mss) setMesas(cached.mss)
       if (cached.clis) setClientes(cached.clis)
       if (cached.ccs) setCardapioConfig(cached.ccs)
-      setDisplayReady(true) // mostra instantâneo do cache
+      setDisplayReady(true)
     }
 
     try {
-      // ── Estágio 1: dados críticos para displays (rápido) ──────────────
-      const [
-        { data: kbc },
-        { data: peds },
-        { data: prts },
-        { data: gars },
-        { data: mss },
-        { data: clis },
-        { data: ccs },
-      ] = await Promise.all([
-        supabase.from('kanban_config').select('*').eq('user_id', uid).maybeSingle(),
-        supabase.from('pedidos').select('*').eq('user_id', uid),
-        supabase.from('pratos').select('*').eq('user_id', uid),
-        supabase.from('garcons').select('*').eq('user_id', uid),
-        supabase.from('mesas').select('*').eq('user_id', uid),
-        supabase.from('clientes').select('*').eq('user_id', uid),
-        supabase.from('cardapio_config').select('*').eq('user_id', uid).maybeSingle(),
-      ])
-      const kbcData = rowToKanbanConfig(kbc)
-      const prtsData = prts ? prts.map(rowToPrato) : []
-      const garsData = gars ? gars.map(rowToGarcon) : []
-      const mssData  = mss  ? mss.map(rowToMesa)   : []
-      const clisData = clis ? clis.map(rowToCliente): []
-      const ccsData  = rowToCardapioConfig(ccs)
-      setKanbanConfig(kbcData)
-      if (peds) setPedidos(peds.map(rowToPedido))
-      setPratos(prtsData)
-      setGarcons(garsData)
-      setMesas(mssData)
-      setClientes(clisData)
-      setCardapioConfig(ccsData)
-      setDisplayReady(true)
-      // Salva cache para próxima abertura (exceto pedidos — sempre frescos)
-      _saveCache(uid, { kbc: kbcData, prts: prtsData, gars: garsData, mss: mssData, clis: clisData, ccs: ccsData })
+      // ── Estágio 1: 1 request RPC no lugar de 7 ───────────────────────
+      const { data: d1 } = await supabase.rpc('load_display_data')
+      if (d1) {
+        const kbcData  = rowToKanbanConfig(d1.kanban_config)
+        const prtsData = (d1.pratos   || []).map(rowToPrato)
+        const garsData = (d1.garcons  || []).map(rowToGarcon)
+        const mssData  = (d1.mesas    || []).map(rowToMesa)
+        const clisData = (d1.clientes || []).map(rowToCliente)
+        const ccsData  = rowToCardapioConfig(d1.cardapio_config)
+        setKanbanConfig(kbcData)
+        setPedidos((d1.pedidos || []).map(rowToPedido))
+        setPratos(prtsData)
+        setGarcons(garsData)
+        setMesas(mssData)
+        setClientes(clisData)
+        setCardapioConfig(ccsData)
+        setDisplayReady(true)
+        _saveCache(uid, { kbc: kbcData, prts: prtsData, gars: garsData, mss: mssData, clis: clisData, ccs: ccsData })
+      }
 
-      // ── Estágio 2: resto dos dados (background) ───────────────────────
-      const [
-        { data: ings },
-        { data: rvs },
-        { data: evs },
-        { data: coms },
-        { data: cxs },
-        { data: sess },
-        { data: cg },
-        { data: cd },
-        { data: lc },
-        { data: desp },
-        { data: df },
-        { data: imp },
-        { data: nc },
-        { data: prof },
-      ] = await Promise.all([
-        supabase.from('ingredientes').select('*').eq('user_id', uid),
-        supabase.from('registros_vendas').select('*').eq('user_id', uid),
-        supabase.from('entradas_vendas').select('*').eq('user_id', uid),
-        supabase.from('compras').select('*').eq('user_id', uid),
-        supabase.from('caixa_inicial').select('*').eq('user_id', uid),
-        supabase.from('sessoes_mesas').select('*').eq('user_id', uid),
-        supabase.from('configuracao_geral').select('*').eq('user_id', uid).maybeSingle(),
-        supabase.from('config_delivery').select('*').eq('user_id', uid).maybeSingle(),
-        supabase.from('lista_compras').select('*').eq('user_id', uid),
-        supabase.from('despesas').select('*').eq('user_id', uid),
-        supabase.from('despesas_fixas').select('*').eq('user_id', uid),
-        supabase.from('impostos_config').select('*').eq('user_id', uid),
-        supabase.from('notif_config').select('*').eq('user_id', uid).maybeSingle(),
-        supabase.from('profiles').select('nome_exibicao').eq('id', uid).maybeSingle(),
-      ])
-      if (ings) setIngredientes(ings.map(rowToIng))
-      if (rvs) setRegistrosVendas(rvs.map(rowToRegistroVenda))
-      if (evs) setEntradasVendas(evs.map(rowToEntradaVenda))
-      if (coms) setCompras(coms.map(rowToCompra))
-      if (cxs) setCaixaInicialState(cxs.map(rowToCaixaInicial))
-      if (sess) setSessoesMesas(sess.map(rowToSessaoMesa))
-      setConfiguracaoGeral(cg ? { estoqueMinimoPadrao: Number(cg.estoque_minimo_padrao || 0) } : { estoqueMinimoPadrao: 0 })
-      setConfiguracaoDelivery(rowToDeliveryConfig(cd))
-      if (lc) setListaCompras(lc.map(rowToListaCompra))
-      if (desp) setDespesas(desp.map(rowToDespesa))
-      if (df) setDespesasFixas(df.map(rowToDespesaFixa))
-      if (imp) setImpostosConfig(imp.map(rowToImposto))
-      setNotifConfig(rowToNotifConfig(nc))
-      if (prof?.nome_exibicao) setPerfil(prev => ({ ...prev, nomeExibicao: prof.nome_exibicao }))
+      // ── Estágio 2: 1 request RPC no lugar de 14 ──────────────────────
+      const { data: d2 } = await supabase.rpc('load_background_data')
+      if (d2) {
+        if (d2.ingredientes)     setIngredientes(d2.ingredientes.map(rowToIng))
+        if (d2.registros_vendas) setRegistrosVendas(d2.registros_vendas.map(rowToRegistroVenda))
+        if (d2.entradas_vendas)  setEntradasVendas(d2.entradas_vendas.map(rowToEntradaVenda))
+        if (d2.compras)          setCompras(d2.compras.map(rowToCompra))
+        if (d2.caixa_inicial)    setCaixaInicialState(d2.caixa_inicial.map(rowToCaixaInicial))
+        if (d2.sessoes_mesas)    setSessoesMesas(d2.sessoes_mesas.map(rowToSessaoMesa))
+        setConfiguracaoGeral(d2.configuracao_geral ? { estoqueMinimoPadrao: Number(d2.configuracao_geral.estoque_minimo_padrao || 0) } : { estoqueMinimoPadrao: 0 })
+        setConfiguracaoDelivery(rowToDeliveryConfig(d2.config_delivery))
+        if (d2.lista_compras)    setListaCompras(d2.lista_compras.map(rowToListaCompra))
+        if (d2.despesas)         setDespesas(d2.despesas.map(rowToDespesa))
+        if (d2.despesas_fixas)   setDespesasFixas(d2.despesas_fixas.map(rowToDespesaFixa))
+        if (d2.impostos_config)  setImpostosConfig(d2.impostos_config.map(rowToImposto))
+        setNotifConfig(rowToNotifConfig(d2.notif_config))
+        if (d2.profiles?.nome_exibicao) setPerfil(prev => ({ ...prev, nomeExibicao: d2.profiles.nome_exibicao }))
+      }
     } catch (e) {
       console.error('[loadAllData]', e)
     } finally {

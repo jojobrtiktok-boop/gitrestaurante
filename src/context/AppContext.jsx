@@ -486,6 +486,7 @@ export function AppProvider({ children }) {
   const [auth, setAuth] = useState({ logado: false, usuario: '', isAdmin: false, userId: null })
   const [authLoading, setAuthLoading] = useState(true)
   const [loading, setLoading] = useState(false)
+  const [displayReady, setDisplayReady] = useState(false)
 
   const [ingredientes, setIngredientes] = useState([])
   const [pratos, setPratos] = useState([])
@@ -585,21 +586,43 @@ export function AppProvider({ children }) {
 
   async function _loadAllData(uid) {
     setLoading(true)
+    setDisplayReady(false)
     try {
+      // ── Estágio 1: dados críticos para displays (rápido) ──────────────
+      const [
+        { data: kbc },
+        { data: peds },
+        { data: prts },
+        { data: gars },
+        { data: mss },
+        { data: clis },
+        { data: ccs },
+      ] = await Promise.all([
+        supabase.from('kanban_config').select('*').eq('user_id', uid).maybeSingle(),
+        supabase.from('pedidos').select('*').eq('user_id', uid),
+        supabase.from('pratos').select('*').eq('user_id', uid),
+        supabase.from('garcons').select('*').eq('user_id', uid),
+        supabase.from('mesas').select('*').eq('user_id', uid),
+        supabase.from('clientes').select('*').eq('user_id', uid),
+        supabase.from('cardapio_config').select('*').eq('user_id', uid).maybeSingle(),
+      ])
+      setKanbanConfig(rowToKanbanConfig(kbc))
+      if (peds) setPedidos(peds.map(rowToPedido))
+      if (prts) setPratos(prts.map(rowToPrato))
+      if (gars) setGarcons(gars.map(rowToGarcon))
+      if (mss) setMesas(mss.map(rowToMesa))
+      if (clis) setClientes(clis.map(rowToCliente))
+      setCardapioConfig(rowToCardapioConfig(ccs))
+      setDisplayReady(true) // displays e comanda podem abrir agora
+
+      // ── Estágio 2: resto dos dados (background) ───────────────────────
       const [
         { data: ings },
-        { data: prts },
         { data: rvs },
         { data: evs },
-        { data: ccs },
-        { data: gars },
-        { data: clis },
-        { data: peds },
         { data: coms },
         { data: cxs },
-        { data: mss },
         { data: sess },
-        { data: kbc },
         { data: cg },
         { data: cd },
         { data: lc },
@@ -610,18 +633,11 @@ export function AppProvider({ children }) {
         { data: prof },
       ] = await Promise.all([
         supabase.from('ingredientes').select('*').eq('user_id', uid),
-        supabase.from('pratos').select('*').eq('user_id', uid),
         supabase.from('registros_vendas').select('*').eq('user_id', uid),
         supabase.from('entradas_vendas').select('*').eq('user_id', uid),
-        supabase.from('cardapio_config').select('*').eq('user_id', uid).maybeSingle(),
-        supabase.from('garcons').select('*').eq('user_id', uid),
-        supabase.from('clientes').select('*').eq('user_id', uid),
-        supabase.from('pedidos').select('*').eq('user_id', uid),
         supabase.from('compras').select('*').eq('user_id', uid),
         supabase.from('caixa_inicial').select('*').eq('user_id', uid),
-        supabase.from('mesas').select('*').eq('user_id', uid),
         supabase.from('sessoes_mesas').select('*').eq('user_id', uid),
-        supabase.from('kanban_config').select('*').eq('user_id', uid).maybeSingle(),
         supabase.from('configuracao_geral').select('*').eq('user_id', uid).maybeSingle(),
         supabase.from('config_delivery').select('*').eq('user_id', uid).maybeSingle(),
         supabase.from('lista_compras').select('*').eq('user_id', uid),
@@ -631,20 +647,12 @@ export function AppProvider({ children }) {
         supabase.from('notif_config').select('*').eq('user_id', uid).maybeSingle(),
         supabase.from('profiles').select('nome_exibicao').eq('id', uid).maybeSingle(),
       ])
-
       if (ings) setIngredientes(ings.map(rowToIng))
-      if (prts) setPratos(prts.map(rowToPrato))
       if (rvs) setRegistrosVendas(rvs.map(rowToRegistroVenda))
       if (evs) setEntradasVendas(evs.map(rowToEntradaVenda))
-      setCardapioConfig(rowToCardapioConfig(ccs))
-      if (gars) setGarcons(gars.map(rowToGarcon))
-      if (clis) setClientes(clis.map(rowToCliente))
-      if (peds) setPedidos(peds.map(rowToPedido))
       if (coms) setCompras(coms.map(rowToCompra))
       if (cxs) setCaixaInicialState(cxs.map(rowToCaixaInicial))
-      if (mss) setMesas(mss.map(rowToMesa))
       if (sess) setSessoesMesas(sess.map(rowToSessaoMesa))
-      setKanbanConfig(rowToKanbanConfig(kbc))
       setConfiguracaoGeral(cg ? { estoqueMinimoPadrao: Number(cg.estoque_minimo_padrao || 0) } : { estoqueMinimoPadrao: 0 })
       setConfiguracaoDelivery(rowToDeliveryConfig(cd))
       if (lc) setListaCompras(lc.map(rowToListaCompra))
@@ -1494,7 +1502,7 @@ export function AppProvider({ children }) {
   const value = {
     tema, alternarTema,
     auth, authLoading, login, logout, cadastrarUsuario, removerUsuario, resetarSenha,
-    loading,
+    loading, displayReady,
     ingredientes, adicionarIngrediente, editarIngrediente, removerIngrediente,
     compras, registrarCompra, removerCompra, editarCompra,
     pratos, adicionarPrato, editarPrato, removerPrato,

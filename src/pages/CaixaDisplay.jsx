@@ -399,7 +399,7 @@ function MesasBoard({ mesas, pedidos, pratos, hj, cfg, adicionarMesa, setStatusM
 // ── Página principal ──────────────────────────────────────────────────────────
 export default function CaixaDisplay() {
   const { token } = useParams()
-  const { pedidos, pratos, garcons, mesas, clientes, kanbanConfig, atualizarStatusPedido, marcarPedidoPago, pagarMesa, cancelarPedido, adicionarMesa, setStatusMesa, adicionarCliente } = useApp()
+  const { pedidos, pratos, garcons, mesas, clientes, kanbanConfig, atualizarStatusPedido, marcarPedidoPago, pagarMesa, cancelarPedido, adicionarMesa, setStatusMesa, adicionarCliente, loading } = useApp()
   const cfg = kanbanConfig
 
   const [abaAtiva, setAbaAtiva] = useState('pedidos') // 'pedidos' | 'novo-pedido'
@@ -444,6 +444,14 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
     const id = setInterval(() => setTick(t => t + 1), seg * 1000)
     return () => clearInterval(id)
   }, [cfg.autoRefreshSeg])
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-page)', color: 'var(--text-muted)' }}>
+        Carregando...
+      </div>
+    )
+  }
 
   // Token inválido
   if (!cfg.caixaToken || token !== cfg.caixaToken) {

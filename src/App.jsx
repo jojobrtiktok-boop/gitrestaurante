@@ -25,7 +25,8 @@ import NotificationManager from './components/NotificationManager.jsx'
 import { useApp } from './context/AppContext.jsx'
 
 function ProtectedRoute({ children }) {
-  const { auth } = useApp()
+  const { auth, authLoading } = useApp()
+  if (authLoading) return null
   if (!auth.logado) return <Navigate to="/login" replace />
   return children
 }

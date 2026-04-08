@@ -8,7 +8,7 @@ import { hoje } from '../utils/formatacao.js'
 
 export default function ComandaDigital() {
   const { token } = useParams()
-  const { garcons, pratos, cardapioConfig, adicionarPedido, pedidos, mesas } = useApp()
+  const { garcons, pratos, cardapioConfig, adicionarPedido, pedidos, mesas, loading } = useApp()
 
   const garcon = garcons.find(g => g.token === token)
 
@@ -21,6 +21,14 @@ export default function ComandaDigital() {
   const [pratoOpcoes, setPratoOpcoes] = useState(null)
   const [mesaId, setMesaId] = useState(null)
   const [clienteId, setClienteId] = useState(null)
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: '#94a3b8' }}>
+        Carregando...
+      </div>
+    )
+  }
 
   if (!garcon) {
     return (

@@ -484,6 +484,7 @@ export function AppProvider({ children }) {
     try { return JSON.parse(localStorage.getItem('rd_tema')) || 'light' } catch { return 'light' }
   })
   const [auth, setAuth] = useState({ logado: false, usuario: '', isAdmin: false, userId: null })
+  const [authLoading, setAuthLoading] = useState(true)
   const [loading, setLoading] = useState(false)
 
   const [ingredientes, setIngredientes] = useState([])
@@ -522,14 +523,14 @@ export function AppProvider({ children }) {
 
   // ── Supabase Auth ─────────────────────────────────────────────────────
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) _aplicarSessao(session)
-    })
+    // onAuthStateChange dispara imediatamente com INITIAL_SESSION
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) _aplicarSessao(session)
-      else {
+      if (session) {
+        _aplicarSessao(session).finally(() => setAuthLoading(false))
+      } else {
         setAuth({ logado: false, usuario: '', isAdmin: false, userId: null })
         _limparDados()
+        setAuthLoading(false)
       }
     })
     return () => subscription.unsubscribe()
@@ -1492,7 +1493,7 @@ export function AppProvider({ children }) {
 
   const value = {
     tema, alternarTema,
-    auth, login, logout, cadastrarUsuario, removerUsuario, resetarSenha,
+    auth, authLoading, login, logout, cadastrarUsuario, removerUsuario, resetarSenha,
     loading,
     ingredientes, adicionarIngrediente, editarIngrediente, removerIngrediente,
     compras, registrarCompra, removerCompra, editarCompra,

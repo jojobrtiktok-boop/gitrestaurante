@@ -5,7 +5,7 @@ import { hoje } from '../utils/formatacao.js'
 
 export default function PedidosDisplay() {
   const { token } = useParams()
-  const { pedidos, clientes, mesas, kanbanConfig, cardapioConfig } = useApp()
+  const { pedidos, clientes, mesas, kanbanConfig, cardapioConfig, loading } = useApp()
   const [hora, setHora] = useState('')
   const [dataStr, setDataStr] = useState('')
   const [flashIds, setFlashIds] = useState(new Set())
@@ -34,6 +34,14 @@ export default function PedidosDisplay() {
     }
     prontosIdsRef.current = novosIds
   }, [pedidos])
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#09090f', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: 18 }}>
+        Carregando...
+      </div>
+    )
+  }
 
   if (!kanbanConfig.pedidosDisplayToken || token !== kanbanConfig.pedidosDisplayToken) {
     return (

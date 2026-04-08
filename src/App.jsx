@@ -11,6 +11,7 @@ import PDV from './pages/PDV.jsx'
 import Mesas from './pages/Mesas.jsx'
 import MenuPublico from './pages/MenuPublico.jsx'
 import DeliveryPublico from './pages/DeliveryPublico.jsx'
+import DeliveryGerenciar from './pages/DeliveryGerenciar.jsx'
 import ComandaDigital from './pages/ComandaDigital.jsx'
 import CozinhaDisplay from './pages/CozinhaDisplay.jsx'
 import CaixaDisplay from './pages/CaixaDisplay.jsx'
@@ -57,6 +58,7 @@ export default function App() {
         <Route path="/displays" element={<Displays />} />
         <Route path="/configuracoes" element={<Configuracoes />} />
         <Route path="/despesas" element={<Despesas />} />
+        <Route path="/delivery" element={<DeliveryGerenciar />} />
         <Route path="/admin" element={<AdminPanel />} />
       </Route>
 

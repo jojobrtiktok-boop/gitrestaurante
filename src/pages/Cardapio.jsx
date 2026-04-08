@@ -1803,7 +1803,6 @@ export default function Cardapio() {
         {[
           { id: 'cardapio',  label: 'Cardápio' },
           { id: 'digital',   label: 'Cardápio Digital' },
-          { id: 'delivery',  label: 'Delivery' },
           { id: 'displays',  label: 'Displays' },
           { id: 'pdf',       label: 'PDF' },
         ].map(a => (
@@ -1818,8 +1817,7 @@ export default function Cardapio() {
       </div>
 
       {aba === 'digital' ? <CardapioDigitalConfig />
-        : aba === 'delivery' ? <DeliveryConfig />
-        : aba === 'displays' ? <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}><PainelCozinha /><PainelCaixa /></div>
+: aba === 'displays' ? <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}><PainelCozinha /><PainelCaixa /></div>
         : aba === 'pdf' ? <CardapioPDFConfig />
         : (
         <>

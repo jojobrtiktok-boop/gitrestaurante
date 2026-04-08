@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, ShoppingBasket, BookOpen, UtensilsCrossed, ShoppingCart, Kanban as KanbanIcon, Sun, Moon, ChefHat, LogOut, LayoutGrid, Settings, Monitor, ShieldCheck, Receipt } from 'lucide-react'
+import { LayoutDashboard, ShoppingBasket, BookOpen, UtensilsCrossed, ShoppingCart, Kanban as KanbanIcon, Sun, Moon, ChefHat, LogOut, LayoutGrid, Settings, Monitor, ShieldCheck, Receipt, Truck } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 
 const menu = [
@@ -8,6 +8,7 @@ const menu = [
   { path: '/mercadorias',   label: 'Mercadorias',  icon: ShoppingBasket },
   { path: '/receitas',      label: 'Receitas',     icon: BookOpen },
   { path: '/cardapio',      label: 'Cardápio',     icon: UtensilsCrossed },
+  { path: '/delivery',  label: 'Delivery',     icon: Truck },
   { path: '/mesas',         label: 'Mesas',        icon: LayoutGrid },
   { path: '/vendas',        label: 'Vendas',       icon: ShoppingCart },
   { path: '/kanban',        label: 'Fluxo',        icon: KanbanIcon },

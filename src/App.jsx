@@ -10,6 +10,7 @@ import Kanban from './pages/Kanban.jsx'
 import PDV from './pages/PDV.jsx'
 import Mesas from './pages/Mesas.jsx'
 import MenuPublico from './pages/MenuPublico.jsx'
+import DeliveryPublico from './pages/DeliveryPublico.jsx'
 import ComandaDigital from './pages/ComandaDigital.jsx'
 import CozinhaDisplay from './pages/CozinhaDisplay.jsx'
 import CaixaDisplay from './pages/CaixaDisplay.jsx'
@@ -36,6 +37,7 @@ export default function App() {
       {/* Rotas públicas */}
       <Route path="/login" element={<Login />} />
       <Route path="/menu/:slug" element={<MenuPublico />} />
+      <Route path="/delivery/:slug" element={<DeliveryPublico />} />
       <Route path="/comanda/:token" element={<ComandaDigital />} />
       <Route path="/cozinha/:token" element={<CozinhaDisplay />} />
       <Route path="/caixa/:token" element={<CaixaDisplay />} />

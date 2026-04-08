@@ -75,6 +75,18 @@ const KANBAN_CONFIG_PADRAO = {
   ],
 }
 
+const DELIVERY_CONFIG_PADRAO = {
+  ativo: false,
+  slugDelivery: '',
+  cidade: '',
+  bairros: [],
+  pedidoMinimo: 0,
+  tempoEstimado: '30-45 min',
+  formasPagamento: ['dinheiro', 'pix', 'cartao'],
+  telefone: '',
+  mensagemIntro: 'Olá! Gostaria de fazer um pedido:',
+}
+
 export function AppProvider({ children }) {
   const [tema, setTema] = useState(() => {
     const saved = localStorage.getItem('rd_tema')
@@ -102,6 +114,9 @@ export function AppProvider({ children }) {
   })
   const [configuracaoGeral, setConfiguracaoGeral] = useState(() =>
     loadFromStorage(getPrefix() + 'configuracao_geral', { estoqueMinimoPadrao: 0 })
+  )
+  const [configuracaoDelivery, setConfiguracaoDelivery] = useState(() =>
+    loadFromStorage(getPrefix() + 'config_delivery', DELIVERY_CONFIG_PADRAO)
   )
   const [listaCompras, setListaCompras] = useState(() =>
     loadFromStorage(getPrefix() + 'lista_compras', [])
@@ -228,6 +243,7 @@ export function AppProvider({ children }) {
     setSessoesMesas(loadFromStorage(p + 'sessoes_mesas', []))
     setKanbanConfig({ ...KANBAN_CONFIG_PADRAO, ...loadFromStorage(p + 'kanban_config', {}) })
     setConfiguracaoGeral(loadFromStorage(p + 'configuracao_geral', { estoqueMinimoPadrao: 0 }))
+    setConfiguracaoDelivery(loadFromStorage(p + 'config_delivery', DELIVERY_CONFIG_PADRAO))
     setListaCompras(loadFromStorage(p + 'lista_compras', []))
     setDespesas(loadFromStorage(p + 'despesas', []))
     setDespesasFixas(loadFromStorage(p + 'despesas_fixas', []))
@@ -262,6 +278,7 @@ export function AppProvider({ children }) {
   useEffect(() => { localStorage.setItem(getPrefix() + 'sessoes_mesas', JSON.stringify(sessoesMesas)) }, [sessoesMesas, auth.usuario])
   useEffect(() => { localStorage.setItem(getPrefix() + 'kanban_config', JSON.stringify(kanbanConfig)) }, [kanbanConfig, auth.usuario])
   useEffect(() => { localStorage.setItem(getPrefix() + 'configuracao_geral', JSON.stringify(configuracaoGeral)) }, [configuracaoGeral, auth.usuario])
+  useEffect(() => { localStorage.setItem(getPrefix() + 'config_delivery', JSON.stringify(configuracaoDelivery)) }, [configuracaoDelivery, auth.usuario])
   useEffect(() => { localStorage.setItem(getPrefix() + 'lista_compras', JSON.stringify(listaCompras)) }, [listaCompras, auth.usuario])
   useEffect(() => { localStorage.setItem(getPrefix() + 'despesas', JSON.stringify(despesas)) }, [despesas, auth.usuario])
   useEffect(() => { localStorage.setItem(getPrefix() + 'despesas_fixas', JSON.stringify(despesasFixas)) }, [despesasFixas, auth.usuario])
@@ -560,16 +577,17 @@ export function AppProvider({ children }) {
 
     // Verifica se já está em uso por outro usuário
     const registro = loadFromStorage('rd_menu_slugs', {})
+    const prefixKey = auth.userId ? auth.userId.slice(0, 8) : auth.usuario
     const dono = registro[slug]
-    if (dono && dono !== auth.usuario) return { erro: `O slug "${slug}" já está em uso.` }
+    if (dono && dono !== prefixKey && dono !== auth.usuario) return { erro: `O slug "${slug}" já está em uso.` }
 
     // Remove slug antigo do registro
     const slugAtual = cardapioConfig.slugCardapio
     if (slugAtual && slugAtual !== slug) {
       delete registro[slugAtual]
     }
-    // Registra novo slug
-    registro[slug] = auth.usuario
+    // Registra novo slug com prefixKey baseado em userId
+    registro[slug] = prefixKey
     localStorage.setItem('rd_menu_slugs', JSON.stringify(registro))
     setCardapioConfig(prev => ({ ...prev, slugCardapio: slug }))
     return { ok: true }
@@ -603,6 +621,44 @@ export function AppProvider({ children }) {
   // ── Configuração Geral ────────────────────────────────────────
   function atualizarConfiguracaoGeral(dados) {
     setConfiguracaoGeral(prev => ({ ...prev, ...dados }))
+  }
+
+  // ── Delivery Config ───────────────────────────────────────────
+  function atualizarConfiguracaoDelivery(dados) {
+    setConfiguracaoDelivery(prev => ({ ...prev, ...dados }))
+  }
+
+  function definirSlugDelivery(novoSlug) {
+    const slug = novoSlug.trim().toLowerCase()
+    if (!slug) return { erro: 'O slug não pode ser vazio.' }
+    if (!/^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/.test(slug) && !/^[a-z0-9]{3,30}$/.test(slug))
+      return { erro: 'Use apenas letras minúsculas, números e hífens (3–30 caracteres).' }
+    const registro = loadFromStorage('rd_delivery_slugs', {})
+    const prefixKey = auth.userId ? auth.userId.slice(0, 8) : auth.usuario
+    const dono = registro[slug]
+    if (dono && dono !== prefixKey) return { erro: `O slug "${slug}" já está em uso.` }
+    const slugAtual = configuracaoDelivery.slugDelivery
+    if (slugAtual && slugAtual !== slug) delete registro[slugAtual]
+    registro[slug] = prefixKey
+    localStorage.setItem('rd_delivery_slugs', JSON.stringify(registro))
+    setConfiguracaoDelivery(prev => ({ ...prev, slugDelivery: slug }))
+    return { ok: true }
+  }
+
+  function adicionarBairro({ nome, frete }) {
+    const novo = { id: crypto.randomUUID(), nome: nome.trim(), frete: Number(frete) || 0, ativo: true }
+    setConfiguracaoDelivery(prev => ({ ...prev, bairros: [...(prev.bairros || []), novo] }))
+  }
+
+  function editarBairro(id, dados) {
+    setConfiguracaoDelivery(prev => ({
+      ...prev,
+      bairros: (prev.bairros || []).map(b => b.id === id ? { ...b, ...dados } : b),
+    }))
+  }
+
+  function removerBairro(id) {
+    setConfiguracaoDelivery(prev => ({ ...prev, bairros: (prev.bairros || []).filter(b => b.id !== id) }))
   }
 
   // ── Lista de Compras ──────────────────────────────────────────
@@ -897,6 +953,7 @@ export function AppProvider({ children }) {
     sessoesMesas,
     kanbanConfig, atualizarKanbanConfig, gerarTokenCozinha, gerarTokenCaixa, gerarTokenTelao, gerarTokenPedidosDisplay,
     configuracaoGeral, atualizarConfiguracaoGeral,
+    configuracaoDelivery, atualizarConfiguracaoDelivery, definirSlugDelivery, adicionarBairro, editarBairro, removerBairro,
     listaCompras, gerarListaComprasAutomatica, adicionarItemLista, toggleItemLista, editarItemLista, removerItemLista,
     despesas, adicionarDespesa, editarDespesa, removerDespesa,
     despesasFixas, adicionarDespesaFixa, editarDespesaFixa, removerDespesaFixa,

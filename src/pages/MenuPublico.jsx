@@ -11,6 +11,8 @@ function FotoPlaceholder() {
   )
 }
 
+const MENU_CACHE_TTL = 10 * 60 * 1000
+
 export default function MenuPublico() {
   const { slug } = useParams()
   const [pratos, setPratos] = useState([])
@@ -20,6 +22,18 @@ export default function MenuPublico() {
 
   useEffect(() => {
     if (!slug) { setCarregando(false); return }
+
+    // Tenta cache primeiro (instantâneo)
+    try {
+      const raw = localStorage.getItem(`menu_cache_${slug}`)
+      if (raw) {
+        const { t, uid, prts, cfg } = JSON.parse(raw)
+        if (Date.now() - t < MENU_CACHE_TTL) {
+          setUserId(uid); setPratos(prts); setConfig(cfg); setCarregando(false)
+        }
+      }
+    } catch {}
+
     async function carregar() {
       const { data: slugRow } = await supabase
         .from('menu_slugs')
@@ -32,7 +46,7 @@ export default function MenuPublico() {
         supabase.from('pratos').select('*').eq('user_id', slugRow.user_id),
         supabase.from('cardapio_config').select('config').eq('user_id', slugRow.user_id).maybeSingle(),
       ])
-      if (prtsData) setPratos(prtsData.map(row => ({
+      const prts = prtsData ? prtsData.map(row => ({
         id: row.id,
         nome: row.nome,
         precoVenda: Number(row.preco_venda || 0),
@@ -43,9 +57,10 @@ export default function MenuPublico() {
         ingredientes: row.ingredientes || [],
         grupos: row.grupos || [],
         variacoes: row.variacoes || [],
-      })))
-      if (cfgData?.config) setConfig(cfgData.config)
-      setCarregando(false)
+      })) : []
+      const cfg = cfgData?.config || {}
+      setPratos(prts); setConfig(cfg); setCarregando(false)
+      try { localStorage.setItem(`menu_cache_${slug}`, JSON.stringify({ t: Date.now(), uid: slugRow.user_id, prts, cfg })) } catch {}
     }
     carregar()
   }, [slug])

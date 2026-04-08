@@ -132,6 +132,18 @@ export default function DeliveryPublico() {
 
   useEffect(() => {
     if (!slug) { setCarregando(false); return }
+
+    // Cache instantâneo
+    try {
+      const raw = localStorage.getItem(`delivery_cache_${slug}`)
+      if (raw) {
+        const { t, uid, prts, cfg, cd } = JSON.parse(raw)
+        if (Date.now() - t < 10 * 60 * 1000) {
+          setUserId(uid); setPratos(prts); setConfig(cfg); setConfigDelivery(cd); setCarregando(false)
+        }
+      }
+    } catch {}
+
     async function carregar() {
       const { data: slugRow } = await supabase
         .from('delivery_slugs')
@@ -145,9 +157,8 @@ export default function DeliveryPublico() {
         supabase.from('cardapio_config').select('config').eq('user_id', slugRow.user_id).maybeSingle(),
         supabase.from('config_delivery').select('*').eq('user_id', slugRow.user_id).maybeSingle(),
       ])
-      if (prtsData) setPratos(prtsData.map(row => ({
-        id: row.id,
-        nome: row.nome,
+      const prts = prtsData ? prtsData.map(row => ({
+        id: row.id, nome: row.nome,
         precoVenda: Number(row.preco_venda || 0),
         categoria: row.categoria || '',
         emDestaque: row.em_destaque || false,
@@ -156,9 +167,9 @@ export default function DeliveryPublico() {
         ingredientes: row.ingredientes || [],
         grupos: row.grupos || [],
         variacoes: row.variacoes || [],
-      })))
-      if (cfgData?.config) setConfig(cfgData.config)
-      if (cdData) setConfigDelivery({
+      })) : []
+      const cfg = cfgData?.config || {}
+      const cd = cdData ? {
         ativo: cdData.ativo || false,
         slugDelivery: cdData.slug_delivery || '',
         cidade: cdData.cidade || '',
@@ -171,8 +182,9 @@ export default function DeliveryPublico() {
         mensagemIntro: cdData.mensagem_intro || '',
         modoIfood: cdData.modo_ifood || false,
         corDestaqueIfood: cdData.cor_destaque_ifood || '#ea1d2c',
-      })
-      setCarregando(false)
+      } : {}
+      setPratos(prts); setConfig(cfg); setConfigDelivery(cd); setCarregando(false)
+      try { localStorage.setItem(`delivery_cache_${slug}`, JSON.stringify({ t: Date.now(), uid: slugRow.user_id, prts, cfg, cd })) } catch {}
     }
     carregar()
   }, [slug])

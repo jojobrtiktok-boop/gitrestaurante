@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  BarChart2, CreditCard, Package, ChefHat, UtensilsCrossed,
-  Bike, TrendingUp, Columns2, SlidersHorizontal,
+  BarChart2, Banknote, Package, ChefHat, UtensilsCrossed,
+  Smartphone, TrendingUp, Columns2, Settings,
   Sun, Moon, LogOut, ShieldCheck,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
@@ -25,15 +25,15 @@ function IconMesa({ size = 24, color = 'currentColor' }) {
 
 const menu = [
   { path: '/',              label: 'Relatório',     icon: BarChart2 },
-  { path: '/despesas',      label: 'Despesas',      icon: CreditCard },
+  { path: '/despesas',      label: 'Despesas',      icon: Banknote },
   { path: '/mercadorias',   label: 'Mercadorias',   icon: Package },
   { path: '/receitas',      label: 'Receitas',      icon: ChefHat },
   { path: '/cardapio',      label: 'Cardápio',      icon: UtensilsCrossed },
-  { path: '/delivery',      label: 'Delivery',      icon: Bike },
+  { path: '/delivery',      label: 'Delivery',      icon: Smartphone },
   { path: '/mesas',         label: 'Mesas',         icon: IconMesa },
   { path: '/vendas',        label: 'Vendas',        icon: TrendingUp },
   { path: '/kanban',        label: 'Fluxo',         icon: Columns2 },
-  { path: '/configuracoes', label: 'Configurações', icon: SlidersHorizontal },
+  { path: '/configuracoes', label: 'Configurações', icon: Settings },
 ]
 
 function NavItem({ path, label, Icon, danger = false }) {

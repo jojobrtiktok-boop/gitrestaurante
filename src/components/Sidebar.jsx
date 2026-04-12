@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   BarChart2, CreditCard, Package, ChefHat, UtensilsCrossed,
-  Bike, Grid3X3, TrendingUp, Columns2, SlidersHorizontal,
+  Bike, Table2, TrendingUp, Columns2, SlidersHorizontal,
   Sun, Moon, LogOut, ShieldCheck,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
@@ -13,7 +13,7 @@ const menu = [
   { path: '/receitas',      label: 'Receitas',      icon: ChefHat },
   { path: '/cardapio',      label: 'Cardápio',      icon: UtensilsCrossed },
   { path: '/delivery',      label: 'Delivery',      icon: Bike },
-  { path: '/mesas',         label: 'Mesas',         icon: Grid3X3 },
+  { path: '/mesas',         label: 'Mesas',         icon: Table2 },
   { path: '/vendas',        label: 'Vendas',        icon: TrendingUp },
   { path: '/kanban',        label: 'Fluxo',         icon: Columns2 },
   { path: '/configuracoes', label: 'Configurações', icon: SlidersHorizontal },

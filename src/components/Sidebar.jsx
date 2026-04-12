@@ -25,8 +25,8 @@ export default function Sidebar() {
       style={{ background: 'var(--bg-sidebar)', borderRight: '1px solid var(--border)' }}
     >
       {/* Logo */}
-      <div className="px-4 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-        <img src={tema === 'dark' ? '/logo-branca.png' : '/logo.png'} alt="Cheffya" style={{ height: 36, objectFit: 'contain' }} />
+      <div className="px-4 py-5" style={{ borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'center' }}>
+        <img src={tema === 'dark' ? '/logo-branca.png' : '/logo.png'} alt="Cheffya" style={{ height: 32, objectFit: 'contain' }} />
       </div>
 
       {/* Nav */}

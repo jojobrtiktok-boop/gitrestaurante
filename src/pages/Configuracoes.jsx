@@ -2,7 +2,7 @@ import { useState } from 'react'
 import {
   User, Bell, Smartphone, Settings, Eye, EyeOff,
   Lock, CheckCircle, AlertCircle, ShoppingBasket,
-  Apple, BellOff, BellRing, Chrome, Camera, Pencil,
+  BellOff, BellRing, Chrome, Camera, Pencil,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 
@@ -400,18 +400,20 @@ function AbaApp() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 10 }}>
           <div style={{
-            width: 56, height: 56, borderRadius: 14, background: 'var(--accent)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0,
+            width: 56, height: 56, borderRadius: 14, background: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            border: '1px solid rgba(0,0,0,0.08)', overflow: 'hidden',
           }}>
-            🍽️
+            <img src="/favicon.png" alt="Cheffya" style={{ width: 44, height: 44, objectFit: 'contain' }} />
           </div>
           <div>
             <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-              RestauranteApp
+              Cheffya
               <span style={{
                 marginLeft: 8, fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 5,
-                background: 'rgba(245,158,11,0.15)', color: '#f59e0b', verticalAlign: 'middle',
-              }}>nome provisório</span>
+                background: '#fff', color: 'var(--accent)', verticalAlign: 'middle',
+                border: '1px solid rgba(240,64,0,0.2)',
+              }}>PWA</span>
             </p>
             <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '3px 0 0' }}>
               App disponível para iPhone e Android via instalação direta no navegador (PWA)
@@ -426,7 +428,11 @@ function AbaApp() {
 
       {/* iOS */}
       <div>
-        <SecaoHeader icon={Apple} title="Instalar no iPhone (iOS)" cor="#1d1d1f" />
+        <SecaoHeader icon={({ size, style }) => (
+          <svg viewBox="0 0 814 1000" width={size} height={size} style={style} fill="currentColor">
+            <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46 680 0 563.5 0 448.3c0-84.5 16.2-167.2 52.2-237.8 50.8-99.4 133.8-164.1 218.9-164.1 81.8 0 144.5 48.8 193.7 48.8 49.3 0 121.1-52.2 214-52.2zm-470-45.2C346 285.9 383.2 195.8 383.2 105.7c0-12.8-1.3-25.9-3.2-38.1C302 67 224 117.5 183.6 195.8c-34.6 67.9-40.8 136.8-39.5 191.2 8.3 0.6 35.8 5.1 55.5 5.1z"/>
+          </svg>
+        )} title="Instalar no iPhone (iOS)" cor="#1d1d1f" />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <StepCard num={1} title="Abra o Safari" desc="Acesse o link do sistema pelo Safari - no iOS só funciona via Safari." />
           <StepCard num={2} title='Toque em "Compartilhar" (ícone ↑)' desc="Botão de compartilhamento na barra inferior do Safari." />

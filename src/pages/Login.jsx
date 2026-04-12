@@ -185,10 +185,7 @@ export default function Login() {
 
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <img src="/logo-light.png" alt="Cheffya" style={{ height: 38, objectFit: 'contain' }} />
-          <p style={{ fontSize: 13, color: c.muted, marginTop: 8, fontWeight: 400 }}>
-            Sistema de gestão para restaurantes
-          </p>
+          <img src="/logo-light.png" alt="Cheffya" style={{ height: 38, objectFit: 'contain', display: 'block', margin: '0 auto' }} />
         </div>
 
         {/* Card */}
@@ -348,14 +345,9 @@ export default function Login() {
               <div style={{ animation: 'fadeUp .3s ease-out' }}>
                 {!resetOk ? (
                   <>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                      <div style={{ width: 40, height: 40, borderRadius: 12, background: c.accentBg, border: `1px solid ${c.accentBdr}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <KeyRound size={18} style={{ color: c.accent }} />
-                      </div>
-                      <div>
-                        <p style={{ fontWeight: 700, fontSize: 15, color: c.text, margin: 0 }}>Recuperar senha</p>
-                        <p style={{ fontSize: 12, color: c.muted, margin: 0 }}>Enviaremos um link por e-mail</p>
-                      </div>
+                    <div style={{ marginBottom: 20 }}>
+                      <p style={{ fontWeight: 700, fontSize: 15, color: c.text, margin: '0 0 2px' }}>Recuperar senha</p>
+                      <p style={{ fontSize: 12, color: c.muted, margin: 0 }}>Enviaremos um link por e-mail</p>
                     </div>
 
                     <form onSubmit={handleReset} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

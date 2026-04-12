@@ -458,6 +458,7 @@ function motoboyToRow(m, uid) {
     nome: m.nome,
     token: m.token,
     ativo: m.ativo !== false,
+    cor: m.cor || '#f04000',
   }
 }
 function rowToMotoboy(row) {
@@ -470,6 +471,7 @@ function rowToMotoboy(row) {
     lat: row.lat ? Number(row.lat) : null,
     lng: row.lng ? Number(row.lng) : null,
     atualizadoEm: row.atualizado_em || null,
+    cor: row.cor || '#f04000',
   }
 }
 
@@ -1548,6 +1550,7 @@ export function AppProvider({ children }) {
       id: crypto.randomUUID(),
       nome: nome.trim(),
       token: crypto.randomUUID().replace(/-/g, ''),
+      cor: '#f04000',
       ativo: true,
       online: false,
       lat: null,

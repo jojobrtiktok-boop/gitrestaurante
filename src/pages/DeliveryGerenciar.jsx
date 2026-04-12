@@ -79,21 +79,24 @@ function TabMotoboys() {
     })
 
     online.forEach(m => {
+      const cor = m.cor || '#f04000'
       const icon = L.divIcon({
         className: '',
-        html: `<div style="width:36px;height:36px;border-radius:50%;background:#f04000;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;">
+        html: `<div style="width:40px;height:40px;border-radius:50%;background:${cor};border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1px;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-        </div>`,
-        iconSize: [36, 36],
-        iconAnchor: [18, 18],
+        </div>
+        <div style="margin-top:2px;background:${cor};color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.3);font-family:system-ui,sans-serif;">${m.nome}</div>`,
+        iconSize: [40, 56],
+        iconAnchor: [20, 20],
       })
 
       if (markersRef.current[m.id]) {
         markersRef.current[m.id].setLatLng([m.lat, m.lng])
+        markersRef.current[m.id].setIcon(icon)
       } else {
         markersRef.current[m.id] = L.marker([m.lat, m.lng], { icon })
           .addTo(map)
-          .bindPopup(`<b>${m.nome}</b><br>Online`)
+          .bindPopup(`<b style="color:${cor}">${m.nome}</b><br>Online`)
       }
     })
 
@@ -157,17 +160,19 @@ function TabMotoboys() {
         <div className="flex flex-col gap-2 mb-4">
           {motoboys.length === 0 ? (
             <p className="text-xs text-center py-4" style={{ color: 'var(--text-muted)' }}>Nenhum motoboy cadastrado ainda.</p>
-          ) : motoboys.map(m => (
+          ) : motoboys.map(m => {
+            const cor = m.cor || '#f04000'
+            return (
             <div key={m.id} style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '10px 14px', borderRadius: 12,
               background: 'var(--bg-hover)',
-              border: `1px solid ${m.online ? 'rgba(240,64,0,0.35)' : 'var(--border)'}`,
+              border: `1px solid ${m.online ? `${cor}55` : 'var(--border)'}`,
             }}>
-              {/* Status dot */}
+              {/* Avatar colorido */}
               <div style={{
                 width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-                background: m.online ? '#f04000' : 'var(--border)',
+                background: m.online ? cor : 'var(--border)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 {m.online
@@ -177,21 +182,30 @@ function TabMotoboys() {
 
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: 0, lineHeight: 1.3 }}>{m.nome}</p>
-                <p style={{ fontSize: 11, color: m.online ? '#f04000' : 'var(--text-muted)', margin: 0 }}>
+                <p style={{ fontSize: 11, color: m.online ? cor : 'var(--text-muted)', margin: 0 }}>
                   {m.online ? 'Online · enviando localização' : 'Offline'}
                 </p>
               </div>
 
+              {/* Color picker */}
+              <input
+                type="color"
+                value={cor}
+                onChange={e => editarMotoboy(m.id, { cor: e.target.value })}
+                title="Cor no mapa"
+                style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid var(--border)', cursor: 'pointer', padding: 2, background: 'none', flexShrink: 0 }}
+              />
+
               {/* toggle ativo */}
               <button onClick={() => editarMotoboy(m.id, { ativo: !m.ativo })}
                 title={m.ativo ? 'Desativar link' : 'Ativar link'}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: m.ativo ? 'var(--accent)' : 'var(--text-muted)', display: 'flex' }}>
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: m.ativo ? cor : 'var(--text-muted)', display: 'flex' }}>
                 {m.ativo ? <ToggleRight size={26} /> : <ToggleLeft size={26} />}
               </button>
 
               {/* copiar link */}
               <button onClick={() => copiar(m.token)} title="Copiar link do motoboy"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, borderRadius: 8, color: copiado === m.token ? 'var(--accent)' : 'var(--text-muted)', display: 'flex' }}>
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, borderRadius: 8, color: copiado === m.token ? cor : 'var(--text-muted)', display: 'flex' }}>
                 {copiado === m.token ? <Check size={15} /> : <Copy size={15} />}
               </button>
 
@@ -203,7 +217,8 @@ function TabMotoboys() {
                 <Trash2 size={15} />
               </button>
             </div>
-          ))}
+            )
+          })}
         </div>
 
         {/* Adicionar */}

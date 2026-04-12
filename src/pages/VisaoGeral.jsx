@@ -9,8 +9,8 @@ import { formatarMoeda, formatarPorcentagem, formatarData, hoje } from '../utils
 import { fromBase, toBase } from '../utils/unidades.js'
 import { Link } from 'react-router-dom'
 
-const CORES_DARK  = ['#16a34a', '#22c55e', '#4ade80', '#86efac', '#bbf7d0']
-const CORES_LIGHT = ['#16a34a', '#15803d', '#166534', '#14532d', '#052e16']
+const CORES_DARK  = ['#f04000', '#ff5a1f', '#ff7a47', '#ffa07a', '#ffc4a8']
+const CORES_LIGHT = ['#f04000', '#d93800', '#b52e00', '#8f2500', '#6b1b00']
 
 function CustomTooltip({ active, payload }) {
   if (active && payload?.length) {

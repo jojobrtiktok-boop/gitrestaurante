@@ -1,5 +1,6 @@
 export default function Badge({ children, cor = 'green' }) {
   const cores = {
+    orange: { bg: 'rgba(240,64,0,0.1)',     text: '#f04000',  border: 'rgba(240,64,0,0.25)' },
     green:  { bg: 'rgba(22,163,74,0.12)',   text: '#16a34a',  border: 'rgba(22,163,74,0.3)' },
     yellow: { bg: 'rgba(245,158,11,0.12)',  text: '#d97706',  border: 'rgba(245,158,11,0.3)' },
     red:    { bg: 'rgba(239,68,68,0.12)',   text: '#dc2626',  border: 'rgba(239,68,68,0.3)' },

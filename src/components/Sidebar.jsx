@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, ShoppingBasket, BookOpen, UtensilsCrossed, ShoppingCart, Kanban as KanbanIcon, Sun, Moon, ChefHat, LogOut, LayoutGrid, Settings, Monitor, ShieldCheck, Receipt, Truck } from 'lucide-react'
+import { LayoutDashboard, ShoppingBasket, BookOpen, UtensilsCrossed, ShoppingCart, Kanban as KanbanIcon, Sun, Moon, LogOut, LayoutGrid, Settings, Monitor, ShieldCheck, Receipt, Truck } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 
 const menu = [
@@ -26,15 +26,7 @@ export default function Sidebar() {
     >
       {/* Logo */}
       <div className="px-4 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'var(--accent)' }}>
-            <ChefHat size={16} className="text-white" />
-          </div>
-          <div>
-            <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Menu Control</p>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Gestão de Receitas</p>
-          </div>
-        </div>
+        <img src={tema === 'dark' ? '/logo-branca.png' : '/logo.png'} alt="Cheffya" style={{ height: 36, objectFit: 'contain' }} />
       </div>
 
       {/* Nav */}

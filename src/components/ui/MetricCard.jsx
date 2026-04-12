@@ -1,11 +1,12 @@
 export default function MetricCard({ titulo, valor, subtitulo, icone: Icone, cor = 'green', destaque = false }) {
   const cores = {
-    green:  { icon: '#16a34a', badge: 'rgba(22,163,74,0.12)', badgeBorder: 'rgba(22,163,74,0.3)' },
+    orange: { icon: '#f04000', badge: 'rgba(240,64,0,0.1)',    badgeBorder: 'rgba(240,64,0,0.25)' },
+    green:  { icon: '#16a34a', badge: 'rgba(22,163,74,0.12)',  badgeBorder: 'rgba(22,163,74,0.3)' },
     blue:   { icon: '#3b82f6', badge: 'rgba(59,130,246,0.12)', badgeBorder: 'rgba(59,130,246,0.3)' },
     amber:  { icon: '#f59e0b', badge: 'rgba(245,158,11,0.12)', badgeBorder: 'rgba(245,158,11,0.3)' },
-    red:    { icon: '#ef4444', badge: 'rgba(239,68,68,0.12)', badgeBorder: 'rgba(239,68,68,0.3)' },
+    red:    { icon: '#ef4444', badge: 'rgba(239,68,68,0.12)',  badgeBorder: 'rgba(239,68,68,0.3)' },
     purple: { icon: '#8b5cf6', badge: 'rgba(139,92,246,0.12)', badgeBorder: 'rgba(139,92,246,0.3)' },
-    slate:  { icon: '#64748b', badge: 'rgba(100,116,139,0.12)', badgeBorder: 'rgba(100,116,139,0.3)' },
+    slate:  { icon: '#64748b', badge: 'rgba(100,116,139,0.12)',badgeBorder: 'rgba(100,116,139,0.3)' },
   }
   const c = cores[cor] || cores.green
 

@@ -1101,7 +1101,7 @@ function CardapioDigitalConfig() {
           <div>
             <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Cor de Destaque</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 6 }}>
-              {['#16a34a','#2563eb','#dc2626','#d97706','#7c3aed','#0891b2','#db2777','#ea580c'].map(cor => (
+              {['#f04000','#16a34a','#2563eb','#dc2626','#d97706','#7c3aed','#0891b2','#db2777'].map(cor => (
                 <button key={cor} onClick={() => atualizarCardapioConfig({ corDestaque: cor })}
                   style={{ width: 26, height: 26, borderRadius: 8, border: cardapioConfig.corDestaque === cor ? '2px solid var(--accent)' : '2px solid transparent', background: cor, cursor: 'pointer', outline: 'none', transition: 'all .1s',
                     boxShadow: cardapioConfig.corDestaque === cor ? '0 0 0 3px var(--accent-bg)' : 'none' }}
@@ -1121,7 +1121,7 @@ function CardapioDigitalConfig() {
             </label>
             {cardapioConfig.mostrarPrecos && (
               <div className="flex items-center gap-1">
-                <input type="color" value={cardapioConfig.corPreco || cardapioConfig.corDestaque || '#16a34a'}
+                <input type="color" value={cardapioConfig.corPreco || cardapioConfig.corDestaque || '#f04000'}
                   onChange={e => atualizarCardapioConfig({ corPreco: e.target.value })}
                   title="Cor dos preços"
                   className="rounded cursor-pointer border-0" style={{ width: 28, height: 28, padding: 2, background: 'var(--bg-hover)' }} />
@@ -1139,14 +1139,14 @@ function CardapioDigitalConfig() {
             {cardapioConfig.estrelasAtivas && (
               <div className="flex flex-col gap-2 pl-2" style={{ borderLeft: '2px solid var(--border)' }}>
                 <div className="flex items-center gap-2">
-                  <input type="color" value={cardapioConfig.corEstrela || cardapioConfig.corDestaque || '#16a34a'}
+                  <input type="color" value={cardapioConfig.corEstrela || cardapioConfig.corDestaque || '#f04000'}
                     onChange={e => atualizarCardapioConfig({ corEstrela: e.target.value })}
                     title="Cor das estrelas"
                     className="rounded cursor-pointer border-0" style={{ width: 28, height: 28, padding: 2, background: 'var(--bg-hover)' }} />
                   <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Cor das estrelas</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Star size={13} style={{ color: cardapioConfig.corEstrela || cardapioConfig.corDestaque || '#16a34a', flexShrink: 0 }} />
+                  <Star size={13} style={{ color: cardapioConfig.corEstrela || cardapioConfig.corDestaque || '#f04000', flexShrink: 0 }} />
                   <label className="text-xs shrink-0" style={{ color: 'var(--text-muted)', minWidth: 64 }}>Nota (1–5)</label>
                   <input type="number" min="0" max="5" step="0.1" className="input text-xs" style={{ width: 80 }}
                     value={cardapioConfig.estrelaValor || ''}

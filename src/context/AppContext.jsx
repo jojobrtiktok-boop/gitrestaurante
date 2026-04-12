@@ -10,7 +10,7 @@ const CONFIG_PADRAO = {
   nomeRestaurante: 'Meu Restaurante',
   descricao: '',
   corFundo: '#ffffff',
-  corDestaque: '#16a34a',
+  corDestaque: '#f04000',
   corTexto: '#111827',
   mostrarPrecos: true,
   modoClaro: true,

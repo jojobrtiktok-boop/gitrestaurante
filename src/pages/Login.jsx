@@ -126,7 +126,7 @@ export default function Login() {
     const res = await login(email.trim(), senha, manterLogado)
     setCarregando(false)
     if (res.erro) setErro(res.erro)
-    else navigate('/')
+    else navigate('/painel')
   }
 
   async function handleCadastro(e) {

@@ -1,6 +1,7 @@
 import { Navigate, Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout.jsx'
 import Login from './pages/Login.jsx'
+import LandingPage from './pages/LandingPage.jsx'
 import VisaoGeral from './pages/VisaoGeral.jsx'
 import Mercadorias from './pages/Ingredientes.jsx'
 import Receitas from './pages/FichaTecnica.jsx'
@@ -28,7 +29,7 @@ import { useApp } from './context/AppContext.jsx'
 function ProtectedRoute({ children }) {
   const { auth, authLoading } = useApp()
   if (authLoading) return null
-  if (!auth.logado) return <Navigate to="/login" replace />
+  if (!auth.logado) return <Navigate to="/" replace />
   return children
 }
 
@@ -38,6 +39,7 @@ export default function App() {
       <NotificationManager />
       <Routes>
       {/* Rotas públicas */}
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/menu/:slug" element={<MenuPublico />} />
       <Route path="/delivery/:slug" element={<DeliveryPublico />} />
@@ -50,7 +52,7 @@ export default function App() {
 
       {/* App protegido */}
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-        <Route path="/" element={<VisaoGeral />} />
+        <Route path="/painel" element={<VisaoGeral />} />
         <Route path="/mercadorias" element={<Mercadorias />} />
         <Route path="/receitas" element={<Receitas />} />
         <Route path="/cardapio" element={<Cardapio />} />
@@ -65,7 +67,7 @@ export default function App() {
         <Route path="/admin" element={<AdminPanel />} />
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/painel" replace />} />
       </Routes>
     </>
   )

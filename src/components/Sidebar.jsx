@@ -24,7 +24,7 @@ function IconMesa({ size = 24, color = 'currentColor' }) {
 }
 
 const menu = [
-  { path: '/',              label: 'Relatório',     icon: BarChart2 },
+  { path: '/painel',        label: 'Relatório',     icon: BarChart2 },
   { path: '/despesas',      label: 'Despesas',      icon: Banknote },
   { path: '/mercadorias',   label: 'Mercadorias',   icon: Package },
   { path: '/receitas',      label: 'Receitas',      icon: ChefHat },
@@ -43,7 +43,7 @@ function NavItem({ path, label, Icon, danger = false }) {
   return (
     <NavLink
       to={path}
-      end={path === '/'}
+      end={path === '/painel'}
       style={({ isActive }) => ({
         display: 'flex', alignItems: 'center', gap: 10,
         padding: '7px 10px', borderRadius: 10,

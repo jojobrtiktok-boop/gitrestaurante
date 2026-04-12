@@ -1,10 +1,23 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   BarChart2, CreditCard, Package, ChefHat, UtensilsCrossed,
-  Bike, Table2, TrendingUp, Columns2, SlidersHorizontal,
+  Bike, TrendingUp, Columns2, SlidersHorizontal,
   Sun, Moon, LogOut, ShieldCheck,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
+
+function IconMesa({ size = 24, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      {/* tampo */}
+      <rect x="2" y="7" width="20" height="3" rx="1" />
+      {/* perna esquerda */}
+      <line x1="6" y1="10" x2="5" y2="19" />
+      {/* perna direita */}
+      <line x1="18" y1="10" x2="19" y2="19" />
+    </svg>
+  )
+}
 
 const menu = [
   { path: '/',              label: 'Relatório',     icon: BarChart2 },
@@ -13,7 +26,7 @@ const menu = [
   { path: '/receitas',      label: 'Receitas',      icon: ChefHat },
   { path: '/cardapio',      label: 'Cardápio',      icon: UtensilsCrossed },
   { path: '/delivery',      label: 'Delivery',      icon: Bike },
-  { path: '/mesas',         label: 'Mesas',         icon: Table2 },
+  { path: '/mesas',         label: 'Mesas',         icon: IconMesa },
   { path: '/vendas',        label: 'Vendas',        icon: TrendingUp },
   { path: '/kanban',        label: 'Fluxo',         icon: Columns2 },
   { path: '/configuracoes', label: 'Configurações', icon: SlidersHorizontal },

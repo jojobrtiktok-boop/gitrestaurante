@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { DollarSign, TrendingUp, Award, ShoppingBag, TrendingDown, BarChart2, Wallet, Info, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { DollarSign, TrendingUp, Award, ShoppingBag, TrendingDown, BarChart2, Wallet, Info, X, ChevronDown, ChevronUp, Clock, Trophy } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { useApp } from '../context/AppContext.jsx'
 import MetricCard from '../components/ui/MetricCard.jsx'
@@ -50,7 +50,7 @@ function ModalCaixaInicial({ data, valorAtual, onSalvar, onFechar }) {
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, width: '100%', maxWidth: 360, padding: 24 }}>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)', margin: 0 }}>💰 Caixa Inicial</p>
+            <p style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}><Wallet size={15} style={{ color: 'var(--accent)' }} /> Caixa Inicial</p>
             <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '3px 0 0' }}>{data} · valor de abertura do caixa</p>
           </div>
           <button onClick={onFechar} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={16} /></button>
@@ -497,7 +497,7 @@ export default function VisaoGeral() {
                 <BarChart2 size={28} style={{ color: 'var(--accent)' }} />
               </div>
               <div className="text-center">
-                <h2 className="text-lg font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Bem-vindo ao Menu Control!</h2>
+                <h2 className="text-lg font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Bem-vindo ao Cheffya!</h2>
                 <p className="text-sm max-w-sm" style={{ color: 'var(--text-secondary)' }}>
                   Cadastre seus insumos e crie as fichas de receitas para começar a acompanhar o CMV e a lucratividade.
                 </p>
@@ -556,8 +556,9 @@ export default function VisaoGeral() {
               <p className="text-xl font-bold" style={{ color: cmvDia <= 35 ? 'var(--accent)' : cmvDia <= 45 ? '#f59e0b' : '#ef4444' }}>
                 {semVendas ? '—' : formatarPorcentagem(cmvDia)}
               </p>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                {semVendas ? 'Sem vendas' : cmvDia <= 35 ? '✅ Ótimo (ideal ≤ 35%)' : cmvDia <= 45 ? '⚠️ Atenção (35–45%)' : '🔴 Alto demais (> 45%)'}
+              <p className="text-xs mt-1 flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
+                {!semVendas && <span className="status-dot" style={{ background: cmvDia <= 35 ? 'var(--accent)' : cmvDia <= 45 ? '#f59e0b' : '#ef4444' }} />}
+                {semVendas ? 'Sem vendas' : cmvDia <= 35 ? 'Ótimo (ideal ≤ 35%)' : cmvDia <= 45 ? 'Atenção (35–45%)' : 'Alto demais (> 45%)'}
               </p>
               {!semVendas && <Gauge valor={cmvDia} max={70} corBoa="var(--accent)" corMedia="#f59e0b" corRuim="#ef4444" limBom={35} limMed={45} />}
             </div>
@@ -573,8 +574,9 @@ export default function VisaoGeral() {
               <p className="text-xl font-bold" style={{ color: margemDia >= 55 ? 'var(--accent)' : margemDia >= 30 ? '#f59e0b' : '#ef4444' }}>
                 {semVendas ? '—' : formatarPorcentagem(margemDia)}
               </p>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                {semVendas ? 'Sem vendas' : margemDia >= 55 ? '✅ Excelente (≥ 55%)' : margemDia >= 30 ? '⚠️ Razoável (30–55%)' : '🔴 Baixa (< 30%)'}
+              <p className="text-xs mt-1 flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
+                {!semVendas && <span className="status-dot" style={{ background: margemDia >= 55 ? 'var(--accent)' : margemDia >= 30 ? '#f59e0b' : '#ef4444' }} />}
+                {semVendas ? 'Sem vendas' : margemDia >= 55 ? 'Excelente (≥ 55%)' : margemDia >= 30 ? 'Razoável (30–55%)' : 'Baixa (< 30%)'}
               </p>
               {!semVendas && <Gauge valor={margemDia} max={90} corBoa="var(--accent)" corMedia="#f59e0b" corRuim="#ef4444" limBom={55} limMed={30} />}
             </div>
@@ -592,7 +594,7 @@ export default function VisaoGeral() {
 
             {/* Aguardando Pagamento */}
             <div className="card" style={{ border: receitaPendente > 0 ? '1.5px solid rgba(249,115,22,0.4)' : '1px solid var(--border)', background: receitaPendente > 0 ? 'rgba(249,115,22,0.05)' : undefined }}>
-              <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: receitaPendente > 0 ? '#f97316' : 'var(--text-muted)' }}>⏳ Ag. Pagamento</p>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-1 flex items-center gap-1" style={{ color: receitaPendente > 0 ? '#f97316' : 'var(--text-muted)' }}><Clock size={11} />Ag. Pagamento</p>
               <p className="text-xl font-bold" style={{ color: receitaPendente > 0 ? '#f97316' : 'var(--text-muted)' }}>
                 {formatarMoeda(receitaPendente)}
               </p>
@@ -621,8 +623,11 @@ export default function VisaoGeral() {
           {/* ── Gráfico + Ranking ── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
             <div className="card">
-              <h3 className="text-sm font-bold mb-1" style={{ color: 'var(--text-primary)' }}>🏆 Top 5 Mais Vendidos</h3>
-              <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>Receitas com mais unidades vendidas no período</p>
+              <div className="card-title mb-1">
+                <span className="card-title-icon"><Trophy size={14} /></span>
+                Top 5 Mais Vendidos
+              </div>
+              <p className="text-xs mb-4" style={{ color: 'var(--text-muted)', paddingLeft: 36 }}>Receitas com mais unidades vendidas no período</p>
               {semVendas ? (
                 <div className="py-8 text-center">
                   <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Nenhuma venda no período.</p>
@@ -631,10 +636,13 @@ export default function VisaoGeral() {
               ) : (
                 <div className="flex flex-col gap-2">
                   {top5.filter(t => t.quantidade > 0).map((t, idx) => (
-                    <div key={t.prato.id} className="flex items-center gap-3 p-2.5 rounded-lg" style={{ background: 'var(--bg-hover)' }}>
-                      <span className="text-base w-6 text-center">{['🥇','🥈','🥉','4º','5º'][idx]}</span>
+                    <div key={t.prato.id} className="flex items-center gap-3 p-2.5 rounded-xl" style={{ background: idx === 0 ? 'var(--accent-bg)' : 'var(--bg-hover)', border: idx === 0 ? '1px solid var(--border-active)' : '1px solid transparent' }}>
+                      <span className="rank-badge" style={{
+                        background: idx === 0 ? 'var(--accent)' : idx === 1 ? 'rgba(240,64,0,0.35)' : idx === 2 ? 'rgba(240,64,0,0.2)' : 'var(--border)',
+                        color: idx <= 2 ? '#fff' : 'var(--text-muted)',
+                      }}>{idx + 1}</span>
                       <span className="flex-1 text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{t.prato.nome}</span>
-                      <span className="font-bold text-sm" style={{ color: 'var(--accent)' }}>{t.quantidade}</span>
+                      <span className="font-bold text-sm" style={{ color: idx === 0 ? 'var(--accent)' : 'var(--text-primary)' }}>{t.quantidade}</span>
                       <span className="text-xs" style={{ color: 'var(--text-muted)' }}>un</span>
                     </div>
                   ))}
@@ -643,8 +651,11 @@ export default function VisaoGeral() {
             </div>
 
             <div className="card">
-              <h3 className="text-sm font-bold mb-1" style={{ color: 'var(--text-primary)' }}>📊 Vendas por Receita</h3>
-              <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>Distribuição de unidades vendidas</p>
+              <div className="card-title mb-1">
+                <span className="card-title-icon"><BarChart2 size={14} /></span>
+                Vendas por Receita
+              </div>
+              <p className="text-xs mb-4" style={{ color: 'var(--text-muted)', paddingLeft: 36 }}>Distribuição de unidades vendidas</p>
               {semVendas ? (
                 <p className="text-sm text-center py-8" style={{ color: 'var(--text-muted)' }}>Sem dados para exibir.</p>
               ) : (
@@ -666,9 +677,9 @@ export default function VisaoGeral() {
           {detalhesPorPrato.length > 0 && (
             <div className="card p-0 overflow-hidden">
               <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid var(--border)' }}>
-                <TrendingUp size={14} style={{ color: 'var(--accent)' }} />
+                <span className="card-title-icon" style={{ width: 26, height: 26, borderRadius: 7 }}><TrendingUp size={13} /></span>
                 <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Detalhamento por Receita</h3>
-                <span className="text-xs ml-1" style={{ color: 'var(--text-muted)' }}>— ordenado por faturamento</span>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>— por faturamento</span>
               </div>
               <div className="table-wrapper">
                 <table>
@@ -724,7 +735,7 @@ export default function VisaoGeral() {
                           <td style={{ color: lucro >= 0 ? '#3b82f6' : '#ef4444', fontWeight: 600 }}>{formatarMoeda(lucro)}</td>
                           <td>
                             <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                              style={{ background: margem >= 55 ? 'rgba(22,163,74,0.1)' : margem >= 30 ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)', color: margem >= 55 ? 'var(--accent)' : margem >= 30 ? '#d97706' : '#ef4444' }}>
+                              style={{ background: margem >= 55 ? 'var(--accent-bg)' : margem >= 30 ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)', color: margem >= 55 ? 'var(--accent)' : margem >= 30 ? '#d97706' : '#ef4444' }}>
                               {formatarPorcentagem(margem)}
                             </span>
                           </td>

@@ -1,5 +1,24 @@
 import { useState, useEffect, useRef } from 'react'
-import { Truck, MapPin, ToggleLeft, ToggleRight, Plus, Trash2, Check, Copy, Link2, Banknote, QrCode, CreditCard, ExternalLink, ChevronDown, Navigation, Wifi, WifiOff, UserRound, SlidersHorizontal } from 'lucide-react'
+import { MapPin, ToggleLeft, ToggleRight, Plus, Trash2, Check, Copy, Link2, Banknote, QrCode, CreditCard, ExternalLink, ChevronDown, Navigation, Wifi, WifiOff, UserRound, SlidersHorizontal } from 'lucide-react'
+
+function IconMoto({ size = 24, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      {/* roda traseira */}
+      <circle cx="5.5" cy="16" r="3" />
+      {/* roda dianteira */}
+      <circle cx="18.5" cy="16" r="3" />
+      {/* corpo / chassi */}
+      <path d="M8.5 16 L11 10 L15 10 L18.5 13" />
+      {/* guidão */}
+      <path d="M15 10 L17 7 L20 7" />
+      {/* assento / carenagem */}
+      <path d="M8.5 16 L11 13 L15 13" />
+      {/* capacete / piloto (bolinhas pequenas) */}
+      <circle cx="13" cy="8" r="1.2" fill={color} stroke="none" />
+    </svg>
+  )
+}
 import { useApp } from '../context/AppContext.jsx'
 
 // ── Motoboys Tab ─────────────────────────────────────────────────────────────
@@ -595,20 +614,15 @@ export default function DeliveryGerenciar() {
 
   const tabs = [
     { id: 'configuracoes', label: 'Configurações', icon: SlidersHorizontal },
-    { id: 'motoboys',      label: 'Motoboys',      icon: Navigation },
+    { id: 'motoboys',      label: 'Motoboys',      icon: IconMoto },
   ]
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
       <div className="page-header mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--accent)' }}>
-            <Truck size={20} color="#fff" />
-          </div>
-          <div>
-            <h1 className="page-title">Delivery</h1>
-            <p className="page-subtitle">Cardápio online e rastreamento de motoboys</p>
-          </div>
+        <div>
+          <h1 className="page-title">Delivery</h1>
+          <p className="page-subtitle">Cardápio e motoboys</p>
         </div>
       </div>
 

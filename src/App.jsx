@@ -11,6 +11,7 @@ import PDV from './pages/PDV.jsx'
 import Mesas from './pages/Mesas.jsx'
 import MenuPublico from './pages/MenuPublico.jsx'
 import DeliveryPublico from './pages/DeliveryPublico.jsx'
+import MotoboiPublico from './pages/MotoboiPublico.jsx'
 import DeliveryGerenciar from './pages/DeliveryGerenciar.jsx'
 import ComandaDigital from './pages/ComandaDigital.jsx'
 import CozinhaDisplay from './pages/CozinhaDisplay.jsx'
@@ -45,6 +46,7 @@ export default function App() {
       <Route path="/caixa/:token" element={<CaixaDisplay />} />
       <Route path="/telao/:token" element={<TelaoDisplay />} />
       <Route path="/pedidos-display/:token" element={<PedidosDisplay />} />
+      <Route path="/motoboy/:token" element={<MotoboiPublico />} />
 
       {/* App protegido */}
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>

@@ -451,6 +451,28 @@ function deliveryConfigToRow(cfg, uid) {
   }
 }
 
+function motoboyToRow(m, uid) {
+  return {
+    id: m.id,
+    user_id: uid,
+    nome: m.nome,
+    token: m.token,
+    ativo: m.ativo !== false,
+  }
+}
+function rowToMotoboy(row) {
+  return {
+    id: row.id,
+    nome: row.nome,
+    token: row.token,
+    ativo: row.ativo !== false,
+    online: row.online || false,
+    lat: row.lat ? Number(row.lat) : null,
+    lng: row.lng ? Number(row.lng) : null,
+    atualizadoEm: row.atualizado_em || null,
+  }
+}
+
 function rowToNotifConfig(row) {
   if (!row) return NOTIF_CONFIG_PADRAO
   return {
@@ -509,6 +531,7 @@ export function AppProvider({ children }) {
   const [impostosConfig, setImpostosConfig] = useState([])
   const [notifConfig, setNotifConfig] = useState(NOTIF_CONFIG_PADRAO)
   const [perfil, setPerfil] = useState({ foto: null, nomeExibicao: '' })
+  const [motoboys, setMotoboys] = useState([])
 
   const userIdRef = useRef(null)
   const notifConfigRef = useRef(notifConfig)
@@ -584,6 +607,7 @@ export function AppProvider({ children }) {
     setImpostosConfig([])
     setNotifConfig(NOTIF_CONFIG_PADRAO)
     setPerfil({ foto: null, nomeExibicao: '' })
+    setMotoboys([])
   }
 
   // ── Carregar todos os dados quando userId muda ────────────────────────
@@ -690,8 +714,20 @@ export function AppProvider({ children }) {
           if (data) setEntradasVendas(data.map(rowToEntradaVenda))
         })
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'motoboys', filter: `user_id=eq.${uid}` }, () => {
+        supabase.from('motoboys').select('*').eq('user_id', uid).then(({ data }) => {
+          if (data) setMotoboys(data.map(rowToMotoboy))
+        })
+      })
       .subscribe()
     return () => supabase.removeChannel(channel)
+  }, [auth.userId])
+
+  // ── Motoboys: carregar inicial ────────────────────────────────────────
+  useEffect(() => {
+    if (!auth.userId) return
+    supabase.from('motoboys').select('*').eq('user_id', auth.userId)
+      .then(({ data }) => { if (data) setMotoboys(data.map(rowToMotoboy)) })
   }, [auth.userId])
 
   // ── Tema (mantido em localStorage — preferência de UI) ────────────────
@@ -1506,6 +1542,37 @@ export function AppProvider({ children }) {
     if (auth.userId) sbWrite(supabase.from('impostos_config').delete().eq('id', id).eq('user_id', auth.userId))
   }
 
+  // ── Motoboys CRUD ─────────────────────────────────────────────────────
+  function adicionarMotoboy({ nome }) {
+    const novo = {
+      id: crypto.randomUUID(),
+      nome: nome.trim(),
+      token: crypto.randomUUID().replace(/-/g, ''),
+      ativo: true,
+      online: false,
+      lat: null,
+      lng: null,
+      atualizadoEm: null,
+    }
+    setMotoboys(prev => [...prev, novo])
+    if (auth.userId) sbWrite(supabase.from('motoboys').insert(motoboyToRow(novo, auth.userId)))
+    return novo
+  }
+
+  function editarMotoboy(id, dados) {
+    setMotoboys(prev => prev.map(m => {
+      if (m.id !== id) return m
+      const updated = { ...m, ...dados }
+      if (auth.userId) sbWrite(supabase.from('motoboys').update(motoboyToRow(updated, auth.userId)).eq('id', id))
+      return updated
+    }))
+  }
+
+  function removerMotoboy(id) {
+    setMotoboys(prev => prev.filter(m => m.id !== id))
+    if (auth.userId) sbWrite(supabase.from('motoboys').delete().eq('id', id).eq('user_id', auth.userId))
+  }
+
   const value = {
     tema, alternarTema,
     auth, authLoading, login, logout, cadastrarUsuario, removerUsuario, resetarSenha,
@@ -1532,6 +1599,7 @@ export function AppProvider({ children }) {
     notifConfig, atualizarNotifConfig,
     perfil, atualizarPerfil,
     alterarSenha,
+    motoboys, adicionarMotoboy, editarMotoboy, removerMotoboy,
     notifConfigRef, cardapioConfigRef, ingredientesRef, pedidosRef, configuracaoGeralRef,
   }
 

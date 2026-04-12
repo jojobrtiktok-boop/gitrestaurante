@@ -303,3 +303,34 @@ CREATE POLICY "auth_write" ON delivery_slugs FOR ALL USING (auth.role() = 'authe
 
 ALTER PUBLICATION supabase_realtime ADD TABLE pedidos;
 ALTER PUBLICATION supabase_realtime ADD TABLE mesas;
+
+-- ── Motoboys (rastreamento GPS) ──────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS motoboys (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  nome TEXT NOT NULL,
+  token TEXT NOT NULL UNIQUE,
+  ativo BOOLEAN DEFAULT TRUE,
+  online BOOLEAN DEFAULT FALSE,
+  lat DOUBLE PRECISION,
+  lng DOUBLE PRECISION,
+  atualizado_em TIMESTAMPTZ
+);
+
+ALTER TABLE motoboys ENABLE ROW LEVEL SECURITY;
+
+-- Dono vê/edita seus motoboys
+DROP POLICY IF EXISTS "own_data" ON motoboys;
+CREATE POLICY "own_data" ON motoboys FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- Motoboy (sem login) pode ler e atualizar pelo token
+DROP POLICY IF EXISTS "motoboy_public_read" ON motoboys;
+DROP POLICY IF EXISTS "motoboy_public_update" ON motoboys;
+CREATE POLICY "motoboy_public_read" ON motoboys FOR SELECT USING (true);
+CREATE POLICY "motoboy_public_update" ON motoboys FOR UPDATE USING (true) WITH CHECK (true);
+
+-- Realtime para o dono ver posição em tempo real
+ALTER PUBLICATION supabase_realtime ADD TABLE motoboys;

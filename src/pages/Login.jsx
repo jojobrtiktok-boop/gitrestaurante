@@ -74,14 +74,22 @@ function Btn({ children, loading, type = 'submit', onClick, variant = 'primary',
 }
 
 export default function Login() {
-  const { login, cadastrarUsuario, resetarSenha } = useApp()
+  const { login, cadastrarUsuario, resetarSenha, tema } = useApp()
   const navigate = useNavigate()
   const [tela, setTela] = useState('entrar')
 
-  // Forçar tema claro na página de login
+  // Forçar tema claro — reaplica toda vez que AppContext mudar o tema
   useEffect(() => {
-    document.documentElement.classList.add('light')
-  }, [])
+    const root = document.documentElement
+    root.classList.add('light')
+    return () => {
+      // ao sair do login, restaura o tema salvo
+      try {
+        const saved = JSON.parse(localStorage.getItem('rd_tema'))
+        if (saved !== 'light') root.classList.remove('light')
+      } catch { /* noop */ }
+    }
+  }, [tema])
 
   // Entrar
   const [email, setEmail] = useState('')
@@ -163,6 +171,14 @@ export default function Login() {
         .login-input::placeholder { color: ${c.muted}; }
         .login-btn-ghost:hover { background: ${c.accentBg} !important; border-color: ${c.accentBdr} !important; color: ${c.accent} !important; }
         .login-tab-active { background: #fff !important; color: ${c.text} !important; box-shadow: 0 1px 6px rgba(0,0,0,0.1) !important; }
+        /* Neutralizar autofill do Chrome (que fica verde/amarelo) */
+        .login-input:-webkit-autofill,
+        .login-input:-webkit-autofill:hover,
+        .login-input:-webkit-autofill:focus {
+          -webkit-box-shadow: 0 0 0 40px ${c.input} inset !important;
+          -webkit-text-fill-color: ${c.text} !important;
+          caret-color: ${c.text};
+        }
       `}</style>
 
       <div style={{ width: '100%', maxWidth: 420, animation: 'fadeUp .35s ease-out' }}>

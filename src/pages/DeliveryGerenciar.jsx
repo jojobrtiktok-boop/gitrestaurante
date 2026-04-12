@@ -613,7 +613,7 @@ export default function DeliveryGerenciar() {
   const [aba, setAba] = useState('configuracoes')
 
   const tabs = [
-    { id: 'configuracoes', label: 'Configurações', icon: SlidersHorizontal },
+    { id: 'configuracoes', label: 'Cardápio de Pedido', icon: SlidersHorizontal },
     { id: 'motoboys',      label: 'Motoboys',      icon: IconMoto },
   ]
 

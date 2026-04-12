@@ -261,6 +261,7 @@ function TabConfiguracoes() {
   const [estados, setEstados] = useState([])
   const [cidades, setCidades] = useState([])
   const [ufSelecionada, setUfSelecionada] = useState(cfg.uf || '')
+  const [cidadeInput, setCidadeInput] = useState(cfg.cidade || '')
   const [carregandoCidades, setCarregandoCidades] = useState(false)
   const [bairrosCidade, setBairrosCidade] = useState([])
   const [carregandoBairros, setCarregandoBairros] = useState(false)
@@ -291,12 +292,21 @@ function TabConfiguracoes() {
 
   function handleUfChange(uf) {
     setUfSelecionada(uf)
+    setCidadeInput('')
     atualizarConfiguracaoDelivery({ uf, cidade: '', municipioId: null })
     setBairrosCidade([])
   }
 
   function handleCidadeChange(cidade, municipioId) {
     atualizarConfiguracaoDelivery({ cidade, municipioId: municipioId || null })
+  }
+
+  function handleCidadeInput(valor) {
+    setCidadeInput(valor)
+    const encontrada = cidades.find(c => c.nome.toLowerCase() === valor.toLowerCase())
+    if (encontrada) {
+      handleCidadeChange(encontrada.nome, encontrada.id)
+    }
   }
 
   function salvarSlug() {
@@ -440,14 +450,17 @@ function TabConfiguracoes() {
             </div>
             <div>
               <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>Cidade</label>
-              <div style={{ position: 'relative' }}>
-                <select value={cfg.cidade || ''} onChange={e => { const sel = cidades.find(c => c.nome === e.target.value); handleCidadeChange(e.target.value, sel?.id) }}
-                  className="input" style={{ paddingRight: 28, appearance: 'none' }} disabled={!ufSelecionada || carregandoCidades}>
-                  <option value="">{carregandoCidades ? 'Carregando...' : ufSelecionada ? 'Selecione...' : 'Escolha o estado'}</option>
-                  {cidades.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
-                </select>
-                <ChevronDown size={13} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-muted)' }} />
-              </div>
+              <input
+                className="input"
+                list="cidades-list"
+                placeholder={carregandoCidades ? 'Carregando...' : ufSelecionada ? 'Digite para buscar...' : 'Escolha o estado'}
+                value={cidadeInput}
+                disabled={!ufSelecionada || carregandoCidades}
+                onChange={e => handleCidadeInput(e.target.value)}
+              />
+              <datalist id="cidades-list">
+                {cidades.map(c => <option key={c.id} value={c.nome} />)}
+              </datalist>
             </div>
           </div>
 
@@ -560,60 +573,48 @@ function TabConfiguracoes() {
             ))}
           </div>
         ) : (
+          /* Sem dados IBGE — lista manual */
           <div className="flex flex-col gap-2 mb-3">
-            {(cfg.bairros || []).length === 0 ? (
+            {!cfg.cidade && (
               <p className="text-xs text-center py-3" style={{ color: 'var(--text-muted)' }}>
-                {cfg.cidade ? 'Nenhum bairro cadastrado.' : 'Selecione uma cidade para ver os bairros.'}
+                Selecione uma cidade para cadastrar os bairros.
               </p>
-            ) : (
-              (cfg.bairros || []).map(b => (
-                <div key={b.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
-                  <button onClick={() => editarBairro(b.id, { ativo: !b.ativo })}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: b.ativo ? 'var(--accent)' : 'var(--text-muted)', display: 'flex', flexShrink: 0 }}>
-                    {b.ativo ? <ToggleRight size={22} /> : <ToggleLeft size={22} />}
-                  </button>
-                  <span className="flex-1 text-sm font-medium" style={{ color: b.ativo ? 'var(--text-primary)' : 'var(--text-muted)' }}>{b.nome}</span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>R$</span>
-                    <input type="number" min="0" value={b.frete}
-                      onChange={e => editarBairro(b.id, { frete: Number(e.target.value) })}
-                      style={{ width: 64, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: 13, textAlign: 'right' }} />
-                  </div>
-                  <button onClick={() => removerBairro(b.id)} className="btn btn-ghost p-1" style={{ color: '#ef4444', flexShrink: 0 }}>
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              ))
             )}
+            {(cfg.bairros || []).map(b => (
+              <div key={b.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+                <button onClick={() => editarBairro(b.id, { ativo: !b.ativo })}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: b.ativo ? 'var(--accent)' : 'var(--text-muted)', display: 'flex', flexShrink: 0 }}>
+                  {b.ativo ? <ToggleRight size={22} /> : <ToggleLeft size={22} />}
+                </button>
+                <span className="flex-1 text-sm font-medium" style={{ color: b.ativo ? 'var(--text-primary)' : 'var(--text-muted)' }}>{b.nome}</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>R$</span>
+                  <input type="number" min="0" value={b.frete}
+                    onChange={e => editarBairro(b.id, { frete: Number(e.target.value) })}
+                    style={{ width: 64, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: 13, textAlign: 'right' }} />
+                </div>
+                <button onClick={() => removerBairro(b.id)} className="btn btn-ghost p-1" style={{ color: '#ef4444', flexShrink: 0 }}>
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
           </div>
         )}
 
-        {!bairroNaoListadoAberto ? (
-          <button onClick={() => setBairroNaoListadoAberto(true)}
-            className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl text-sm font-semibold"
-            style={{ background: 'none', border: '2px dashed var(--border)', cursor: 'pointer', color: 'var(--accent)' }}>
-            <Plus size={14} /> Bairro não listado
-          </button>
-        ) : (
-          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
-            <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Adicionar bairro manualmente</p>
-            <div className="flex gap-2">
-              <input className="input flex-1" placeholder="Nome do bairro" value={novoBairroNome}
-                onChange={e => setNovoBairroNome(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAdicionarBairro()} />
-              <div className="flex items-center gap-1" style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0 8px', background: 'var(--bg-card)' }}>
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>R$</span>
-                <input type="number" min="0" placeholder="0" value={novoBairroFrete}
-                  onChange={e => setNovoBairroFrete(e.target.value)}
-                  style={{ width: 60, border: 'none', background: 'transparent', color: 'var(--text-primary)', fontSize: 13, outline: 'none', padding: '6px 0' }} />
-              </div>
-              <button className="btn btn-primary shrink-0" onClick={() => { handleAdicionarBairro(); setBairroNaoListadoAberto(false) }}>
-                <Plus size={14} /> Adicionar
-              </button>
+        {/* Formulário adicionar bairro — sempre visível quando cidade selecionada */}
+        {cfg.cidade && (
+          <div className="flex gap-2 mb-1">
+            <input className="input flex-1" placeholder="Nome do bairro" value={novoBairroNome}
+              onChange={e => setNovoBairroNome(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAdicionarBairro()} />
+            <div className="flex items-center gap-1" style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0 8px', background: 'var(--bg-card)', flexShrink: 0 }}>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>R$</span>
+              <input type="number" min="0" placeholder="0" value={novoBairroFrete}
+                onChange={e => setNovoBairroFrete(e.target.value)}
+                style={{ width: 55, border: 'none', background: 'transparent', color: 'var(--text-primary)', fontSize: 13, outline: 'none', padding: '6px 0' }} />
             </div>
-            <button onClick={() => { setBairroNaoListadoAberto(false); setNovoBairroNome(''); setNovoBairroFrete('') }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
-              Cancelar
+            <button className="btn btn-primary shrink-0" onClick={handleAdicionarBairro}>
+              <Plus size={14} />
             </button>
           </div>
         )}

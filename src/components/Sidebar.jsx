@@ -8,13 +8,17 @@ import { useApp } from '../context/AppContext.jsx'
 
 function IconMesa({ size = 24, color = 'currentColor' }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      {/* tampo */}
-      <rect x="2" y="7" width="20" height="3" rx="1" />
-      {/* perna esquerda */}
-      <line x1="6" y1="10" x2="5" y2="19" />
-      {/* perna direita */}
-      <line x1="18" y1="10" x2="19" y2="19" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      {/* mesa (vista de cima) */}
+      <rect x="5" y="6" width="14" height="12" rx="1.5" />
+      {/* cadeira cima */}
+      <rect x="9" y="2" width="6" height="3" rx="1.5" />
+      {/* cadeira baixo */}
+      <rect x="9" y="19" width="6" height="3" rx="1.5" />
+      {/* cadeira esquerda */}
+      <rect x="2" y="9" width="3" height="6" rx="1.5" />
+      {/* cadeira direita */}
+      <rect x="19" y="9" width="3" height="6" rx="1.5" />
     </svg>
   )
 }

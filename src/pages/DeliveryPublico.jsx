@@ -146,48 +146,55 @@ export default function DeliveryPublico() {
     } catch {}
 
     async function carregar() {
-      const { data: slugRow } = await supabase
-        .from('delivery_slugs')
-        .select('user_id')
-        .eq('slug', slug.toLowerCase())
-        .maybeSingle()
-      if (!slugRow) { setCarregando(false); return }
-      setUserId(slugRow.user_id)
-      const [{ data: prtsData }, { data: cfgData }, { data: cdData }, { data: pgtoData }] = await Promise.all([
-        supabase.from('pratos').select('*').eq('user_id', slugRow.user_id),
-        supabase.from('cardapio_config').select('config').eq('user_id', slugRow.user_id).maybeSingle(),
-        supabase.from('config_delivery').select('*').eq('user_id', slugRow.user_id).maybeSingle(),
-        supabase.from('pagamentos_config').select('config').eq('user_id', slugRow.user_id).maybeSingle().catch(() => ({ data: null })),
-      ])
-      const prts = prtsData ? prtsData.map(row => ({
-        id: row.id, nome: row.nome,
-        precoVenda: Number(row.preco_venda || 0),
-        categoria: row.categoria || '',
-        emDestaque: row.em_destaque || false,
-        maisPedido: row.mais_pedido || false,
-        foto: row.foto || null,
-        ingredientes: row.ingredientes || [],
-        grupos: row.grupos || [],
-        variacoes: row.variacoes || [],
-      })) : []
-      const cfg = cfgData?.config || {}
-      const cd = cdData ? {
-        ativo: cdData.ativo || false,
-        slugDelivery: cdData.slug_delivery || '',
-        cidade: cdData.cidade || '',
-        bairros: cdData.bairros || [],
-        pedidoMinimo: Number(cdData.pedido_minimo || 0),
-        tempoEstimado: cdData.tempo_estimado || '',
-        tipoEntrega: cdData.tipo_entrega || 'Padrão',
-        formasPagamento: cdData.formas_pagamento || ['dinheiro', 'pix', 'cartao'],
-        telefone: cdData.telefone || '',
-        mensagemIntro: cdData.mensagem_intro || '',
-        modoIfood: cdData.modo_ifood || false,
-        corDestaqueIfood: cdData.cor_destaque_ifood || '#ea1d2c',
-      } : {}
-      const pgto = pgtoData?.config || {}
-      setPratos(prts); setConfig(cfg); setConfigDelivery(cd); setPagamentosConfig(pgto); setCarregando(false)
-      try { localStorage.setItem(`delivery_cache_${slug}`, JSON.stringify({ t: Date.now(), uid: slugRow.user_id, prts, cfg, cd, pgto })) } catch {}
+      try {
+        const { data: slugRow, error: errSlug } = await supabase
+          .from('delivery_slugs')
+          .select('user_id')
+          .eq('slug', slug.toLowerCase())
+          .maybeSingle()
+        if (errSlug) throw errSlug
+        if (!slugRow) { setCarregando(false); return }
+        setUserId(slugRow.user_id)
+        const [{ data: prtsData }, { data: cfgData }, { data: cdData }, { data: pgtoData }] = await Promise.all([
+          supabase.from('pratos').select('*').eq('user_id', slugRow.user_id),
+          supabase.from('cardapio_config').select('config').eq('user_id', slugRow.user_id).maybeSingle(),
+          supabase.from('config_delivery').select('*').eq('user_id', slugRow.user_id).maybeSingle(),
+          supabase.from('pagamentos_config').select('config').eq('user_id', slugRow.user_id).maybeSingle().catch(() => ({ data: null })),
+        ])
+        const prts = prtsData ? prtsData.map(row => ({
+          id: row.id, nome: row.nome,
+          precoVenda: Number(row.preco_venda || 0),
+          categoria: row.categoria || '',
+          emDestaque: row.em_destaque || false,
+          maisPedido: row.mais_pedido || false,
+          foto: row.foto || null,
+          ingredientes: row.ingredientes || [],
+          grupos: row.grupos || [],
+          variacoes: row.variacoes || [],
+        })) : []
+        const cfg = cfgData?.config || {}
+        const cd = cdData ? {
+          ativo: cdData.ativo || false,
+          slugDelivery: cdData.slug_delivery || '',
+          cidade: cdData.cidade || '',
+          bairros: cdData.bairros || [],
+          pedidoMinimo: Number(cdData.pedido_minimo || 0),
+          tempoEstimado: cdData.tempo_estimado || '',
+          tipoEntrega: cdData.tipo_entrega || 'Padrão',
+          formasPagamento: cdData.formas_pagamento || ['dinheiro', 'pix', 'cartao'],
+          telefone: cdData.telefone || '',
+          mensagemIntro: cdData.mensagem_intro || '',
+          modoIfood: cdData.modo_ifood || false,
+          corDestaqueIfood: cdData.cor_destaque_ifood || '#ea1d2c',
+        } : {}
+        const pgto = pgtoData?.config || {}
+        setPratos(prts); setConfig(cfg); setConfigDelivery(cd); setPagamentosConfig(pgto)
+        try { localStorage.setItem(`delivery_cache_${slug}`, JSON.stringify({ t: Date.now(), uid: slugRow.user_id, prts, cfg, cd, pgto })) } catch {}
+      } catch (e) {
+        console.error('[DeliveryPublico] erro ao carregar:', e)
+      } finally {
+        setCarregando(false)
+      }
     }
     carregar()
   }, [slug])

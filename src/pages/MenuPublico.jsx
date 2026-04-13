@@ -35,32 +35,39 @@ export default function MenuPublico() {
     } catch {}
 
     async function carregar() {
-      const { data: slugRow } = await supabase
-        .from('menu_slugs')
-        .select('user_id')
-        .eq('slug', slug.toLowerCase())
-        .maybeSingle()
-      if (!slugRow) { setCarregando(false); return }
-      setUserId(slugRow.user_id)
-      const [{ data: prtsData }, { data: cfgData }] = await Promise.all([
-        supabase.from('pratos').select('*').eq('user_id', slugRow.user_id),
-        supabase.from('cardapio_config').select('config').eq('user_id', slugRow.user_id).maybeSingle(),
-      ])
-      const prts = prtsData ? prtsData.map(row => ({
-        id: row.id,
-        nome: row.nome,
-        precoVenda: Number(row.preco_venda || 0),
-        categoria: row.categoria || '',
-        emDestaque: row.em_destaque || false,
-        maisPedido: row.mais_pedido || false,
-        foto: row.foto || null,
-        ingredientes: row.ingredientes || [],
-        grupos: row.grupos || [],
-        variacoes: row.variacoes || [],
-      })) : []
-      const cfg = cfgData?.config || {}
-      setPratos(prts); setConfig(cfg); setCarregando(false)
-      try { localStorage.setItem(`menu_cache_${slug}`, JSON.stringify({ t: Date.now(), uid: slugRow.user_id, prts, cfg })) } catch {}
+      try {
+        const { data: slugRow, error: errSlug } = await supabase
+          .from('menu_slugs')
+          .select('user_id')
+          .eq('slug', slug.toLowerCase())
+          .maybeSingle()
+        if (errSlug) throw errSlug
+        if (!slugRow) { setCarregando(false); return }
+        setUserId(slugRow.user_id)
+        const [{ data: prtsData }, { data: cfgData }] = await Promise.all([
+          supabase.from('pratos').select('*').eq('user_id', slugRow.user_id),
+          supabase.from('cardapio_config').select('config').eq('user_id', slugRow.user_id).maybeSingle(),
+        ])
+        const prts = prtsData ? prtsData.map(row => ({
+          id: row.id,
+          nome: row.nome,
+          precoVenda: Number(row.preco_venda || 0),
+          categoria: row.categoria || '',
+          emDestaque: row.em_destaque || false,
+          maisPedido: row.mais_pedido || false,
+          foto: row.foto || null,
+          ingredientes: row.ingredientes || [],
+          grupos: row.grupos || [],
+          variacoes: row.variacoes || [],
+        })) : []
+        const cfg = cfgData?.config || {}
+        setPratos(prts); setConfig(cfg)
+        try { localStorage.setItem(`menu_cache_${slug}`, JSON.stringify({ t: Date.now(), uid: slugRow.user_id, prts, cfg })) } catch {}
+      } catch (e) {
+        console.error('[MenuPublico] erro ao carregar:', e)
+      } finally {
+        setCarregando(false)
+      }
     }
     carregar()
   }, [slug])

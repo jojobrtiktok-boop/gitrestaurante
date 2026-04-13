@@ -127,6 +127,7 @@ export default function DeliveryPublico() {
   const [pratos, setPratos] = useState([])
   const [config, setConfig] = useState({})
   const [configDelivery, setConfigDelivery] = useState({})
+  const [pagamentosConfig, setPagamentosConfig] = useState({})
   const [userId, setUserId] = useState(null)
   const [carregando, setCarregando] = useState(true)
 
@@ -137,9 +138,9 @@ export default function DeliveryPublico() {
     try {
       const raw = localStorage.getItem(`delivery_cache_${slug}`)
       if (raw) {
-        const { t, uid, prts, cfg, cd } = JSON.parse(raw)
+        const { t, uid, prts, cfg, cd, pgto } = JSON.parse(raw)
         if (Date.now() - t < 10 * 60 * 1000) {
-          setUserId(uid); setPratos(prts); setConfig(cfg); setConfigDelivery(cd); setCarregando(false)
+          setUserId(uid); setPratos(prts); setConfig(cfg); setConfigDelivery(cd); if (pgto) setPagamentosConfig(pgto); setCarregando(false)
         }
       }
     } catch {}
@@ -152,10 +153,11 @@ export default function DeliveryPublico() {
         .maybeSingle()
       if (!slugRow) { setCarregando(false); return }
       setUserId(slugRow.user_id)
-      const [{ data: prtsData }, { data: cfgData }, { data: cdData }] = await Promise.all([
+      const [{ data: prtsData }, { data: cfgData }, { data: cdData }, { data: pgtoData }] = await Promise.all([
         supabase.from('pratos').select('*').eq('user_id', slugRow.user_id),
         supabase.from('cardapio_config').select('config').eq('user_id', slugRow.user_id).maybeSingle(),
         supabase.from('config_delivery').select('*').eq('user_id', slugRow.user_id).maybeSingle(),
+        supabase.from('pagamentos_config').select('config').eq('user_id', slugRow.user_id).maybeSingle().catch(() => ({ data: null })),
       ])
       const prts = prtsData ? prtsData.map(row => ({
         id: row.id, nome: row.nome,
@@ -183,8 +185,9 @@ export default function DeliveryPublico() {
         modoIfood: cdData.modo_ifood || false,
         corDestaqueIfood: cdData.cor_destaque_ifood || '#ea1d2c',
       } : {}
-      setPratos(prts); setConfig(cfg); setConfigDelivery(cd); setCarregando(false)
-      try { localStorage.setItem(`delivery_cache_${slug}`, JSON.stringify({ t: Date.now(), uid: slugRow.user_id, prts, cfg, cd })) } catch {}
+      const pgto = pgtoData?.config || {}
+      setPratos(prts); setConfig(cfg); setConfigDelivery(cd); setPagamentosConfig(pgto); setCarregando(false)
+      try { localStorage.setItem(`delivery_cache_${slug}`, JSON.stringify({ t: Date.now(), uid: slugRow.user_id, prts, cfg, cd, pgto })) } catch {}
     }
     carregar()
   }, [slug])
@@ -204,6 +207,34 @@ export default function DeliveryPublico() {
   const layoutGrade = modoIfood ? false : config.layoutPadrao === 'grade'
   const bannerH = config.bannerAltura || 200
   const overlapH = 56
+
+  // ── formas de pagamento ativas (baseadas em pagamentosConfig) ─────────────
+  const FORMAS_DEF = [
+    { key: 'dinheiro',      label: 'Dinheiro',          icone: <IcoBanknote /> },
+    { key: 'pix',           label: 'PIX',               icone: <IcoQr /> },
+    { key: 'cartaoCredito', label: 'Crédito',           icone: <IcoCard /> },
+    { key: 'cartaoDebito',  label: 'Débito',            icone: <IcoCard /> },
+  ]
+  function isFormaAtiva(key) {
+    const cfg = pagamentosConfig
+    if (!cfg[key]) return false
+    if (key === 'pix') {
+      const temMP      = cfg.mercadoPagoAtivo && !!cfg.mercadoPagoAccessToken
+      const temEfi     = cfg.efiAtivo && !!cfg.efiClientId && !!cfg.efiClientSecret
+      const temOpenPix = cfg.openPixAtivo && !!cfg.openPixAppId && !!cfg.openPixChave
+      return !!(temMP || temEfi || temOpenPix)
+    }
+    return true
+  }
+  // Se pagamentosConfig ainda não carregou (vazio), cai no fallback antigo
+  const temNovoPagamento = Object.keys(pagamentosConfig).length > 0
+  const formasAtivas = temNovoPagamento
+    ? FORMAS_DEF.filter(f => isFormaAtiva(f.key))
+    : (configDelivery.formasPagamento || ['dinheiro', 'pix', 'cartao']).map(k => ({
+        key: k,
+        label: { dinheiro: 'Dinheiro', pix: 'PIX', cartao: 'Cartão' }[k] || k,
+        icone: { dinheiro: <IcoBanknote />, pix: <IcoQr />, cartao: <IcoCard /> }[k] || null,
+      }))
 
   // frete mínimo dos bairros ativos
   const bairrosParaFrete = (configDelivery.bairros || []).filter(b => b.ativo)
@@ -233,6 +264,7 @@ export default function DeliveryPublico() {
   const [endereco, setEndereco] = useState('')
   const [complemento, setComplemento] = useState('')
   const [pagamento, setPagamento] = useState('')
+  const [bandeira, setBandeira] = useState('')
   const [troco, setTroco] = useState('')
   const [obs, setObs] = useState('')
   const [erros, setErros] = useState({})
@@ -437,7 +469,9 @@ export default function DeliveryPublico() {
     partes.push(`Nome: ${nome}`)
     partes.push(`Telefone: ${telefone}`)
     partes.push('')
-    partes.push(`💳 Pagamento: ${LABEL_PGTO[pagamento] || pagamento}`)
+    const labelPgto = { dinheiro: 'Dinheiro', pix: 'PIX', cartaoCredito: 'Cartão de Crédito', cartaoDebito: 'Cartão de Débito', cartao: 'Cartão' }
+    const labelBandeira = bandeira ? ` - ${bandeira}` : ''
+    partes.push(`💳 Pagamento: ${labelPgto[pagamento] || pagamento}${labelBandeira}`)
 
     if (pagamento === 'dinheiro' && troco) {
       partes.push(`Troco para: ${troco}`)
@@ -456,7 +490,7 @@ export default function DeliveryPublico() {
     setCarrinho([])
     // reset form
     setNome(''); setTelefone(''); setBairroId(''); setEndereco(''); setComplemento('')
-    setPagamento(''); setTroco(''); setObs(''); setErros({})
+    setPagamento(''); setBandeira(''); setTroco(''); setObs(''); setErros({})
     setCheckoutStep(1); setTipoEntrega('entrega')
   }
 
@@ -1132,20 +1166,37 @@ export default function DeliveryPublico() {
                 {/* Formas de pagamento */}
                 <p style={{ fontSize: 13, fontWeight: 700, color: corTextoSec, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 10px' }}>Forma de pagamento</p>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                  {(configDelivery.formasPagamento || ['dinheiro', 'pix', 'cartao']).map(fp => (
-                    <button key={fp} onClick={() => setPagamento(fp)} style={{
+                  {formasAtivas.map(({ key, label, icone }) => (
+                    <button key={key} onClick={() => { setPagamento(key); setBandeira('') }} style={{
                       flex: 1, minWidth: 90, padding: '11px 8px', borderRadius: 12, fontSize: 13, fontWeight: 700,
-                      border: '2px solid ' + (pagamento === fp ? destaque : bordaCard),
-                      background: pagamento === fp ? (modoClaro ? `${destaque}14` : `${destaque}28`) : (modoClaro ? '#f8f8f8' : 'rgba(255,255,255,0.05)'),
-                      color: pagamento === fp ? destaque : corTextoSec, cursor: 'pointer',
+                      border: '2px solid ' + (pagamento === key ? destaque : bordaCard),
+                      background: pagamento === key ? (modoClaro ? `${destaque}14` : `${destaque}28`) : (modoClaro ? '#f8f8f8' : 'rgba(255,255,255,0.05)'),
+                      color: pagamento === key ? destaque : corTextoSec, cursor: 'pointer',
                       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
                     }}>
-                      {ICONE_PGTO[fp] || null}
-                      {LABEL_PGTO[fp] || fp}
+                      {icone}
+                      {label}
                     </button>
                   ))}
                 </div>
                 {erros.pagamento && <p style={{ color: '#ef4444', fontSize: 12, margin: '0 0 12px' }}>{erros.pagamento}</p>}
+
+                {/* Bandeira do cartão */}
+                {(pagamento === 'cartaoCredito' || pagamento === 'cartaoDebito') && (
+                  <div style={{ marginBottom: 16 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: corTextoSec, margin: '0 0 8px' }}>Qual a bandeira do cartão?</p>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {['Visa', 'Mastercard', 'Elo', 'Outro'].map(b => (
+                        <button key={b} onClick={() => setBandeira(b)} style={{
+                          flex: 1, padding: '9px 4px', borderRadius: 10, fontSize: 12, fontWeight: 700,
+                          border: '2px solid ' + (bandeira === b ? destaque : bordaCard),
+                          background: bandeira === b ? (modoClaro ? `${destaque}14` : `${destaque}28`) : (modoClaro ? '#f8f8f8' : 'rgba(255,255,255,0.05)'),
+                          color: bandeira === b ? destaque : corTextoSec, cursor: 'pointer',
+                        }}>{b}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Troco */}
                 {pagamento === 'dinheiro' && (

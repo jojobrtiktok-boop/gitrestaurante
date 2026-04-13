@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { DollarSign, TrendingUp, Award, ShoppingBag, TrendingDown, BarChart2, Wallet, Info, X, ChevronDown, ChevronUp, Clock, Trophy } from 'lucide-react'
+import { DollarSign, TrendingUp, Award, ShoppingBag, TrendingDown, BarChart2, Wallet, Info, X, ChevronDown, ChevronUp, Clock, Trophy, Layers, UtensilsCrossed, Truck } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { useApp } from '../context/AppContext.jsx'
 import MetricCard from '../components/ui/MetricCard.jsx'
@@ -504,21 +504,25 @@ export default function VisaoGeral() {
               {/* Filtro de canal */}
               <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)', flexShrink: 0 }}>
                 {[
-                  { id: 'todos',       label: 'Todos' },
-                  { id: 'restaurante', label: '🍽️ Restaurante' },
-                  { id: 'delivery',    label: '🛵 Delivery' },
-                ].map(op => (
+                  { id: 'todos',       label: 'Todos',       Icon: Layers },
+                  { id: 'restaurante', label: 'Restaurante', Icon: UtensilsCrossed },
+                  { id: 'delivery',    label: 'Delivery',    Icon: Truck },
+                ].map((op, i, arr) => (
                   <button
                     key={op.id}
                     onClick={() => setCanalFiltro(op.id)}
                     style={{
+                      display: 'flex', alignItems: 'center', gap: 5,
                       padding: '6px 12px', fontSize: 12, fontWeight: 600,
                       border: 'none', cursor: 'pointer', transition: 'all .15s',
                       background: canalFiltro === op.id ? 'var(--accent)' : 'var(--bg-hover)',
                       color: canalFiltro === op.id ? '#fff' : 'var(--text-secondary)',
-                      borderRight: op.id !== 'delivery' ? '1px solid var(--border)' : 'none',
+                      borderRight: i < arr.length - 1 ? '1px solid var(--border)' : 'none',
                     }}
-                  >{op.label}</button>
+                  >
+                    <op.Icon size={12} />
+                    {op.label}
+                  </button>
                 ))}
               </div>
 

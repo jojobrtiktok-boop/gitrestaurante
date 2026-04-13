@@ -144,11 +144,13 @@ export default function MotoboiPublico() {
       `}</style>
 
       {loja?.logo
-        ? <img src={loja.logo} alt={loja.nome || 'Loja'} style={{ height: 52, maxWidth: 160, marginBottom: 20, objectFit: 'contain', borderRadius: 10 }} />
-        : loja?.nome
-          ? <p style={{ color: '#f4f4f5', fontSize: 18, fontWeight: 800, margin: '0 0 20px', textAlign: 'center' }}>{loja.nome}</p>
-          : <img src="/logo-dark.png" alt="Cheffya" style={{ height: 28, marginBottom: 20, objectFit: 'contain' }} />
+        ? <img src={loja.logo} alt={loja.nome || 'Loja'} style={{ height: 52, maxWidth: 160, marginBottom: 8, objectFit: 'contain', borderRadius: 10 }} />
+        : <img src="/logo-dark.png" alt="Cheffya" style={{ height: 28, marginBottom: 8, objectFit: 'contain' }} />
       }
+      {loja?.nome && (
+        <p style={{ color: '#a1a1aa', fontSize: 13, fontWeight: 600, margin: '0 0 20px', textAlign: 'center' }}>{loja.nome}</p>
+      )}
+      {!loja?.nome && <div style={{ marginBottom: 20 }} />}
 
       {/* Card rastreamento */}
       <div style={{ ...s.card, alignItems: 'center', marginBottom: 16 }}>

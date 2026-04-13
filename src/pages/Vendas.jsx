@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ShoppingCart, Trash2, Clock, X, Check, Printer, FileText, Truck, MapPin, User, Timer, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
+import { ShoppingCart, Trash2, Clock, X, Check, Printer, FileText, Truck, MapPin, User, Timer, ChevronDown, ChevronUp, AlertTriangle, Phone, Cake } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import TabelaVazia from '../components/ui/TabelaVazia.jsx'
 import FiltroPeriodo from '../components/ui/FiltroPeriodo.jsx'
@@ -503,27 +503,96 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
     return [...balcao, ...garcs]
   })()
 
-  // Histórico completo por cliente (clienteId) — todas as compras, sem filtro de período
+  // Histórico completo por cliente — agrega delivery (por telefone) + local (clienteId)
   const porCliente = (() => {
+    function calcTotalPedido(p) {
+      return (p.itens || []).reduce((s, item) => {
+        const prato = pratos.find(x => x.id === item.pratoId)
+        return s + (prato?.precoVenda || prato?.preco || 0) * item.quantidade
+      }, 0)
+    }
+
     const mapa = {}
+
+    // 1. Delivery: agrupa pedidos por telefone (ou nome se sem telefone)
+    pedidos.filter(p => p.canal === 'delivery' && !p.cancelado).forEach(p => {
+      const tel = p.clienteTelefone ? p.clienteTelefone.replace(/\D/g, '') : null
+      const key = tel ? `tel:${tel}` : `dname:${(p.clienteNome || '').toLowerCase().trim()}`
+      if (!key || key === 'tel:' || key === 'dname:') return
+      if (!mapa[key]) {
+        mapa[key] = { key, nome: p.clienteNome || 'Cliente', telefone: tel, aniversario: null,
+          canais: new Set(), totalGasto: 0, pedidosList: [], enderecos: new Set(),
+          pratosCount: {}, clienteId: null }
+      }
+      const e = mapa[key]
+      if (p.clienteNome && e.nome === 'Cliente') e.nome = p.clienteNome
+      e.canais.add('delivery')
+      e.totalGasto += calcTotalPedido(p)
+      e.pedidosList.push(p)
+      if (p.enderecoEntrega && p.enderecoEntrega !== 'Retirada no local') e.enderecos.add(p.enderecoEntrega)
+      ;(p.itens || []).forEach(item => { e.pratosCount[item.pratoId] = (e.pratosCount[item.pratoId] || 0) + item.quantidade })
+    })
+
+    // 2. Restaurante local: entradasVendas agrupadas por clienteId
+    const localMap = {}
     entradasVendas.forEach(entrada => {
       const ped = pedidoDeEntrada(entrada)
       if (!ped?.clienteId) return
-      const c = clientes.find(c => c.id === ped.clienteId)
-      if (!c) return
+      if (!localMap[ped.clienteId]) localMap[ped.clienteId] = { totalGasto: 0, pedidos: new Set(), pratosCount: {} }
+      const l = localMap[ped.clienteId]
       const prato = pratos.find(p => p.id === entrada.pratoId)
-      if (!prato) return
-      const receita = receitaDaEntrada(entrada, prato)
-      if (!mapa[c.id]) mapa[c.id] = { id: c.id, nome: c.nome, totalReceita: 0, totalUnidades: 0, totalPedidos: 0, entradas: [] }
-      mapa[c.id].totalReceita += receita
-      mapa[c.id].totalUnidades += entrada.quantidade
-      mapa[c.id].entradas.push({ entrada, prato, ped })
+      if (prato) l.totalGasto += receitaDaEntrada(entrada, prato)
+      if (ped?.id) l.pedidos.add(ped.id)
+      l.pratosCount[entrada.pratoId] = (l.pratosCount[entrada.pratoId] || 0) + entrada.quantidade
     })
-    Object.values(mapa).forEach(cli => {
-      const ids = new Set(cli.entradas.map(e => e.ped?.id).filter(Boolean))
-      cli.totalPedidos = ids.size
+
+    clientes.forEach(c => {
+      const tel = c.telefone ? c.telefone.replace(/\D/g, '') : null
+      const deliveryKey = tel ? `tel:${tel}` : null
+      // Merge com delivery se mesmo telefone
+      const key = (deliveryKey && mapa[deliveryKey]) ? deliveryKey : `cli:${c.id}`
+
+      if (!mapa[key]) {
+        mapa[key] = { key, nome: c.nome, telefone: tel, aniversario: c.aniversario || null,
+          canais: new Set(), totalGasto: 0, pedidosList: [], enderecos: new Set(),
+          pratosCount: {}, clienteId: c.id }
+      }
+      const e = mapa[key]
+      if (c.nome) e.nome = c.nome
+      if (tel) e.telefone = tel
+      if (c.aniversario) e.aniversario = c.aniversario
+      e.clienteId = c.id
+
+      const local = localMap[c.id]
+      if (local) {
+        e.canais.add('local')
+        e.totalGasto += local.totalGasto
+        Object.entries(local.pratosCount).forEach(([pid, qt]) => {
+          e.pratosCount[pid] = (e.pratosCount[pid] || 0) + qt
+        })
+        // Adiciona pedidos locais à lista
+        local.pedidos.forEach(pid => {
+          const ped = pedidos.find(p => p.id === pid)
+          if (ped && !e.pedidosList.find(x => x.id === pid)) e.pedidosList.push(ped)
+        })
+      }
     })
-    return Object.values(mapa).sort((a, b) => b.totalReceita - a.totalReceita)
+
+    return Object.values(mapa)
+      .filter(e => e.pedidosList.length > 0 || e.clienteId)
+      .map(e => {
+        const pedsSorted = [...e.pedidosList].sort((a, b) =>
+          (`${b.data || ''}${b.hora || ''}`).localeCompare(`${a.data || ''}${a.hora || ''}`)
+        )
+        const pratoFavId = Object.entries(e.pratosCount).sort((a, b) => b[1] - a[1])[0]?.[0] || null
+        const pratoFav = pratoFavId ? pratos.find(p => p.id === pratoFavId)?.nome || null : null
+        const canaisArr = [...e.canais]
+        const canal = canaisArr.includes('delivery') && canaisArr.includes('local') ? 'ambos'
+          : canaisArr.includes('delivery') ? 'delivery' : 'local'
+        return { ...e, canal, visitas: e.pedidosList.length, ultimoPedido: pedsSorted[0]?.data || null,
+          pratoFav, enderecos: [...e.enderecos], pedidosList: pedsSorted }
+      })
+      .sort((a, b) => b.totalGasto - a.totalGasto)
   })()
 
   return (
@@ -645,93 +714,130 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
         )
       ) : aba === 'clientes' ? (
         porCliente.length === 0 ? (
-          <TabelaVazia icone={ShoppingCart} mensagem="Nenhum cliente com pedido registrado"
-            submensagem="Crie clientes ao registrar pedidos para vê-los aqui." />
+          <TabelaVazia icone={User} mensagem="Nenhum cliente registrado"
+            submensagem="Clientes aparecem ao registrar pedidos com nome ou via Delivery." />
         ) : (
           <div className="flex flex-col gap-3">
-            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Histórico completo · todas as compras de cada cliente</p>
-            {porCliente.map(cli => (
-              <div key={cli.id} className="card p-0 overflow-hidden">
-                <button
-                  className="w-full flex items-center justify-between px-4 py-3 text-left"
-                  style={{
-                    background: clienteExpandido === cli.id ? 'var(--accent-bg)' : 'var(--bg-hover)',
-                    borderBottom: clienteExpandido === cli.id ? '1px solid var(--border-active)' : '1px solid var(--border)',
-                    cursor: 'pointer', border: 'none', width: '100%'
-                  }}
-                  onClick={() => setClienteExpandido(clienteExpandido === cli.id ? null : cli.id)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
-                      style={{ background: 'var(--accent-bg)', color: 'var(--accent)' }}>
-                      {cli.nome[0].toUpperCase()}
+            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+              {porCliente.length} cliente{porCliente.length !== 1 ? 's' : ''} · histórico completo de todas as compras
+            </p>
+            {porCliente.map(cli => {
+              const open = clienteExpandido === cli.key
+              const canalColor = cli.canal === 'delivery' ? '#f97316' : cli.canal === 'ambos' ? '#7c3aed' : '#16a34a'
+              const canalLabel = cli.canal === 'delivery' ? 'Delivery' : cli.canal === 'ambos' ? 'Delivery + Local' : 'Local'
+              const fmtTel = tel => tel?.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3') || tel
+              return (
+                <div key={cli.key} className="card p-0 overflow-hidden" style={{ borderLeft: `3px solid ${canalColor}` }}>
+                  <button className="w-full text-left" onClick={() => setClienteExpandido(open ? null : cli.key)}
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '12px 16px', width: '100%' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                      {/* Avatar */}
+                      <div style={{ width: 42, height: 42, borderRadius: '50%', background: `${canalColor}20`, color: canalColor,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, fontWeight: 800, flexShrink: 0 }}>
+                        {(cli.nome || '?')[0].toUpperCase()}
+                      </div>
+                      {/* Info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 3 }}>
+                          <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>{cli.nome}</span>
+                          <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
+                            background: `${canalColor}15`, color: canalColor }}>{canalLabel}</span>
+                          {cli.aniversario && (
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 3 }}>
+                              <Cake size={11} /> {cli.aniversario}
+                            </span>
+                          )}
+                        </div>
+                        {cli.telefone && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 5 }}>
+                            <Phone size={11} style={{ color: 'var(--text-muted)' }} />
+                            <a href={`https://wa.me/55${cli.telefone}`} target="_blank" rel="noreferrer"
+                              style={{ fontSize: 12, color: '#25d366', textDecoration: 'none', fontFamily: 'monospace' }}
+                              onClick={e => e.stopPropagation()}>
+                              {fmtTel(cli.telefone)}
+                            </a>
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: cli.enderecos.length ? 5 : 0 }}>
+                          <div>
+                            <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Pedidos </span>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{cli.visitas}</span>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Total gasto </span>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: '#3b82f6' }}>{formatarMoeda(cli.totalGasto)}</span>
+                          </div>
+                          {cli.ultimoPedido && (
+                            <div>
+                              <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Último pedido </span>
+                              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                {cli.ultimoPedido.split('-').reverse().join('/')}
+                              </span>
+                            </div>
+                          )}
+                          {cli.pratoFav && (
+                            <div>
+                              <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Favorito </span>
+                              <span style={{ fontSize: 12, fontWeight: 600, color: '#f59e0b' }}>⭐ {cli.pratoFav}</span>
+                            </div>
+                          )}
+                        </div>
+                        {cli.enderecos.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            {cli.enderecos.map((end, i) => (
+                              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <MapPin size={10} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{end}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <span style={{ color: 'var(--text-muted)', fontSize: 13, flexShrink: 0 }}>{open ? '▲' : '▼'}</span>
                     </div>
-                    <div className="text-left">
-                      <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{cli.nome}</p>
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {cli.totalUnidades} unid. · {cli.totalPedidos} pedido{cli.totalPedidos !== 1 ? 's' : ''}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-5">
-                    <div className="text-right">
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Total gasto</p>
-                      <p className="font-bold text-sm" style={{ color: '#3b82f6' }}>{formatarMoeda(cli.totalReceita)}</p>
-                    </div>
-                    <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{clienteExpandido === cli.id ? '▲' : '▼'}</span>
-                  </div>
-                </button>
-                {clienteExpandido === cli.id && (
-                  <div className="table-wrapper">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Data</th>
-                          <th>Hora</th>
-                          <th>Produto</th>
-                          <th>Qtd</th>
-                          <th>Total</th>
-                          <th>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {[...cli.entradas].sort((a, b) =>
-                          b.entrada.data !== a.entrada.data
-                            ? b.entrada.data.localeCompare(a.entrada.data)
-                            : b.entrada.hora.localeCompare(a.entrada.hora)
-                        ).map(({ entrada, prato, ped }, idx) => {
-                          const total = receitaDaEntrada(entrada, prato)
-                          const lastId = kanbanConfig?.etapas?.[kanbanConfig.etapas.length - 1]?.id || 'completo'
+                  </button>
+                  {open && (
+                    <div style={{ borderTop: '1px solid var(--border)', padding: '12px 16px' }}>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8,
+                        textTransform: 'uppercase', letterSpacing: '0.06em' }}>Histórico de pedidos</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {cli.pedidosList.slice(0, 30).map((ped, i) => {
+                          const totalPed = (ped.itens || []).reduce((s, item) => {
+                            const prato = pratos.find(p => p.id === item.pratoId)
+                            return s + (prato?.precoVenda || prato?.preco || 0) * item.quantidade
+                          }, 0)
                           return (
-                            <tr key={entrada.id || idx}>
-                              <td className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
-                                {entrada.data.split('-').reverse().join('/')}
-                              </td>
-                              <td>
-                                <div className="flex items-center gap-1.5">
-                                  <Clock size={12} style={{ color: 'var(--text-muted)' }} />
-                                  <span className="font-mono text-sm font-semibold" style={{ color: 'var(--accent)' }}>{entrada.hora}</span>
-                                </div>
-                              </td>
-                              <td className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{prato.nome}</td>
-                              <td><span className="font-bold" style={{ color: 'var(--text-primary)' }}>×{entrada.quantidade}</span></td>
-                              <td style={{ color: '#3b82f6', fontWeight: 600 }}>{formatarMoeda(total)}</td>
-                              <td>{(() => {
-                                if (!ped) return <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(59,130,246,0.12)', color: '#3b82f6' }}>Balcão</span>
-                                if (ped.cancelado) return <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}>Cancelado</span>
-                                if (ped.pago) return <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(22,163,74,0.12)', color: '#16a34a' }}>Pago</span>
-                                if (ped.status === lastId) return <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(249,115,22,0.12)', color: '#f97316' }}>Ag. pgto.</span>
-                                return <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>Em preparo</span>
-                              })()}</td>
-                            </tr>
+                            <div key={ped.id || i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10,
+                              padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
+                              <div style={{ minWidth: 62, color: 'var(--text-muted)', fontFamily: 'monospace', flexShrink: 0 }}>
+                                {ped.data?.split('-').reverse().join('/') || '--'}
+                              </div>
+                              <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                {(ped.itens || []).map((item, j) => {
+                                  const prato = pratos.find(p => p.id === item.pratoId)
+                                  return prato ? (
+                                    <span key={j} style={{ color: 'var(--text-secondary)' }}>
+                                      {prato.nome} ×{item.quantidade}
+                                    </span>
+                                  ) : null
+                                })}
+                              </div>
+                              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                                {totalPed > 0 && <span style={{ fontWeight: 700, color: '#3b82f6' }}>{formatarMoeda(totalPed)}</span>}
+                                {ped.canal === 'delivery' && <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 10, background: 'rgba(249,115,22,0.12)', color: '#f97316', fontWeight: 600 }}>Delivery</span>}
+                                {ped.cancelado ? <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 10, background: 'rgba(239,68,68,0.12)', color: '#ef4444', fontWeight: 600 }}>Cancelado</span>
+                                  : ped.pago ? <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 10, background: 'rgba(22,163,74,0.12)', color: '#16a34a', fontWeight: 600 }}>Pago</span>
+                                  : null}
+                              </div>
+                            </div>
                           )
                         })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )
       ) : aba === 'extrato' ? (

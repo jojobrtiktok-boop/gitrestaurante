@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Pencil, Trash2, Users, X, Check, Zap, BookMarked, BarChart2, Clock, User } from 'lucide-react'
+import { Plus, Pencil, Trash2, Users, X, Check, Zap, BookMarked, BarChart2, Clock, User, Phone, Cake } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import { formatarMoeda, hoje, formatarHora } from '../utils/formatacao.js'
 import SeletorCliente from '../components/ui/SeletorCliente.jsx'
@@ -66,6 +66,58 @@ function ModalMesa({ mesa, onSalvar, onFechar }) {
   )
 }
 
+function ModalPagar({ cliente, onConfirmar, onFechar }) {
+  const [telefone,    setTelefone]    = useState(cliente?.telefone    || '')
+  const [aniversario, setAniversario] = useState(cliente?.aniversario || '')
+  const temInfo = !!(cliente?.telefone || cliente?.aniversario)
+  if (temInfo) { onConfirmar({ telefone: cliente.telefone, aniversario: cliente.aniversario }); return null }
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+      onClick={e => e.target === e.currentTarget && onFechar()}>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-active)', borderRadius: 18, width: '100%', maxWidth: 320, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <p style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', margin: 0 }}>Confirmar Pagamento</p>
+            {cliente && <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0' }}>{cliente.nome}</p>}
+          </div>
+          <button onClick={onFechar} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, display: 'flex' }}>
+            <X size={15} />
+          </button>
+        </div>
+
+        {cliente && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '.04em' }}>Dados opcionais do cliente</p>
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 5 }}>
+                <Phone size={11} /> WhatsApp / Telefone
+              </label>
+              <input className="input" type="tel" placeholder="(11) 99999-9999" value={telefone} onChange={e => setTelefone(e.target.value)} />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 5 }}>
+                <Cake size={11} /> Data de aniversário
+              </label>
+              <input className="input" type="date" value={aniversario} onChange={e => setAniversario(e.target.value)} />
+            </div>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>Opcionais — clique em "Pular" para pagar sem preencher.</p>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onFechar} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-hover)', color: 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
+            Pular
+          </button>
+          <button onClick={() => onConfirmar({ telefone: telefone.trim() || null, aniversario: aniversario || null })}
+            style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: '#16a34a', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <Check size={14} /> Confirmar Pago
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ModalOcupar({ mesaNome, onConfirmar, onFechar }) {
   const [clienteId, setClienteId] = useState(null)
   return (
@@ -98,12 +150,13 @@ function ModalOcupar({ mesaNome, onConfirmar, onFechar }) {
 }
 
 export default function Mesas() {
-  const { mesas, adicionarMesa, editarMesa, removerMesa, setStatusMesa, pagarMesa, pedidos, pratos, sessoesMesas, clientes } = useApp()
+  const { mesas, adicionarMesa, editarMesa, removerMesa, setStatusMesa, pagarMesa, pedidos, pratos, sessoesMesas, clientes, editarCliente } = useApp()
   const [aba, setAba] = useState('mesas')
   const [modal, setModal] = useState(false)
   const [editando, setEditando] = useState(null)
   const [confirmarId, setConfirmarId] = useState(null)
   const [ocuparInfo, setOcuparInfo] = useState(null)
+  const [pagarInfo, setPagarInfo] = useState(null) // { mesaId, clienteId }
   const [qtdRapida, setQtdRapida] = useState('')
   const [prefixo, setPrefixo] = useState('Mesa')
   const [capacidadeRapida, setCapacidadeRapida] = useState(4)
@@ -351,8 +404,10 @@ export default function Mesas() {
                         </div>
                       )}
                       {ocupada && (
-                        <button onClick={() => pagarMesa(mesa.id)}
-                          style={{ width: '100%', padding: '5px 0', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 800, background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                        <button onClick={() => {
+                          const clienteId = pedidos.find(p => p.mesaId === mesa.id && !p.pago && !p.cancelado)?.clienteId || null
+                          setPagarInfo({ mesaId: mesa.id, clienteId })
+                        }} style={{ width: '100%', padding: '5px 0', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 800, background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                           <Check size={10} /> Pago
                         </button>
                       )}
@@ -499,6 +554,20 @@ export default function Mesas() {
             setOcuparInfo(null)
           }}
           onFechar={() => setOcuparInfo(null)}
+        />
+      )}
+
+      {pagarInfo && (
+        <ModalPagar
+          cliente={clientes.find(c => c.id === pagarInfo.clienteId) || null}
+          onConfirmar={({ telefone, aniversario }) => {
+            if (pagarInfo.clienteId && (telefone || aniversario)) {
+              editarCliente(pagarInfo.clienteId, { telefone, aniversario })
+            }
+            pagarMesa(pagarInfo.mesaId)
+            setPagarInfo(null)
+          }}
+          onFechar={() => { pagarMesa(pagarInfo.mesaId); setPagarInfo(null) }}
         />
       )}
     </div>

@@ -245,11 +245,13 @@ function clienteToRow(c, uid) {
     id: c.id,
     user_id: uid,
     nome: c.nome,
+    telefone: c.telefone || null,
+    aniversario: c.aniversario || null,
     criado_em: c.criadoEm || new Date().toISOString(),
   }
 }
 function rowToCliente(row) {
-  return { id: row.id, nome: row.nome, criadoEm: row.criado_em }
+  return { id: row.id, nome: row.nome, telefone: row.telefone || null, aniversario: row.aniversario || null, criadoEm: row.criado_em }
 }
 
 function mesaToRow(m, uid) {
@@ -1347,11 +1349,22 @@ export function AppProvider({ children }) {
   }
 
   // ── Clientes ──────────────────────────────────────────────────────────
-  function adicionarCliente(nome) {
-    const novo = { id: crypto.randomUUID(), nome: nome.trim(), criadoEm: agoraBrasiliaISO() }
+  function adicionarCliente({ nome, telefone, aniversario } = {}) {
+    // aceita também string legada: adicionarCliente('Nome')
+    if (typeof arguments[0] === 'string') return adicionarCliente({ nome: arguments[0] })
+    const novo = { id: crypto.randomUUID(), nome: (nome || '').trim(), telefone: telefone?.trim() || null, aniversario: aniversario || null, criadoEm: agoraBrasiliaISO() }
     setClientes(prev => [...prev, novo])
     if (auth.userId) sbWrite(supabase.from('clientes').insert(clienteToRow(novo, auth.userId)))
     return novo
+  }
+
+  function editarCliente(id, updates) {
+    setClientes(prev => prev.map(c => {
+      if (c.id !== id) return c
+      const updated = { ...c, ...updates }
+      if (auth.userId) sbWrite(supabase.from('clientes').update(clienteToRow(updated, auth.userId)).eq('id', id))
+      return updated
+    }))
   }
 
   function removerCliente(id) {
@@ -1775,7 +1788,7 @@ export function AppProvider({ children }) {
     entradasVendas, adicionarEntradaVenda, removerEntradaVenda,
     cardapioConfig, atualizarCardapioConfig, definirSlugCardapio,
     garcons, adicionarGarcon, removerGarcon,
-    clientes, adicionarCliente, removerCliente,
+    clientes, adicionarCliente, editarCliente, removerCliente,
     pedidos, adicionarPedido, adicionarPedidoDelivery, atualizarStatusPedido, atribuirMotoboy, marcarEntregue, marcarPedidoPago, pagarMesa, cancelarPedido,
     caixaInicial, registrarCaixaInicial, getCaixaInicial, getCaixaInicialPeriodo,
     movimentosCaixa, adicionarMovimentoCaixa, removerMovimentoCaixa, getMovimentosCaixaDia,

@@ -693,6 +693,123 @@ function KDSConfig() {
   )
 }
 
+/* ─── Modal QR Code para mesa ────────────────────── */
+function ModalQRCode({ url, onClose }) {
+  const canvasRef = useRef(null)
+  const [tamanho, setTamanho] = useState(6) // cm
+  const [gerando, setGerando] = useState(false)
+
+  const tamanhos = [4, 5, 6, 7, 8, 10, 12]
+
+  useEffect(() => {
+    gerarQR()
+  }, [url]) // eslint-disable-line
+
+  async function gerarQR() {
+    if (!canvasRef.current) return
+    const QRCode = (await import('qrcode')).default
+    await QRCode.toCanvas(canvasRef.current, url, {
+      width: 400,
+      margin: 2,
+      color: { dark: '#000000', light: '#ffffff' },
+      errorCorrectionLevel: 'H',
+    })
+  }
+
+  function imprimir() {
+    if (!canvasRef.current) return
+    setGerando(true)
+    const dataUrl = canvasRef.current.toDataURL('image/png')
+    const sizePx = tamanho * 37.8 // 1cm ≈ 37.8px em 96dpi
+    const win = window.open('', '_blank', 'width=600,height=700')
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>QR Code Cardápio</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: Arial, sans-serif; }
+    .card { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 24px; border: 1.5px solid #e5e7eb; border-radius: 12px; }
+    .card img { width: ${tamanho}cm; height: ${tamanho}cm; display: block; }
+    .label { font-size: 12px; color: #555; text-align: center; }
+    .url { font-size: 10px; color: #999; text-align: center; word-break: break-all; max-width: ${tamanho + 2}cm; }
+    .logo { font-size: 13px; font-weight: 700; color: #fd4b01; letter-spacing: -0.5px; }
+    @media print {
+      body { margin: 0; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <span class="logo">Cheffya</span>
+    <img src="${dataUrl}" alt="QR Code" />
+    <p class="label">Escaneie para ver o cardápio</p>
+    <p class="url">${url}</p>
+  </div>
+  <script>window.onload = () => { window.print(); }<\/script>
+</body>
+</html>`)
+    win.document.close()
+    setTimeout(() => setGerando(false), 1000)
+  }
+
+  return (
+    <div onClick={e => e.target === e.currentTarget && onClose()} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, width: '100%', maxWidth: 400, overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.3)' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px 14px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <QrCode size={16} style={{ color: 'var(--accent)' }} />
+            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>QR Code para Mesa</span>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 4, borderRadius: 6 }}>
+            <X size={16} />
+          </button>
+        </div>
+
+        <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Preview do QR */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 20, background: 'var(--bg-hover)', borderRadius: 14, border: '1px solid var(--border)' }}>
+            <canvas ref={canvasRef} style={{ borderRadius: 8, maxWidth: '100%' }} />
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', wordBreak: 'break-all', maxWidth: 280 }}>{url}</p>
+          </div>
+
+          {/* Seletor de tamanho */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 10 }}>
+              Tamanho de impressão
+            </label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {tamanhos.map(cm => (
+                <button key={cm} onClick={() => setTamanho(cm)} style={{
+                  padding: '7px 14px', borderRadius: 9, border: `1.5px solid ${tamanho === cm ? 'var(--accent)' : 'var(--border)'}`,
+                  background: tamanho === cm ? 'var(--accent-bg)' : 'transparent',
+                  color: tamanho === cm ? 'var(--accent)' : 'var(--text-secondary)',
+                  fontSize: 13, fontWeight: tamanho === cm ? 700 : 500,
+                  cursor: 'pointer', transition: 'all .15s',
+                }}>
+                  {cm} cm
+                </button>
+              ))}
+            </div>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 7 }}>
+              Tamanho do QR Code impresso. Recomendado: <strong>6–8 cm</strong> para mesas.
+            </p>
+          </div>
+
+          {/* Botão imprimir */}
+          <button className="btn btn-primary" style={{ gap: 8, fontSize: 14, padding: '12px 0' }} onClick={imprimir} disabled={gerando}>
+            <QrCode size={15} />
+            {gerando ? 'Abrindo impressão...' : `Imprimir QR Code (${tamanho} cm)`}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ─── Aba: Cardápio Digital Config ───────────────── */
 function CardapioDigitalConfig() {
   const { cardapioConfig, atualizarCardapioConfig, definirSlugCardapio, garcons, adicionarGarcon, removerGarcon, pratos } = useApp()
@@ -717,6 +834,7 @@ function CardapioDigitalConfig() {
   const [slugInput, setSlugInput] = useState(cardapioConfig.slugCardapio || '')
   const [erroSlug, setErroSlug] = useState('')
   const [okSlug, setOkSlug] = useState(false)
+  const [showQR, setShowQR] = useState(false)
 
   const base = window.location.origin
   const slugAtivo = cardapioConfig.slugCardapio
@@ -858,9 +976,14 @@ function CardapioDigitalConfig() {
                 {copiado === 'menu' ? <><Check size={12} /> Copiado!</> : <><Copy size={12} /> Copiar</>}
               </button>
             </div>
-            <a href={urlMenu} target="_blank" rel="noreferrer" className="btn btn-secondary text-xs w-fit">
-              <Smartphone size={12} /> Abrir cardápio
-            </a>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <a href={urlMenu} target="_blank" rel="noreferrer" className="btn btn-secondary text-xs w-fit">
+                <Smartphone size={12} /> Abrir cardápio
+              </a>
+              <button className="btn btn-primary text-xs w-fit" onClick={() => setShowQR(true)}>
+                <QrCode size={12} /> Gerar QR Code para mesa
+              </button>
+            </div>
           </>
         ) : (
           <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', fontSize: 13, color: '#d97706' }}>
@@ -868,6 +991,9 @@ function CardapioDigitalConfig() {
           </div>
         )}
       </div>
+
+      {/* Modal QR Code */}
+      {showQR && urlMenu && <ModalQRCode url={urlMenu} onClose={() => setShowQR(false)} />}
 
       {/* Comanda digital */}
       <div className="card p-5">

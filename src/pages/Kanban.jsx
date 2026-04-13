@@ -475,7 +475,7 @@ export default function Kanban() {
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(${DELIVERY_COLUNAS.length}, 1fr)`, gap: 16 }}>
             {DELIVERY_COLUNAS.map(col => {
               const cards = pedidosFiltrados
-                .filter(p => p.canal === 'delivery' && p.status === col.id)
+                .filter(p => p.canal === 'delivery' && p.status === col.id && p.status !== 'pendente')
                 .sort((a, b) => (a.timestamps?.[col.id] || '').localeCompare(b.timestamps?.[col.id] || ''))
               return (
                 <div key={col.id} style={{ display: 'flex', flexDirection: 'column' }}>

@@ -315,6 +315,7 @@ function pedidoToRow(p, uid) {
     timestamps: p.timestamps || {},
     canal: p.canal || 'local',
     cliente_nome: p.clienteNome || null,
+    cliente_telefone: p.clienteTelefone || null,
     endereco_entrega: p.enderecoEntrega || null,
     motoboy_id: p.motoboyId || null,
   }
@@ -335,6 +336,7 @@ function rowToPedido(row) {
     timestamps: row.timestamps || {},
     canal: row.canal || 'local',
     clienteNome: row.cliente_nome || null,
+    clienteTelefone: row.cliente_telefone || null,
     enderecoEntrega: row.endereco_entrega || null,
     motoboyId: row.motoboy_id || null,
   }

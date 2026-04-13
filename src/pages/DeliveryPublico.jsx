@@ -513,13 +513,14 @@ export default function DeliveryPublico() {
           hora: horaAgora,
           itens: itensPedido,
           obs: obs || null,
-          status: 'novo',
+          status: 'pendente',
           pago: false,
           cancelado: false,
           canal: 'delivery',
           cliente_nome: nome,
+          cliente_telefone: telefone,
           endereco_entrega: enderecoEntrega,
-          timestamps: { novo: agora },
+          timestamps: { pendente: agora },
         })
       } catch (e) {
         console.error('[DeliveryPublico] erro ao registrar pedido:', e)

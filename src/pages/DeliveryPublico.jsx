@@ -159,7 +159,7 @@ export default function DeliveryPublico() {
           supabase.from('pratos').select('*').eq('user_id', slugRow.user_id),
           supabase.from('cardapio_config').select('config').eq('user_id', slugRow.user_id).maybeSingle(),
           supabase.from('config_delivery').select('*').eq('user_id', slugRow.user_id).maybeSingle(),
-          supabase.from('pagamentos_config').select('config').eq('user_id', slugRow.user_id).maybeSingle().catch(() => ({ data: null })),
+          supabase.from('pagamentos_config').select('config').eq('user_id', slugRow.user_id).maybeSingle().then(r => r, () => ({ data: null })),
         ])
         const prts = prtsData ? prtsData.map(row => ({
           id: row.id, nome: row.nome,

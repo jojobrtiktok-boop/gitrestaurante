@@ -886,7 +886,7 @@ function AbaSuporte() {
               onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
               onMouseLeave={e => e.currentTarget.style.opacity = '1'}
             >
-              <MessageCircle size={13} /> Abrir chat
+              Abrir chat
             </a>
           </div>
 
@@ -920,7 +920,7 @@ function AbaSuporte() {
               onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
               onMouseLeave={e => e.currentTarget.style.opacity = '1'}
             >
-              <Mail size={13} /> Enviar e-mail
+              Enviar e-mail
             </a>
           </div>
 
@@ -936,7 +936,7 @@ const TABS = [
   { id: 'conta',      label: 'Conta',               Icon: User,        cor: 'var(--accent)' },
   { id: 'notif',      label: 'Notificações',        Icon: Bell,        cor: 'var(--accent)' },
   { id: 'app',        label: 'App',                 Icon: Smartphone,  cor: 'var(--accent)' },
-  { id: 'pagamentos', label: 'Formas de Pagamento', Icon: Wallet,      cor: 'var(--accent)' },
+  { id: 'pagamentos', label: 'Pagamentos',           Icon: CreditCard,  cor: 'var(--accent)' },
   { id: 'suporte',    label: 'Suporte',             Icon: Headphones,  cor: 'var(--accent)' },
 ]
 

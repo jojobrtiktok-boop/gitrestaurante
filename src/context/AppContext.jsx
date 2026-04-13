@@ -60,6 +60,16 @@ const KANBAN_CONFIG_PADRAO = {
   ],
 }
 
+const PAGAMENTOS_CONFIG_PADRAO = {
+  dinheiro: true,
+  pix: true,
+  cartaoCredito: true,
+  cartaoDebito: true,
+  mercadoPagoAtivo: false,
+  mercadoPagoAccessToken: '',
+  mercadoPagoPublicKey: '',
+}
+
 const DELIVERY_CONFIG_PADRAO = {
   ativo: false,
   slugDelivery: '',
@@ -532,6 +542,7 @@ export function AppProvider({ children }) {
   const [despesasFixas, setDespesasFixas] = useState([])
   const [impostosConfig, setImpostosConfig] = useState([])
   const [notifConfig, setNotifConfig] = useState(NOTIF_CONFIG_PADRAO)
+  const [pagamentosConfig, setPagamentosConfig] = useState(PAGAMENTOS_CONFIG_PADRAO)
   const [perfil, setPerfil] = useState({ foto: null, nomeExibicao: '' })
   const [motoboys, setMotoboys] = useState([])
 
@@ -608,6 +619,7 @@ export function AppProvider({ children }) {
     setDespesasFixas([])
     setImpostosConfig([])
     setNotifConfig(NOTIF_CONFIG_PADRAO)
+    setPagamentosConfig(PAGAMENTOS_CONFIG_PADRAO)
     setPerfil({ foto: null, nomeExibicao: '' })
     setMotoboys([])
   }
@@ -730,6 +742,16 @@ export function AppProvider({ children }) {
     if (!auth.userId) return
     supabase.from('motoboys').select('*').eq('user_id', auth.userId)
       .then(({ data }) => { if (data) setMotoboys(data.map(rowToMotoboy)) })
+  }, [auth.userId])
+
+  // ── Pagamentos Config: carregar ───────────────────────────────────────
+  useEffect(() => {
+    if (!auth.userId) return
+    supabase.from('pagamentos_config').select('config').eq('user_id', auth.userId).maybeSingle()
+      .then(({ data }) => {
+        if (data?.config) setPagamentosConfig(prev => ({ ...PAGAMENTOS_CONFIG_PADRAO, ...data.config }))
+      })
+      .catch(() => {}) // tabela pode não existir ainda
   }, [auth.userId])
 
   // ── Tema (mantido em localStorage — preferência de UI) ────────────────
@@ -1101,6 +1123,15 @@ export function AppProvider({ children }) {
     setConfiguracaoGeral(prev => {
       const novo = { ...prev, ...dados }
       if (auth.userId) sbWrite(supabase.from('configuracao_geral').upsert({ user_id: auth.userId, estoque_minimo_padrao: novo.estoqueMinimoPadrao || 0 }, { onConflict: 'user_id' }))
+      return novo
+    })
+  }
+
+  // ── Pagamentos Config ─────────────────────────────────────────────────
+  function atualizarPagamentosConfig(dados) {
+    setPagamentosConfig(prev => {
+      const novo = { ...prev, ...dados }
+      if (auth.userId) sbWrite(supabase.from('pagamentos_config').upsert({ user_id: auth.userId, config: novo }, { onConflict: 'user_id' }))
       return novo
     })
   }
@@ -1600,6 +1631,7 @@ export function AppProvider({ children }) {
     despesasFixas, adicionarDespesaFixa, editarDespesaFixa, removerDespesaFixa,
     impostosConfig, adicionarImposto, editarImposto, removerImposto,
     notifConfig, atualizarNotifConfig,
+    pagamentosConfig, atualizarPagamentosConfig,
     perfil, atualizarPerfil,
     alterarSenha,
     motoboys, adicionarMotoboy, editarMotoboy, removerMotoboy,

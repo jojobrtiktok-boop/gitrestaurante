@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import {
-  User, Bell, Smartphone, Settings, Eye, EyeOff,
+  User, Bell, Smartphone, Eye, EyeOff,
   Lock, CheckCircle, AlertCircle, ShoppingBasket,
   BellOff, BellRing, Chrome, Camera, Pencil,
+  Wallet, Banknote, QrCode, CreditCard, ExternalLink,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 
@@ -469,14 +470,166 @@ function AbaApp() {
   )
 }
 
-/* Aba Sistema */
-function AbaSistema() {
-  const { configuracaoGeral, atualizarConfiguracaoGeral } = useApp()
+/* Aba Formas de Pagamento */
+function AbaFormasPagamento() {
+  const { pagamentosConfig, atualizarPagamentosConfig, configuracaoGeral, atualizarConfiguracaoGeral } = useApp()
+  const [mostrarToken, setMostrarToken] = useState(false)
+  const [testando, setTestando] = useState(false)
+  const [testeResultado, setTesteResultado] = useState(null)
+
+  async function testarConexao() {
+    if (!pagamentosConfig.mercadoPagoAccessToken) return
+    setTestando(true)
+    setTesteResultado(null)
+    try {
+      const res = await fetch('https://api.mercadopago.com/v1/payment_methods', {
+        headers: { Authorization: `Bearer ${pagamentosConfig.mercadoPagoAccessToken}` },
+      })
+      if (res.ok) setTesteResultado({ ok: true, msg: 'Conexão bem-sucedida! Token válido.' })
+      else setTesteResultado({ ok: false, msg: 'Token inválido ou sem permissão.' })
+    } catch {
+      setTesteResultado({ ok: false, msg: 'Erro de rede. Verifique sua conexão.' })
+    } finally {
+      setTestando(false)
+    }
+  }
+
+  const formas = [
+    { key: 'dinheiro',      label: 'Dinheiro',           sub: 'Pagamento em espécie',               Icon: Banknote },
+    { key: 'pix',           label: 'PIX',                sub: 'Transferência instantânea',           Icon: QrCode },
+    { key: 'cartaoCredito', label: 'Cartão de Crédito',  sub: 'Crédito à vista ou parcelado',        Icon: CreditCard },
+    { key: 'cartaoDebito',  label: 'Cartão de Débito',   sub: 'Débito em conta',                     Icon: CreditCard },
+  ]
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+
+      {/* ── Formas de pagamento aceitas ── */}
       <div>
-        <SecaoHeader icon={ShoppingBasket} title="Mercadorias / Estoque" />
+        <SecaoHeader icon={Wallet} title="Formas de Pagamento Aceitas" cor="var(--accent)" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {formas.map(({ key, label, sub, Icon }) => (
+            <Row key={key} label={label} sub={sub}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: 7,
+                  background: pagamentosConfig[key] ? 'var(--accent-bg)' : 'var(--bg-hover)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: '1px solid var(--border)',
+                }}>
+                  <Icon size={13} style={{ color: pagamentosConfig[key] ? 'var(--accent)' : 'var(--text-muted)' }} />
+                </div>
+                <Toggle value={!!pagamentosConfig[key]} onChange={v => atualizarPagamentosConfig({ [key]: v })} />
+              </div>
+            </Row>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Mercado Pago ── */}
+      <div>
+        <SecaoHeader icon={({ size, style }) => (
+          <svg viewBox="0 0 32 32" width={size} height={size} style={style} fill="currentColor">
+            <path d="M16 2C8.268 2 2 8.268 2 16s6.268 14 14 14 14-6.268 14-14S23.732 2 16 2zm6.5 10.5c0 .276-.224.5-.5.5h-1.5v1h1.5c.276 0 .5.224.5.5s-.224.5-.5.5h-1.5v2.5c0 .276-.224.5-.5.5s-.5-.224-.5-.5V13h-2.5c-.276 0-.5-.224-.5-.5v-4c0-.276.224-.5.5-.5h5c.276 0 .5.224.5.5v4zm-10 4c-2.485 0-4.5-2.015-4.5-4.5s2.015-4.5 4.5-4.5 4.5 2.015 4.5 4.5-2.015 4.5-4.5 4.5z"/>
+          </svg>
+        )} title="Mercado Pago" cor="#00b1ea" />
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Row
+            label="Ativar integração Mercado Pago"
+            sub="Receba pagamentos via Pix, cartão e outros direto pelo sistema"
+          >
+            <Toggle value={!!pagamentosConfig.mercadoPagoAtivo} onChange={v => atualizarPagamentosConfig({ mercadoPagoAtivo: v })} />
+          </Row>
+
+          {pagamentosConfig.mercadoPagoAtivo && (
+            <div style={{
+              padding: '18px', borderRadius: 12, border: '1px solid var(--border)',
+              background: 'var(--bg-hover)', display: 'flex', flexDirection: 'column', gap: 14,
+            }}>
+              {/* Instrução */}
+              <div style={{
+                padding: '10px 14px', borderRadius: 9, fontSize: 12,
+                background: 'rgba(0,177,234,0.07)', border: '1px solid rgba(0,177,234,0.2)',
+                color: 'var(--text-secondary)', lineHeight: 1.6,
+              }}>
+                Para obter suas credenciais, acesse o{' '}
+                <a
+                  href="https://www.mercadopago.com.br/developers/pt/docs/credentials"
+                  target="_blank" rel="noopener noreferrer"
+                  style={{ color: '#00b1ea', textDecoration: 'none', fontWeight: 600 }}
+                >
+                  Painel de Desenvolvedores do Mercado Pago <ExternalLink size={10} style={{ verticalAlign: 'middle' }} />
+                </a>
+                {' '}e copie as chaves de produção.
+              </div>
+
+              {/* Access Token */}
+              <div>
+                <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>
+                  Access Token (Produção)
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    className="input"
+                    type={mostrarToken ? 'text' : 'password'}
+                    placeholder="APP_USR-0000000000000000-000000-..."
+                    value={pagamentosConfig.mercadoPagoAccessToken}
+                    onChange={e => atualizarPagamentosConfig({ mercadoPagoAccessToken: e.target.value })}
+                    style={{ paddingRight: 40, fontFamily: 'monospace', fontSize: 12 }}
+                  />
+                  <button
+                    onClick={() => setMostrarToken(v => !v)}
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0 }}
+                  >
+                    {mostrarToken ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Public Key */}
+              <div>
+                <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>
+                  Public Key (Produção)
+                </label>
+                <input
+                  className="input"
+                  type="text"
+                  placeholder="APP_USR-00000000-0000-0000-0000-000000000000"
+                  value={pagamentosConfig.mercadoPagoPublicKey}
+                  onChange={e => atualizarPagamentosConfig({ mercadoPagoPublicKey: e.target.value })}
+                  style={{ fontFamily: 'monospace', fontSize: 12 }}
+                />
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '4px 0 0' }}>
+                  Usada no frontend para gerar preferências de pagamento.
+                </p>
+              </div>
+
+              {/* Botão testar */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={testarConexao}
+                  disabled={testando || !pagamentosConfig.mercadoPagoAccessToken}
+                  style={{ alignSelf: 'flex-start', opacity: !pagamentosConfig.mercadoPagoAccessToken ? 0.45 : 1 }}
+                >
+                  {testando ? 'Testando...' : 'Testar conexão'}
+                </button>
+                {testeResultado && (
+                  <span style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, color: testeResultado.ok ? '#22c55e' : '#ef4444' }}>
+                    {testeResultado.ok ? <CheckCircle size={13} /> : <AlertCircle size={13} />}
+                    {testeResultado.msg}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Estoque (movido do Sistema) ── */}
+      <div>
+        <SecaoHeader icon={ShoppingBasket} title="Mercadorias / Estoque" cor="#16a34a" />
         <Row label="Estoque mínimo padrão" sub="Aplicado a insumos sem valor individual configurado">
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
             <input
@@ -489,16 +642,17 @@ function AbaSistema() {
           </div>
         </Row>
       </div>
+
     </div>
   )
 }
 
 /* Página principal */
 const TABS = [
-  { id: 'conta',   label: 'Conta',        Icon: User,       cor: '#3b82f6' },
-  { id: 'notif',   label: 'Notificações', Icon: Bell,       cor: '#8b5cf6' },
-  { id: 'app',     label: 'App',          Icon: Smartphone, cor: '#16a34a' },
-  { id: 'sistema', label: 'Sistema',      Icon: Settings,   cor: 'var(--accent)' },
+  { id: 'conta',      label: 'Conta',              Icon: User,       cor: '#3b82f6' },
+  { id: 'notif',      label: 'Notificações',       Icon: Bell,       cor: '#8b5cf6' },
+  { id: 'app',        label: 'App',                Icon: Smartphone, cor: '#16a34a' },
+  { id: 'pagamentos', label: 'Formas de Pagamento', Icon: Wallet,     cor: 'var(--accent)' },
 ]
 
 export default function Configuracoes() {
@@ -546,10 +700,10 @@ export default function Configuracoes() {
         })}
       </div>
 
-      {aba === 'conta'   && <AbaConta />}
-      {aba === 'notif'   && <AbaNotificacoes />}
-      {aba === 'app'     && <AbaApp />}
-      {aba === 'sistema' && <AbaSistema />}
+      {aba === 'conta'      && <AbaConta />}
+      {aba === 'notif'      && <AbaNotificacoes />}
+      {aba === 'app'        && <AbaApp />}
+      {aba === 'pagamentos' && <AbaFormasPagamento />}
     </div>
   )
 }

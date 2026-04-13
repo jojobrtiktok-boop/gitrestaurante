@@ -466,6 +466,7 @@ export default function LandingPage() {
         @import url('https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&display=swap');
         *, *::before, *::after { box-sizing: border-box; }
         @keyframes lp-spin  { to { transform: rotate(360deg) } }
+        @keyframes lp-ping  { 0% { transform: scale(1); opacity: .8 } 70% { transform: scale(2.2); opacity: 0 } 100% { transform: scale(2.2); opacity: 0 } }
         @keyframes lp-up    { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
         @keyframes lp-fade  { from { opacity:0 } to { opacity:1 } }
         @keyframes lp-hero  { from { opacity:0; transform:translateY(24px) } to { opacity:1; transform:translateY(0) } }
@@ -587,9 +588,12 @@ export default function LandingPage() {
         <div style={{ position: 'absolute', top: '35%', left: '50%', transform: 'translate(-50%,-50%)', width: 'min(600px, 100vw)', height: 'min(600px, 100vw)', borderRadius: '50%', background: 'radial-gradient(circle, rgba(253,75,1,0.13) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
         <div className="lp-hero-content" style={{ maxWidth: 780, width: '100%' }}>
-          {/* Badge */}
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: b.accentDim, border: `1px solid ${b.accentBdr}`, fontSize: 12, fontWeight: 600, color: b.accent, marginBottom: 28 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: b.accent, flexShrink: 0 }} />
+          {/* Badge online */}
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', fontSize: 12, fontWeight: 600, color: '#4ade80', marginBottom: 28 }}>
+            <span style={{ position: 'relative', width: 8, height: 8, flexShrink: 0 }}>
+              <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#22c55e', animation: 'lp-ping 1.4s ease-out infinite' }} />
+              <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#22c55e' }} />
+            </span>
             Sistema de gestão para restaurantes
           </div>
 

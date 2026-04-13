@@ -671,14 +671,21 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                           <td className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{prato.nome}</td>
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-                              <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                                style={{
-                                  background: garcon ? 'var(--accent-bg)' : 'var(--bg-hover)',
-                                  color: garcon ? 'var(--accent)' : 'var(--text-muted)',
-                                  border: `1px solid ${garcon ? 'var(--border-active)' : 'var(--border)'}`,
-                                }}>
-                                {garcon ? garcon.nome : 'Balcão'}
-                              </span>
+                              {entrada.canal === 'delivery' ? (
+                                <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                                  style={{ background: 'var(--accent-bg)', color: 'var(--accent)', border: '1px solid var(--border-active)', fontWeight: 700, letterSpacing: '0.04em' }}>
+                                  Delivery
+                                </span>
+                              ) : (
+                                <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                                  style={{
+                                    background: garcon ? 'var(--accent-bg)' : 'var(--bg-hover)',
+                                    color: garcon ? 'var(--accent)' : 'var(--text-muted)',
+                                    border: `1px solid ${garcon ? 'var(--border-active)' : 'var(--border)'}`,
+                                  }}>
+                                  {garcon ? garcon.nome : 'Balcão'}
+                                </span>
+                              )}
                               {mesa && (
                                 <span className="text-xs px-2 py-0.5 rounded-full font-medium"
                                   style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.25)' }}>
@@ -771,14 +778,21 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-                          <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                            style={{
-                              background: garcon ? 'var(--accent-bg)' : 'var(--bg-hover)',
-                              color: garcon ? 'var(--accent)' : 'var(--text-muted)',
-                              border: `1px solid ${garcon ? 'var(--border-active)' : 'var(--border)'}`,
-                            }}>
-                            {garcon ? garcon.nome : 'Balcão'}
-                          </span>
+                          {entrada.canal === 'delivery' ? (
+                            <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                              style={{ background: 'var(--accent-bg)', color: 'var(--accent)', border: '1px solid var(--border-active)', fontWeight: 700, letterSpacing: '0.04em' }}>
+                              Delivery
+                            </span>
+                          ) : (
+                            <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                              style={{
+                                background: garcon ? 'var(--accent-bg)' : 'var(--bg-hover)',
+                                color: garcon ? 'var(--accent)' : 'var(--text-muted)',
+                                border: `1px solid ${garcon ? 'var(--border-active)' : 'var(--border)'}`,
+                              }}>
+                              {garcon ? garcon.nome : 'Balcão'}
+                            </span>
+                          )}
                           {mesa && (
                             <span className="text-xs px-2 py-0.5 rounded-full font-medium"
                               style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.25)' }}>
@@ -877,14 +891,21 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-                          <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                            style={{
-                              background: garcon ? 'var(--accent-bg)' : 'var(--bg-hover)',
-                              color: garcon ? 'var(--accent)' : 'var(--text-muted)',
-                              border: `1px solid ${garcon ? 'var(--border-active)' : 'var(--border)'}`,
-                            }}>
-                            {garcon ? garcon.nome : 'Balcão'}
-                          </span>
+                          {entrada.canal === 'delivery' ? (
+                            <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                              style={{ background: 'var(--accent-bg)', color: 'var(--accent)', border: '1px solid var(--border-active)', fontWeight: 700, letterSpacing: '0.04em' }}>
+                              Delivery
+                            </span>
+                          ) : (
+                            <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                              style={{
+                                background: garcon ? 'var(--accent-bg)' : 'var(--bg-hover)',
+                                color: garcon ? 'var(--accent)' : 'var(--text-muted)',
+                                border: `1px solid ${garcon ? 'var(--border-active)' : 'var(--border)'}`,
+                              }}>
+                              {garcon ? garcon.nome : 'Balcão'}
+                            </span>
+                          )}
                           {mesa && (
                             <span className="text-xs px-2 py-0.5 rounded-full font-medium"
                               style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.25)' }}>

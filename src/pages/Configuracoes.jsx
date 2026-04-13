@@ -352,16 +352,19 @@ function AbaNotificacoes() {
       </div>
 
       <div>
-        <SecaoHeader icon={BellRing} title="Tipos de Notificação" cor="var(--accent)" />
+        <SecaoHeader icon={BellRing} title="Tipos de Notificações" cor="var(--accent)" />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <Row label="💰 Vendas" sub="Notificar quando um pedido for pago">
-            <Toggle value={notifConfig.notifVendas} onChange={v => atualizarNotifConfig({ notifVendas: v })} disabled={!pushOn} />
+          <Row label="Venda no local" sub="Notificar quando um pedido presencial for pago">
+            <Toggle value={notifConfig.notifVendasLocal !== false} onChange={v => atualizarNotifConfig({ notifVendasLocal: v })} disabled={!pushOn} />
           </Row>
-          <Row label="📦 Insumos baixos" sub="Alertar quando um ingrediente atingir o estoque mínimo">
+          <Row label="Venda no delivery" sub="Notificar quando um pedido de delivery for pago">
+            <Toggle value={notifConfig.notifVendasDelivery !== false} onChange={v => atualizarNotifConfig({ notifVendasDelivery: v })} disabled={!pushOn} />
+          </Row>
+          <Row label="Insumos baixos" sub="Alertar quando um ingrediente atingir o estoque mínimo">
             <Toggle value={notifConfig.notifInsumos} onChange={v => atualizarNotifConfig({ notifInsumos: v })} disabled={!pushOn} />
           </Row>
           <Row
-            label="🔴 Demora na cozinha"
+            label="Demora na cozinha"
             sub="Avisar quando pedidos estiverem esperando demais"
             style={{ borderColor: notifConfig.notifDemora && pushOn ? 'rgba(239,68,68,0.3)' : undefined }}
           >

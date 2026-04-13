@@ -21,6 +21,8 @@ const CONFIG_PADRAO = {
 const NOTIF_CONFIG_PADRAO = {
   pushAtivo: false,
   notifVendas: true,
+  notifVendasLocal: true,
+  notifVendasDelivery: true,
   notifInsumos: true,
   notifDemora: true,
   demoraMinutos: 20,
@@ -362,6 +364,7 @@ function entradaVendaToRow(e, uid) {
     custo_prato_unit: e.custoPratoUnit ?? null,
     ingredientes_snapshot: e.ingredientesSnapshot || null,
     preco_venda_unit: e.precoVendaUnit ?? null,
+    canal: e.canal || 'local',
   }
 }
 function rowToEntradaVenda(row) {
@@ -377,6 +380,7 @@ function rowToEntradaVenda(row) {
     custoPratoUnit: row.custo_prato_unit != null ? Number(row.custo_prato_unit) : null,
     ingredientesSnapshot: row.ingredientes_snapshot || null,
     precoVendaUnit: row.preco_venda_unit != null ? Number(row.preco_venda_unit) : null,
+    canal: row.canal || 'local',
   }
 }
 

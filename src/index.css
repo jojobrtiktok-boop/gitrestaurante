@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── VIEWPORT / ZOOM PREVENTION ───────────────────── */
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+* { box-sizing: border-box; }
+input, select, textarea { font-size: 16px; } /* prevents iOS auto-zoom on focus */
+
 /* ─── DARK THEME (default) ─────────────────────────── */
 :root {
   /* Fundos — escala de depth */

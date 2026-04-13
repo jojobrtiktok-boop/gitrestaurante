@@ -376,6 +376,7 @@ export default function VisaoGeral() {
   const [periodo, setPeriodo] = useState({ dataInicio: h, dataFim: h })
   const [modalCaixa, setModalCaixa] = useState(false)
   const [aba, setAba] = useState('resumo')
+  const [canalFiltro, setCanalFiltro] = useState('todos')
 
   const { dataInicio, dataFim } = periodo
   const CORES = tema === 'dark' ? CORES_DARK : CORES_LIGHT
@@ -395,9 +396,13 @@ export default function VisaoGeral() {
 
   if (!semDados) {
     for (const prato of pratos) {
-      const qtd = registrosVendas
-        .filter(r => r.pratoId === prato.id && r.data >= dataInicio && r.data <= dataFim)
-        .reduce((s, r) => s + r.quantidade, 0)
+      const qtd = canalFiltro === 'todos'
+        ? registrosVendas
+            .filter(r => r.pratoId === prato.id && r.data >= dataInicio && r.data <= dataFim)
+            .reduce((s, r) => s + r.quantidade, 0)
+        : entradasFiltradas
+            .filter(e => e.pratoId === prato.id)
+            .reduce((s, e) => s + e.quantidade, 0)
       const lucroUnit = lucroPrato(prato, ingredientes)
       const margemUnit = margemPrato(prato, ingredientes)
       const receitaPrato = qtd * prato.precoVenda
@@ -411,9 +416,12 @@ export default function VisaoGeral() {
 
   // ── Totais financeiros via entradasVendas (distingue pago vs pendente)
   const entradasPeriodo = entradasVendas.filter(e => e.data >= dataInicio && e.data <= dataFim)
+  const entradasFiltradas = canalFiltro === 'todos' ? entradasPeriodo
+    : canalFiltro === 'delivery' ? entradasPeriodo.filter(e => e.canal === 'delivery')
+    : entradasPeriodo.filter(e => !e.canal || e.canal !== 'delivery')
   let receitaTotal = 0, lucroTotal = 0, receitaPendente = 0, lucroPendente = 0
   if (!semDados) {
-    for (const entrada of entradasPeriodo) {
+    for (const entrada of entradasFiltradas) {
       const prato = pratos.find(p => p.id === entrada.pratoId)
       if (!prato) continue
       const r = receitaEntrada(entrada, prato)
@@ -439,7 +447,12 @@ export default function VisaoGeral() {
   const cmvDia = receitaPaga > 0 ? (custoTotal / receitaPaga) * 100 : 0
   const totalEmCaixa = receitaPaga + (caixaInicialValor || 0)
 
-  const top5 = semDados ? [] : topV(pratos, registrosVendas, dataInicio, dataFim, 5)
+  const top5 = semDados ? [] : canalFiltro === 'todos'
+    ? topV(pratos, registrosVendas, dataInicio, dataFim, 5)
+    : pratos.map(p => ({
+        prato: p,
+        quantidade: entradasFiltradas.filter(e => e.pratoId === p.id).reduce((s, e) => s + e.quantidade, 0),
+      })).filter(t => t.quantidade > 0).sort((a, b) => b.quantidade - a.quantidade).slice(0, 5)
   const semVendas = receitaTotal === 0
   const chartData = top5.filter(t => t.quantidade > 0).map(t => ({
     nome: t.prato.nome.length > 14 ? t.prato.nome.slice(0, 14) + '…' : t.prato.nome,
@@ -487,6 +500,28 @@ export default function VisaoGeral() {
                   ? `Caixa: ${formatarMoeda(caixaInicialValor)}`
                   : 'Caixa Inicial'}
               </button>
+
+              {/* Filtro de canal */}
+              <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)', flexShrink: 0 }}>
+                {[
+                  { id: 'todos',       label: 'Todos' },
+                  { id: 'restaurante', label: '🍽️ Restaurante' },
+                  { id: 'delivery',    label: '🛵 Delivery' },
+                ].map(op => (
+                  <button
+                    key={op.id}
+                    onClick={() => setCanalFiltro(op.id)}
+                    style={{
+                      padding: '6px 12px', fontSize: 12, fontWeight: 600,
+                      border: 'none', cursor: 'pointer', transition: 'all .15s',
+                      background: canalFiltro === op.id ? 'var(--accent)' : 'var(--bg-hover)',
+                      color: canalFiltro === op.id ? '#fff' : 'var(--text-secondary)',
+                      borderRight: op.id !== 'delivery' ? '1px solid var(--border)' : 'none',
+                    }}
+                  >{op.label}</button>
+                ))}
+              </div>
+
               <FiltroPeriodo onChange={setPeriodo} />
             </div>
           </div>

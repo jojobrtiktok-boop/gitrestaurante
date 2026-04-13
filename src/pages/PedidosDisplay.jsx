@@ -7,7 +7,7 @@ const STATUS_DELIVERY = {
   novo:       { label: 'Aguardando',        cor: '#60a5fa', bg: 'rgba(59,130,246,0.15)',   borda: 'rgba(59,130,246,0.3)',   icone: '○' },
   preparando: { label: 'Preparando',         cor: '#fbbf24', bg: 'rgba(245,158,11,0.15)',  borda: 'rgba(245,158,11,0.3)',   icone: '◎' },
   pronto:     { label: 'Pronto',             cor: '#4ade80', bg: 'rgba(74,222,128,0.15)',  borda: 'rgba(74,222,128,0.3)',   icone: '✓' },
-  saindo:     { label: 'Saindo p/ entregar', cor: '#c084fc', bg: 'rgba(192,132,252,0.15)', borda: 'rgba(192,132,252,0.3)', icone: '→' },
+  saindo:     { label: 'Saindo p/ entregar', cor: '#fb923c', bg: 'rgba(249,115,22,0.15)',  borda: 'rgba(249,115,22,0.3)',  icone: '→' },
   entregue:   { label: 'Entregue',           cor: '#94a3b8', bg: 'rgba(148,163,184,0.1)',  borda: 'rgba(148,163,184,0.2)', icone: '✓' },
 }
 

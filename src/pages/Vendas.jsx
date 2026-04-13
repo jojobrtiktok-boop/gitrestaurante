@@ -974,7 +974,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
         }
 
         const statusLabel = { novo: 'Aguardando', preparando: 'Preparando', pronto: 'Pronto', saindo: 'Saindo', entregue: 'Entregue' }
-        const statusCor = { novo: '#3b82f6', preparando: '#f59e0b', pronto: '#22c55e', saindo: '#8b5cf6', entregue: '#16a34a' }
+        const statusCor = { novo: '#3b82f6', preparando: '#f59e0b', pronto: '#22c55e', saindo: '#f97316', entregue: '#16a34a' }
 
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

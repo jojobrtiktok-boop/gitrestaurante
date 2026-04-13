@@ -3,6 +3,29 @@ import { Clock, Check, ChefHat, Volume2, Settings, Plus, Trash2, Copy, ExternalL
 import { useApp } from '../context/AppContext.jsx'
 import { hoje } from '../utils/formatacao.js'
 
+function IconMotoqueiro({ size = 24, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      {/* cabeça */}
+      <circle cx="15" cy="5" r="1.8" />
+      {/* corpo inclinado para frente */}
+      <path d="M15 6.8 L13 10 L10 10.5" />
+      {/* braço no guidão */}
+      <path d="M13.5 8.5 L11.5 7.5" />
+      {/* guidão */}
+      <path d="M11.5 7.5 L9.5 8" />
+      {/* corpo da moto */}
+      <path d="M7 14 Q9 10 13 10 L16 11 L18 14" />
+      {/* roda traseira */}
+      <circle cx="7" cy="16" r="2.5" />
+      {/* roda dianteira */}
+      <circle cx="18" cy="16" r="2.5" />
+      {/* eixo */}
+      <line x1="9.5" y1="14" x2="15.5" y2="14" />
+    </svg>
+  )
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function minutosDecorridos(isoInicio) {
   if (!isoInicio) return 0
@@ -198,7 +221,7 @@ const DELIVERY_COLUNAS = [
   { id: 'novo',       label: 'Aguardando',          cor: '#3b82f6', bgCor: '#3b82f61a', proximoStatus: 'preparando', proximoLabel: '→ Preparando' },
   { id: 'preparando', label: 'Preparando',           cor: '#f59e0b', bgCor: '#f59e0b1a', proximoStatus: 'pronto',     proximoLabel: '→ Pronto' },
   { id: 'pronto',     label: 'Pronto',               cor: '#22c55e', bgCor: '#22c55e1a', proximoStatus: 'saindo',     proximoLabel: '→ Saindo' },
-  { id: 'saindo',     label: 'Saindo para entregar', cor: '#8b5cf6', bgCor: '#8b5cf61a', proximoStatus: 'entregue',   proximoLabel: '→ Entregue' },
+  { id: 'saindo',     label: 'Saindo para entregar', cor: '#f97316', bgCor: '#f973161a', proximoStatus: 'entregue',   proximoLabel: '→ Entregue' },
   { id: 'entregue',   label: 'Entregue',             cor: '#16a34a', bgCor: '#16a34a1a', proximoStatus: null,         proximoLabel: null },
 ]
 
@@ -461,13 +484,16 @@ export default function Kanban() {
                     padding: '10px 14px', borderRadius: '12px 12px 0 0',
                     background: col.bgCor, border: `1px solid ${col.cor}33`, borderBottom: 'none',
                   }}>
-                    <span style={{ fontWeight: 700, fontSize: 14, color: col.cor }}>{col.label}</span>
+                    <span style={{ fontWeight: 700, fontSize: 14, color: col.cor, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {col.id === 'saindo' && <IconMotoqueiro size={18} color={col.cor} />}
+                      {col.label}
+                    </span>
                     <span style={{ minWidth: 24, height: 24, borderRadius: 20, background: col.cor, color: '#fff', fontWeight: 800, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 7px' }}>
                       {cards.length}
                     </span>
                   </div>
                   <div style={{
-                    minHeight: 200, padding: 10, background: 'rgba(240,64,0,0.03)',
+                    minHeight: 200, padding: 10, background: col.id === 'saindo' ? 'rgba(249,115,22,0.03)' : 'rgba(240,64,0,0.03)',
                     border: `1px solid ${col.cor}22`, borderRadius: '0 0 12px 12px',
                     display: 'flex', flexDirection: 'column', gap: 10,
                     maxHeight: 'calc(100vh - 300px)', overflowY: 'auto',

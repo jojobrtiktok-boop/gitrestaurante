@@ -11,6 +11,7 @@ const s = {
 export default function MotoboiPublico() {
   const { token } = useParams()
   const [motoboy, setMotoboy] = useState(null)
+  const [loja, setLoja] = useState(null)
   const [carregando, setCarregando] = useState(true)
   const [ativo, setAtivo] = useState(false)
   const [posicao, setPosicao] = useState(null)
@@ -22,7 +23,14 @@ export default function MotoboiPublico() {
 
   useEffect(() => {
     supabase.from('motoboys').select('id, nome, ativo, user_id').eq('token', token).maybeSingle()
-      .then(({ data }) => { setMotoboy(data); setCarregando(false) })
+      .then(async ({ data }) => {
+        setMotoboy(data)
+        if (data?.user_id) {
+          const { data: cc } = await supabase.from('cardapio_config').select('config').eq('user_id', data.user_id).maybeSingle()
+          if (cc?.config) setLoja({ nome: cc.config.nomeRestaurante, logo: cc.config.logo })
+        }
+        setCarregando(false)
+      })
   }, [token])
 
   // Carrega pedidos atribuídos a este motoboy (status saindo)
@@ -135,7 +143,12 @@ export default function MotoboiPublico() {
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
       `}</style>
 
-      <img src="/logo-dark.png" alt="Cheffya" style={{ height: 28, marginBottom: 20, objectFit: 'contain' }} />
+      {loja?.logo
+        ? <img src={loja.logo} alt={loja.nome || 'Loja'} style={{ height: 52, maxWidth: 160, marginBottom: 20, objectFit: 'contain', borderRadius: 10 }} />
+        : loja?.nome
+          ? <p style={{ color: '#f4f4f5', fontSize: 18, fontWeight: 800, margin: '0 0 20px', textAlign: 'center' }}>{loja.nome}</p>
+          : <img src="/logo-dark.png" alt="Cheffya" style={{ height: 28, marginBottom: 20, objectFit: 'contain' }} />
+      }
 
       {/* Card rastreamento */}
       <div style={{ ...s.card, alignItems: 'center', marginBottom: 16 }}>

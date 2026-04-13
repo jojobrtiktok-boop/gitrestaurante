@@ -4,7 +4,7 @@ import {
   Lock, CheckCircle, AlertCircle,
   BellOff, BellRing, Chrome, Camera, Pencil,
   Wallet, Banknote, QrCode, CreditCard, ExternalLink,
-  Headphones, MessageCircle, Mail, Clock,
+  Headphones, MessageCircle, Mail, Clock, Store,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 
@@ -89,13 +89,35 @@ function StepCard({ num, title, desc }) {
 
 /* Aba Conta */
 function AbaConta() {
-  const { auth, alterarSenha, perfil, atualizarPerfil } = useApp()
+  const { auth, alterarSenha, perfil, atualizarPerfil, cardapioConfig, atualizarCardapioConfig } = useApp()
 
   // Perfil
   const [nomeLocal,  setNomeLocal]  = useState(perfil?.nomeExibicao || '')
   const [fotoLocal,  setFotoLocal]  = useState(perfil?.foto || null)
   const [perfilOk,   setPerfilOk]   = useState(false)
   const [erroFoto,   setErroFoto]   = useState('')
+
+  // Logo da loja
+  const [nomeLoja,    setNomeLoja]    = useState(cardapioConfig?.nomeRestaurante || '')
+  const [logoLoja,    setLogoLoja]    = useState(cardapioConfig?.logo || null)
+  const [lojaOk,      setLojaOk]      = useState(false)
+  const [erroLogoLoja, setErroLogoLoja] = useState('')
+
+  function handleLogoLoja(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    setErroLogoLoja('')
+    if (file.size > 3 * 1024 * 1024) { setErroLogoLoja('A logo deve ter menos de 3 MB.'); return }
+    const reader = new FileReader()
+    reader.onload = ev => setLogoLoja(ev.target.result)
+    reader.readAsDataURL(file)
+  }
+
+  function handleSalvarLoja() {
+    atualizarCardapioConfig({ nomeRestaurante: nomeLoja.trim() || 'Meu Restaurante', logo: logoLoja })
+    setLojaOk(true)
+    setTimeout(() => setLojaOk(false), 2500)
+  }
 
   // Senha
   const [senhaAntiga, setSenhaAntiga] = useState('')
@@ -224,6 +246,73 @@ function AbaConta() {
               <CheckCircle size={13} /> Salvar perfil
             </button>
             {perfilOk && (
+              <span style={{ fontSize: 12, color: '#22c55e', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <CheckCircle size={13} /> Salvo!
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Logo da Loja ── */}
+      <div>
+        <SecaoHeader icon={Store} title="Logo da Loja" cor="var(--accent)" />
+        <div style={{ padding: '20px', background: 'var(--bg-hover)', borderRadius: 12, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
+            Aparece no app do motoboy e nos links públicos da loja.
+          </p>
+
+          {/* Preview + upload logo */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <label htmlFor="upload-logo-loja" style={{ cursor: 'pointer', flexShrink: 0 }}>
+              <div style={{
+                width: 72, height: 72, borderRadius: 16,
+                background: logoLoja ? 'transparent' : 'var(--bg-input)',
+                border: '2px dashed var(--border-active)',
+                overflow: 'hidden', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', transition: 'border-color 0.15s',
+              }}>
+                {logoLoja
+                  ? <img src={logoLoja} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  : <Store size={26} color="var(--text-muted)" />
+                }
+              </div>
+            </label>
+            <input id="upload-logo-loja" type="file" accept="image/*" style={{ display: 'none' }} onChange={handleLogoLoja} />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, fontWeight: 500 }}>
+                {logoLoja ? 'Clique na imagem para trocar' : 'Clique para enviar a logo'}
+              </p>
+              {logoLoja && (
+                <button onClick={() => setLogoLoja(null)}
+                  style={{ alignSelf: 'flex-start', background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 8, padding: '3px 10px', fontSize: 11, cursor: 'pointer' }}>
+                  Remover logo
+                </button>
+              )}
+            </div>
+          </div>
+
+          {erroLogoLoja && (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', color: '#ef4444', fontSize: 12 }}>
+              <AlertCircle size={13} /> {erroLogoLoja}
+            </div>
+          )}
+
+          {/* Nome da loja */}
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>
+              Nome da loja
+            </label>
+            <input className="input" placeholder="Ex: Lanchonete do João"
+              value={nomeLoja}
+              onChange={e => setNomeLoja(e.target.value)} />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button className="btn btn-primary" onClick={handleSalvarLoja} style={{ alignSelf: 'flex-start' }}>
+              <CheckCircle size={13} /> Salvar loja
+            </button>
+            {lojaOk && (
               <span style={{ fontSize: 12, color: '#22c55e', display: 'flex', alignItems: 'center', gap: 4 }}>
                 <CheckCircle size={13} /> Salvo!
               </span>

@@ -434,7 +434,7 @@ export default function DeliveryPublico() {
     return Object.keys(e).length === 0
   }
 
-  function enviarPedido() {
+  async function enviarPedido() {
     if (!validarStep2()) return
 
     const linhasItens = carrinho.map(i => {
@@ -490,6 +490,43 @@ export default function DeliveryPublico() {
     }
 
     const mensagem = partes.filter(l => l !== null && l !== undefined).join('\n')
+
+    // ── Registrar pedido no banco ──────────────────────────────────────────
+    if (userId) {
+      try {
+        const agora = new Date().toISOString()
+        const dataHoje = agora.slice(0, 10)
+        const horaAgora = agora.slice(11, 16)
+        const enderecoEntrega = tipoEntrega === 'entrega'
+          ? `${bairroSelecionado?.nome ? bairroSelecionado.nome + ' - ' : ''}${endereco}${complemento ? ', ' + complemento : ''}`
+          : 'Retirada no local'
+        const itensPedido = carrinho.map(i => ({
+          pratoId: i.pratoId,
+          nome: i.nome,
+          quantidade: i.qtd,
+          precoUnit: i.preco,
+          opcoes: (i.adicionaisEscolhidos || []).map(a => ({ nome: a.nome, preco: a.precoExtra, qtd: a.qtd })),
+        }))
+        await supabase.from('pedidos').insert({
+          user_id: userId,
+          data: dataHoje,
+          hora: horaAgora,
+          itens: itensPedido,
+          obs: obs || null,
+          status: 'novo',
+          pago: false,
+          cancelado: false,
+          canal: 'delivery',
+          cliente_nome: nome,
+          endereco_entrega: enderecoEntrega,
+          timestamps: { novo: agora },
+        })
+      } catch (e) {
+        console.error('[DeliveryPublico] erro ao registrar pedido:', e)
+      }
+    }
+
+    // ── Abrir WhatsApp ─────────────────────────────────────────────────────
     const tel = configDelivery.telefone?.replace(/\D/g, '')
     window.open(`https://wa.me/${tel ? '55' + tel : ''}?text=${encodeURIComponent(mensagem)}`, '_blank')
 

@@ -589,7 +589,7 @@ export default function LandingPage() {
 
         <div className="lp-hero-content" style={{ maxWidth: 780, width: '100%' }}>
           {/* Badge online */}
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', fontSize: 12, fontWeight: 600, color: '#4ade80', marginBottom: 28 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: b.accentDim, border: `1px solid ${b.accentBdr}`, fontSize: 12, fontWeight: 600, color: b.accent, marginBottom: 28 }}>
             <span style={{ position: 'relative', width: 8, height: 8, flexShrink: 0 }}>
               <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#22c55e', animation: 'lp-ping 1.4s ease-out infinite' }} />
               <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#22c55e' }} />

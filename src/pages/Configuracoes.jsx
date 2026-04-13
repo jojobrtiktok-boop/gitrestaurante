@@ -38,8 +38,8 @@ function Row({ label, sub, children, style }) {
       gap: 12, background: 'var(--bg-hover)', borderRadius: 10,
       padding: '10px 14px', border: '1px solid var(--border)', ...style,
     }}>
-      <div>
-        <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>{label}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>{label}</div>
         {sub && <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '2px 0 0' }}>{sub}</p>}
       </div>
       {children}
@@ -514,11 +514,24 @@ function AbaFormasPagamento() {
     } finally { setTestando(null) }
   }
 
+  // Dinheiro e cartão funcionam sem integração; Pix exige gateway configurado
+  function statusForma(key) {
+    const ligado = !!pagamentosConfig[key]
+    if (!ligado) return { ativo: false, motivo: 'Desativado' }
+    if (key === 'pix') {
+      const temMP  = pagamentosConfig.mercadoPagoAtivo && !!pagamentosConfig.mercadoPagoAccessToken
+      const temEfi = pagamentosConfig.efiAtivo && !!pagamentosConfig.efiClientId && !!pagamentosConfig.efiClientSecret
+      if (temMP || temEfi) return { ativo: true,  motivo: 'Ativo' }
+      return { ativo: false, motivo: 'Aguardando integração' }
+    }
+    return { ativo: true, motivo: 'Ativo' }
+  }
+
   const formas = [
-    { key: 'dinheiro',      label: 'Dinheiro',           sub: 'Pagamento em espécie',               Icon: Banknote },
-    { key: 'pix',           label: 'PIX',                sub: 'Transferência instantânea',           Icon: QrCode },
-    { key: 'cartaoCredito', label: 'Cartão de Crédito',  sub: 'Crédito à vista ou parcelado',        Icon: CreditCard },
-    { key: 'cartaoDebito',  label: 'Cartão de Débito',   sub: 'Débito em conta',                     Icon: CreditCard },
+    { key: 'dinheiro',      label: 'Dinheiro',          sub: 'Pagamento em espécie — não requer integração',      Icon: Banknote },
+    { key: 'pix',           label: 'PIX',               sub: 'Requer Mercado Pago ou Efí Pay configurado abaixo', Icon: QrCode },
+    { key: 'cartaoCredito', label: 'Cartão de Crédito', sub: 'Maquininha na entrega — não requer integração',     Icon: CreditCard },
+    { key: 'cartaoDebito',  label: 'Cartão de Débito',  sub: 'Maquininha na entrega — não requer integração',     Icon: CreditCard },
   ]
 
   return (
@@ -528,22 +541,47 @@ function AbaFormasPagamento() {
       <div>
         <SecaoHeader icon={Wallet} title="Formas de Pagamento Aceitas" cor="var(--accent)" />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {formas.map(({ key, label, sub, Icon }) => (
-            <Row key={key} label={label} sub={sub}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                <div style={{
-                  width: 28, height: 28, borderRadius: 7,
-                  background: pagamentosConfig[key] ? 'var(--accent-bg)' : 'var(--bg-hover)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: '1px solid var(--border)',
-                }}>
-                  <Icon size={13} style={{ color: pagamentosConfig[key] ? 'var(--accent)' : 'var(--text-muted)' }} />
+          {formas.map(({ key, label, sub, Icon }) => {
+            const { ativo, motivo } = statusForma(key)
+            return (
+              <Row key={key} label={
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ position: 'relative', width: 9, height: 9, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {ativo && (
+                      <span style={{
+                        position: 'absolute', inset: 0, borderRadius: '50%',
+                        background: '#22c55e', animation: 'cfg-ping 1.6s ease-out infinite',
+                      }} />
+                    )}
+                    <span style={{
+                      position: 'relative', width: 9, height: 9, borderRadius: '50%',
+                      background: ativo ? '#22c55e' : 'var(--text-muted)', display: 'block', flexShrink: 0,
+                    }} />
+                  </span>
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <span>{label}</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: ativo ? '#22c55e' : 'var(--text-muted)', lineHeight: 1 }}>
+                      {motivo}
+                    </span>
+                  </span>
+                </span>
+              } sub={sub}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: 7,
+                    background: pagamentosConfig[key] ? 'var(--accent-bg)' : 'var(--bg-hover)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    border: '1px solid var(--border)',
+                  }}>
+                    <Icon size={13} style={{ color: pagamentosConfig[key] ? 'var(--accent)' : 'var(--text-muted)' }} />
+                  </div>
+                  <Toggle value={!!pagamentosConfig[key]} onChange={v => atualizarPagamentosConfig({ [key]: v })} />
                 </div>
-                <Toggle value={!!pagamentosConfig[key]} onChange={v => atualizarPagamentosConfig({ [key]: v })} />
-              </div>
-            </Row>
-          ))}
+              </Row>
+            )
+          })}
         </div>
+        <style>{`@keyframes cfg-ping { 0%{transform:scale(1);opacity:.7} 70%{transform:scale(2.4);opacity:0} 100%{transform:scale(2.4);opacity:0} }`}</style>
       </div>
 
       {/* ── Mercado Pago ── */}

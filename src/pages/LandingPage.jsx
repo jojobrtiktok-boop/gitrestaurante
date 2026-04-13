@@ -118,7 +118,12 @@ function Modal({ tab, onClose }) {
     setCarregando(true)
     const res = await login(email.trim(), senha, manterLogado)
     setCarregando(false)
-    if (res.erro) setErro(res.erro); else navigate('/painel')
+    if (res.erro) { setErro(res.erro) } else {
+      // Forçar tema claro ao entrar pelo LP (LP usa tema escuro)
+      document.documentElement.classList.add('light')
+      localStorage.setItem('rd_tema', JSON.stringify('light'))
+      navigate('/painel')
+    }
   }
 
   async function handleCadastro(e) {
@@ -183,9 +188,9 @@ function Modal({ tab, onClose }) {
 
           {tela === 'entrar' && (
             <form onSubmit={handleEntrar} style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
-              <div><label style={{ fontSize: 12, fontWeight: 600, color: b.muted, display: 'block', marginBottom: 5 }}>Usuário ou E-mail</label>
+              <div><label style={{ fontSize: 12, fontWeight: 600, color: b.text, display: 'block', marginBottom: 5 }}>Usuário ou E-mail</label>
                 <input className="lp-inp" style={inp()} placeholder="usuario ou seu@email.com" value={email} onChange={e => setEmail(e.target.value)} autoFocus autoComplete="username" /></div>
-              <div><label style={{ fontSize: 12, fontWeight: 600, color: b.muted, display: 'block', marginBottom: 5 }}>Senha</label>
+              <div><label style={{ fontSize: 12, fontWeight: 600, color: b.text, display: 'block', marginBottom: 5 }}>Senha</label>
                 <div style={{ position: 'relative' }}>
                   <input className="lp-inp" style={inp({ paddingRight: 44 })} type={mostrarSenha ? 'text' : 'password'} placeholder="••••••••" value={senha} onChange={e => setSenha(e.target.value)} autoComplete="current-password" />
                   <button type="button" onClick={() => setMostrarSenha(v => !v)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: b.muted, padding: 4, display: 'flex' }}>{mostrarSenha ? <EyeOff size={16} /> : <Eye size={16} />}</button>
@@ -195,7 +200,7 @@ function Modal({ tab, onClose }) {
                 <div onClick={() => setManterLogado(v => !v)} style={{ width: 18, height: 18, borderRadius: 5, flexShrink: 0, border: `2px solid ${manterLogado ? b.accent : b.border2}`, background: manterLogado ? b.accent : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s' }}>
                   {manterLogado && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                 </div>
-                <span style={{ fontSize: 13, color: b.muted }}>Manter conectado por 60 dias</span>
+                <span style={{ fontSize: 13, color: b.text }}>Manter conectado por 60 dias</span>
               </label>
               {erro && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 9, padding: '10px 14px', fontSize: 13, color: '#f87171', textAlign: 'center' }}>{erro}</div>}
               <BtnPrimary loading={carregando ? 'Entrando...' : null}><LogIn size={15} /> Entrar</BtnPrimary>
@@ -205,19 +210,19 @@ function Modal({ tab, onClose }) {
 
           {tela === 'cadastro' && !cadastroOk && (
             <form onSubmit={handleCadastro} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div><label style={{ fontSize: 12, fontWeight: 600, color: b.muted, display: 'block', marginBottom: 5 }}>Nome de usuário *</label>
-                <input className="lp-inp" style={inp({ borderColor: erroNome ? '#f87171' : undefined })} placeholder="seuusuario" value={novoNome} onChange={e => { setNovoNome(e.target.value); setErroNome('') }} autoFocus autoComplete="off" />
+              <div><label style={{ fontSize: 12, fontWeight: 600, color: b.text, display: 'block', marginBottom: 5 }}>Nome de usuário *</label>
+                <input className="lp-inp" style={inp({ borderColor: erroNome ? '#f87171' : undefined })} placeholder="seu usuario" value={novoNome} onChange={e => { setNovoNome(e.target.value); setErroNome('') }} autoFocus autoComplete="off" />
                 {erroNome && <p style={{ fontSize: 12, color: '#f87171', marginTop: 4 }}>{erroNome}</p>}</div>
-              <div><label style={{ fontSize: 12, fontWeight: 600, color: b.muted, display: 'block', marginBottom: 5 }}>E-mail *</label>
+              <div><label style={{ fontSize: 12, fontWeight: 600, color: b.text, display: 'block', marginBottom: 5 }}>E-mail *</label>
                 <input className="lp-inp" style={inp({ borderColor: erroEmail ? '#f87171' : undefined })} type="email" placeholder="seu@email.com" value={novoEmail} onChange={e => { setNovoEmail(e.target.value); setErroEmail('') }} autoComplete="email" />
                 {erroEmail && <p style={{ fontSize: 12, color: '#f87171', marginTop: 4 }}>{erroEmail}</p>}</div>
-              <div><label style={{ fontSize: 12, fontWeight: 600, color: b.muted, display: 'block', marginBottom: 5 }}>Senha * (mín. 6 caracteres)</label>
+              <div><label style={{ fontSize: 12, fontWeight: 600, color: b.text, display: 'block', marginBottom: 5 }}>Senha * (mín. 6 caracteres)</label>
                 <div style={{ position: 'relative' }}>
                   <input className="lp-inp" style={inp({ paddingRight: 44 })} type={mostrarNovaSenha ? 'text' : 'password'} placeholder="Mínimo 6 caracteres" value={novaSenha} onChange={e => setNovaSenha(e.target.value)} autoComplete="new-password" />
                   <button type="button" onClick={() => setMostrarNovaSenha(v => !v)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: b.muted, padding: 4, display: 'flex' }}>{mostrarNovaSenha ? <EyeOff size={16} /> : <Eye size={16} />}</button>
                 </div>
               </div>
-              <div><label style={{ fontSize: 12, fontWeight: 600, color: b.muted, display: 'block', marginBottom: 5 }}>Confirmar senha *</label>
+              <div><label style={{ fontSize: 12, fontWeight: 600, color: b.text, display: 'block', marginBottom: 5 }}>Confirmar senha *</label>
                 <input className="lp-inp" style={inp()} type="password" placeholder="Repita a senha" value={confirmarSenha} onChange={e => setConfirmarSenha(e.target.value)} autoComplete="new-password" /></div>
               {erroCadastro && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 9, padding: '10px 14px', fontSize: 13, color: '#f87171', textAlign: 'center' }}>{erroCadastro}</div>}
               <BtnPrimary loading={carregandoCadastro ? 'Criando conta...' : null}><UserPlus size={15} /> Criar conta</BtnPrimary>
@@ -242,7 +247,7 @@ function Modal({ tab, onClose }) {
                     <p style={{ fontSize: 12, color: b.muted }}>Enviaremos um link por e-mail</p>
                   </div>
                   <form onSubmit={handleReset} style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
-                    <div><label style={{ fontSize: 12, fontWeight: 600, color: b.muted, display: 'block', marginBottom: 5 }}>E-mail da conta</label>
+                    <div><label style={{ fontSize: 12, fontWeight: 600, color: b.text, display: 'block', marginBottom: 5 }}>E-mail da conta</label>
                       <input className="lp-inp" style={inp()} type="email" placeholder="seu@email.com" value={resetEmail} onChange={e => setResetEmail(e.target.value)} autoFocus /></div>
                     {erroReset && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 9, padding: '10px 14px', fontSize: 13, color: '#f87171' }}>{erroReset}</div>}
                     <BtnPrimary loading={carregandoReset ? 'Enviando...' : null}>Enviar link de recuperação</BtnPrimary>

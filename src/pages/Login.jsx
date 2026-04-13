@@ -23,7 +23,7 @@ const c = {
 
 function Label({ children }) {
   return (
-    <label style={{ fontSize: 12, fontWeight: 600, color: c.secondary, display: 'block', marginBottom: 5 }}>
+    <label style={{ fontSize: 12, fontWeight: 600, color: c.text, display: 'block', marginBottom: 5 }}>
       {children}
     </label>
   )
@@ -247,7 +247,7 @@ export default function Login() {
                   }}>
                     {manterLogado && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                   </div>
-                  <span style={{ fontSize: 13, color: c.secondary }}>Manter conectado por 60 dias</span>
+                  <span style={{ fontSize: 13, color: c.text }}>Manter conectado por 60 dias</span>
                 </label>
 
                 {erro && (
@@ -272,7 +272,7 @@ export default function Login() {
               <form onSubmit={handleCadastro} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <InputField label="Nome de usuário *" error={erroNome}>
                   <input className="login-input" style={inputStyle({ borderColor: erroNome ? c.error : undefined })}
-                    placeholder="seuusuario" value={novoNome}
+                    placeholder="seu usuario" value={novoNome}
                     onChange={e => { setNovoNome(e.target.value); setErroNome('') }}
                     autoFocus autoComplete="off" />
                 </InputField>

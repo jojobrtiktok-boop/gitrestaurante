@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-import { Clock, Check, ChefHat, Volume2, Settings, Plus, Trash2, Copy, ExternalLink, RefreshCw, Link2, Truck, Printer } from 'lucide-react'
+import { Clock, Check, ChefHat, Volume2, Settings, Plus, Trash2, Copy, ExternalLink, RefreshCw, Link2, Truck, Printer, Usb, Bluetooth } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import { hoje } from '../utils/formatacao.js'
-import { buildComanda, imprimirUSB, imprimirSerial, usbConectado, serialConectado } from '../utils/escpos.js'
+import { buildComanda, conectarUSB, imprimirUSB, conectarSerial, imprimirSerial, suportaUSB, suportaSerial, usbConectado, serialConectado } from '../utils/escpos.js'
 
 function IconMotoqueiro({ size = 24, color = 'currentColor' }) {
   return (
@@ -721,8 +721,115 @@ export default function Kanban() {
           </div>
         </div>
 
+        {/* ── Impressora Térmica ── */}
+        <ImpressoraSection />
+
       </div>
       )}
+    </div>
+  )
+}
+
+function ImpressoraSection() {
+  const { kanbanConfig, atualizarKanbanConfig, cardapioConfig, pratos } = useApp()
+  const [statusUSB,    setStatusUSB]    = useState('')
+  const [statusSerial, setStatusSerial] = useState('')
+  const [testando,     setTestando]     = useState(false)
+
+  const escAtivo = kanbanConfig.escposAtivo || false
+  const modo     = kanbanConfig.escposModo  || 'usb'
+
+  async function conectar() {
+    if (modo === 'usb') {
+      setStatusUSB('Conectando...')
+      const r = await conectarUSB()
+      setStatusUSB(r.ok ? '✓ Conectada!' : `Erro: ${r.erro}`)
+    } else {
+      setStatusSerial('Conectando...')
+      const r = await conectarSerial()
+      setStatusSerial(r.ok ? '✓ Conectada!' : `Erro: ${r.erro}`)
+    }
+  }
+
+  async function testar() {
+    setTestando(true)
+    const pedidoTeste = {
+      id: crypto.randomUUID(),
+      hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      itens: [{ pratoId: pratos[0]?.id || 'x', quantidade: 1, opcoes: [] }],
+      obs: 'Teste de impressão',
+    }
+    const dados = buildComanda(pedidoTeste, pratos, cardapioConfig?.nomeRestaurante || 'Restaurante')
+    const r = modo === 'usb' ? await imprimirUSB(dados) : await imprimirSerial(dados)
+    setTestando(false)
+    if (!r.ok) alert(`Erro ao imprimir: ${r.erro}`)
+  }
+
+  const conectado = modo === 'usb' ? usbConectado() : serialConectado()
+
+  return (
+    <div>
+      <div style={{ marginBottom: 12 }}>
+        <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Printer size={16} style={{ color: 'var(--accent)' }} /> Impressora Térmica (ESC/POS)
+        </h2>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
+          Conecte via USB ou Serial/Bluetooth para imprimir comandas sem abrir janela do navegador. Funciona no Chrome 89+ e Edge (desktop).
+        </p>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <CfgRow label="Ativar impressão ESC/POS" sub="O botão de imprimir no Fluxo usará a impressora térmica">
+          <CfgToggle value={escAtivo} onChange={v => atualizarKanbanConfig({ escposAtivo: v })} />
+        </CfgRow>
+
+        {escAtivo && (
+          <>
+            <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)', width: 'fit-content' }}>
+              {[
+                { id: 'usb',    label: 'USB',       Icon: Usb,       suporta: suportaUSB() },
+                { id: 'serial', label: 'Serial/BT', Icon: Bluetooth, suporta: suportaSerial() },
+              ].map(op => (
+                <button key={op.id} onClick={() => atualizarKanbanConfig({ escposModo: op.id })}
+                  disabled={!op.suporta}
+                  style={{
+                    padding: '8px 18px', fontSize: 13, fontWeight: 600, border: 'none', cursor: op.suporta ? 'pointer' : 'not-allowed',
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    background: modo === op.id ? 'var(--accent)' : 'var(--bg-hover)',
+                    color: modo === op.id ? '#fff' : op.suporta ? 'var(--text-secondary)' : 'var(--text-muted)',
+                    opacity: op.suporta ? 1 : 0.4,
+                  }}>
+                  <op.Icon size={14} /> {op.label}
+                  {!op.suporta && <span style={{ fontSize: 10 }}>(não suportado)</span>}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <button className="btn btn-primary" onClick={conectar} style={{ gap: 6 }}>
+                <Printer size={14} />
+                {conectado ? 'Reconectar impressora' : 'Conectar impressora'}
+              </button>
+              {conectado && (
+                <button className="btn btn-secondary" onClick={testar} disabled={testando} style={{ gap: 6 }}>
+                  {testando ? 'Imprimindo...' : 'Imprimir teste'}
+                </button>
+              )}
+              {(statusUSB || statusSerial) && (
+                <span style={{ fontSize: 12, color: (statusUSB || statusSerial).startsWith('✓') ? '#22c55e' : '#ef4444' }}>
+                  {statusUSB || statusSerial}
+                </span>
+              )}
+            </div>
+
+            {conectado && (
+              <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', fontSize: 12, color: '#16a34a' }}>
+                ✓ Impressora conectada via {modo === 'usb' ? 'USB' : 'Serial/Bluetooth'}.
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }

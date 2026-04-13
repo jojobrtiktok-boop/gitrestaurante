@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { MapPin, ToggleLeft, ToggleRight, Plus, Trash2, Check, Copy, Link2, Banknote, QrCode, CreditCard, ExternalLink, ChevronDown, Navigation, Wifi, WifiOff, UserRound, SlidersHorizontal } from 'lucide-react'
+import { MapPin, ToggleLeft, ToggleRight, Plus, Trash2, Check, Copy, Link2, Banknote, QrCode, CreditCard, ExternalLink, ChevronDown, Navigation, Wifi, WifiOff, UserRound, SlidersHorizontal, Truck, RefreshCw } from 'lucide-react'
 
 function IconMoto({ size = 24, color = 'currentColor' }) {
   return (
@@ -624,6 +624,175 @@ function TabConfiguracoes() {
   )
 }
 
+// ── iFood Tab ─────────────────────────────────────────────────────────────────
+function TabIfood() {
+  const { auth, pratos } = useApp()
+  const SUPABASE_URL = 'https://api.cheffya.com.br'
+
+  const [clientId,     setClientId]     = useState('')
+  const [clientSecret, setClientSecret] = useState('')
+  const [merchantId,   setMerchantId]   = useState('')
+  const [status,       setStatus]       = useState(null)
+  const [mapeamento,   setMapeamento]   = useState({})
+  const [ifoodConfig,  setIfoodConfig]  = useState(null)
+  const [salvandoMap,  setSalvandoMap]  = useState(false)
+
+  useState(() => {
+    if (!auth.userId) return
+    import('../lib/supabase.js').then(({ supabase }) => {
+      supabase.from('ifood_config').select('*').eq('user_id', auth.userId).maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setIfoodConfig(data)
+            setClientId(data.client_id || '')
+            setClientSecret(data.client_secret || '')
+            setMerchantId(data.merchant_id || '')
+            setMapeamento(data.mapeamento || {})
+            if (data.ativo) setStatus({ ok: true, merchant_name: data.merchant_name || 'Conectado' })
+          }
+        })
+    })
+  })
+
+  async function conectar() {
+    if (!clientId || !clientSecret || !merchantId) {
+      setStatus({ erro: 'Preencha todos os campos' }); return
+    }
+    setStatus('conectando')
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/ifood-connect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, merchant_id: merchantId, user_id: auth.userId, action: 'connect' }),
+      })
+      const data = await res.json()
+      if (data.erro) { setStatus({ erro: data.erro }); return }
+      setStatus({ ok: true, merchant_name: data.merchant_name })
+      setIfoodConfig(prev => ({ ...prev, ativo: true, merchant_name: data.merchant_name }))
+      const { supabase } = await import('../lib/supabase.js')
+      await supabase.from('ifood_config').upsert({ user_id: auth.userId, merchant_name: data.merchant_name }, { onConflict: 'user_id' })
+    } catch (e) {
+      setStatus({ erro: e.message })
+    }
+  }
+
+  async function salvarMapeamento() {
+    setSalvandoMap(true)
+    const { supabase } = await import('../lib/supabase.js')
+    await supabase.from('ifood_config').upsert({ user_id: auth.userId, mapeamento }, { onConflict: 'user_id' })
+    setSalvandoMap(false)
+  }
+
+  const conectado = status?.ok
+  const corIfood = '#ea1d2c'
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px', borderRadius: 14, background: 'rgba(234,29,44,0.06)', border: '1px solid rgba(234,29,44,0.2)' }}>
+        <div style={{ width: 48, height: 48, borderRadius: 12, background: corIfood, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Truck size={22} color="#fff" />
+        </div>
+        <div>
+          <p style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)', margin: 0 }}>Integração iFood</p>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '3px 0 0' }}>
+            Pedidos do iFood chegam automaticamente no Kanban em tempo real
+          </p>
+        </div>
+        {conectado && (
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 20, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)' }}>
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e' }} />
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#22c55e' }}>Conectado</span>
+          </div>
+        )}
+      </div>
+
+      <div style={{ padding: '12px 16px', borderRadius: 10, background: 'var(--bg-hover)', border: '1px solid var(--border)', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
+        <strong>Como obter as credenciais:</strong><br />
+        1. Acesse o <strong>Portal do Parceiro iFood</strong> (portal.ifood.com.br)<br />
+        2. Vá em <strong>Integrações → API</strong><br />
+        3. Crie um novo acesso e copie o <strong>Client ID</strong>, <strong>Client Secret</strong> e <strong>Merchant ID</strong>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Credenciais da API</p>
+        {[
+          { label: 'Client ID',     val: clientId,     set: setClientId,     ph: 'ex: abc123-def456...' },
+          { label: 'Client Secret', val: clientSecret, set: setClientSecret, ph: 'ex: xyz789...' },
+          { label: 'Merchant ID',   val: merchantId,   set: setMerchantId,   ph: 'ex: seu-restaurante-id' },
+        ].map(({ label, val, set, ph }) => (
+          <div key={label}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 5 }}>{label}</label>
+            <input className="input" type="text" placeholder={ph} value={val} onChange={e => set(e.target.value)} />
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <button className="btn" onClick={conectar} disabled={status === 'conectando'} style={{ gap: 6, background: corIfood, color: '#fff', border: 'none' }}>
+          {status === 'conectando'
+            ? <><RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> Conectando...</>
+            : <><Link2 size={14} /> {conectado ? 'Reconectar' : 'Conectar ao iFood'}</>
+          }
+        </button>
+        {status?.ok && <span style={{ fontSize: 13, color: '#22c55e', fontWeight: 600 }}>✓ {status.merchant_name}</span>}
+        {status?.erro && <span style={{ fontSize: 12, color: '#ef4444' }}>✗ {status.erro}</span>}
+      </div>
+
+      {conectado && (
+        <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)' }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', marginBottom: 6 }}>WEBHOOK REGISTRADO</p>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace', wordBreak: 'break-all', margin: 0 }}>
+            {SUPABASE_URL}/functions/v1/ifood-webhook
+          </p>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '6px 0 0' }}>
+            Pedidos chegam instantaneamente. Nenhuma outra configuração necessária.
+          </p>
+        </div>
+      )}
+
+      {conectado && pratos.length > 0 && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Mapeamento de Produtos</p>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '3px 0 0' }}>
+                Associe os nomes do iFood aos pratos do Cheffya. Preenchido automaticamente quando pedidos chegam.
+              </p>
+            </div>
+            <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={salvarMapeamento} disabled={salvandoMap}>
+              {salvandoMap ? 'Salvando...' : 'Salvar'}
+            </button>
+          </div>
+          {Object.keys(mapeamento).length === 0 ? (
+            <div className="card p-4" style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+              O mapeamento é preenchido automaticamente quando os primeiros pedidos iFood chegarem.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {Object.entries(mapeamento).map(([ifoodNome, pratoId]) => (
+                <div key={ifoodNome} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>iFood</p>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>{ifoodNome}</p>
+                  </div>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 16 }}>→</span>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>Cheffya</p>
+                    <select className="input" style={{ fontSize: 12, padding: '4px 8px' }} value={pratoId || ''} onChange={e => setMapeamento(prev => ({ ...prev, [ifoodNome]: e.target.value || null }))}>
+                      <option value="">— Não mapeado ⚠️</option>
+                      {pratos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                    </select>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function DeliveryGerenciar() {
   const [aba, setAba] = useState('configuracoes')
@@ -631,6 +800,7 @@ export default function DeliveryGerenciar() {
   const tabs = [
     { id: 'configuracoes', label: 'Cardápio de Pedido', icon: SlidersHorizontal },
     { id: 'motoboys',      label: 'Motoboys',      icon: IconMoto },
+    { id: 'ifood',         label: 'iFood',         icon: Truck },
   ]
 
   return (
@@ -659,7 +829,9 @@ export default function DeliveryGerenciar() {
         ))}
       </div>
 
-      {aba === 'configuracoes' ? <TabConfiguracoes /> : <TabMotoboys />}
+      {aba === 'configuracoes' && <TabConfiguracoes />}
+      {aba === 'motoboys'      && <TabMotoboys />}
+      {aba === 'ifood'         && <TabIfood />}
     </div>
   )
 }

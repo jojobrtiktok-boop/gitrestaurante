@@ -519,9 +519,10 @@ function AbaFormasPagamento() {
     const ligado = !!pagamentosConfig[key]
     if (!ligado) return { ativo: false, motivo: 'Desativado' }
     if (key === 'pix') {
-      const temMP  = pagamentosConfig.mercadoPagoAtivo && !!pagamentosConfig.mercadoPagoAccessToken
-      const temEfi = pagamentosConfig.efiAtivo && !!pagamentosConfig.efiClientId && !!pagamentosConfig.efiClientSecret
-      if (temMP || temEfi) return { ativo: true,  motivo: 'Ativo' }
+      const temMP      = pagamentosConfig.mercadoPagoAtivo && !!pagamentosConfig.mercadoPagoAccessToken
+      const temEfi     = pagamentosConfig.efiAtivo && !!pagamentosConfig.efiClientId && !!pagamentosConfig.efiClientSecret
+      const temOpenPix = pagamentosConfig.openPixAtivo && !!pagamentosConfig.openPixAppId && !!pagamentosConfig.openPixChave
+      if (temMP || temEfi || temOpenPix) return { ativo: true,  motivo: 'Ativo' }
       return { ativo: false, motivo: 'Aguardando integração' }
     }
     return { ativo: true, motivo: 'Ativo' }
@@ -809,6 +810,82 @@ function AbaFormasPagamento() {
                   </span>
                 )}
               </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── OpenPix ── */}
+      <div>
+        <SecaoHeader icon={QrCode} title="OpenPix (Woovi)" cor="var(--accent)" />
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Row
+            label="Ativar integração OpenPix"
+            sub="Gera QR Code Pix — dinheiro cai direto na sua chave Pix, sem intermediário"
+          >
+            <Toggle value={!!pagamentosConfig.openPixAtivo} onChange={v => atualizarPagamentosConfig({ openPixAtivo: v })} />
+          </Row>
+
+          {pagamentosConfig.openPixAtivo && (
+            <div style={{
+              padding: '18px', borderRadius: 12, border: '1px solid var(--border)',
+              background: 'var(--bg-hover)', display: 'flex', flexDirection: 'column', gap: 14,
+            }}>
+
+              {/* Como funciona */}
+              <div style={{
+                padding: '12px 14px', borderRadius: 9, fontSize: 12,
+                background: 'var(--accent-bg)', border: '1px solid var(--border)',
+                color: 'var(--text-secondary)', lineHeight: 1.8,
+              }}>
+                <p style={{ margin: '0 0 6px', fontWeight: 700, color: 'var(--text-primary)', fontSize: 13 }}>Como funciona</p>
+                <p style={{ margin: 0 }}>
+                  O OpenPix gera um QR Code com o valor do pedido usando a <strong>sua chave Pix</strong>.
+                  Quando o cliente paga, o dinheiro vai <strong>direto para a sua conta bancária</strong> — o OpenPix não fica com nenhum saldo.
+                  É como se o cliente fizesse um Pix normal para você, só que automático e com o valor exato do pedido.
+                </p>
+              </div>
+
+              {/* App ID */}
+              <div>
+                <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>
+                  App ID (token de API)
+                </label>
+                <input
+                  className="input"
+                  type="text"
+                  placeholder="Seu App ID do painel OpenPix"
+                  value={pagamentosConfig.openPixAppId || ''}
+                  onChange={e => atualizarPagamentosConfig({ openPixAppId: e.target.value })}
+                  style={{ fontFamily: 'monospace', fontSize: 12 }}
+                />
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '4px 0 0' }}>
+                  Obtenha em{' '}
+                  <a href="https://app.openpix.com.br/home/applications" target="_blank" rel="noopener noreferrer"
+                    style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
+                    app.openpix.com.br → Aplicações <ExternalLink size={10} style={{ verticalAlign: 'middle' }} />
+                  </a>
+                </p>
+              </div>
+
+              {/* Chave Pix */}
+              <div>
+                <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>
+                  Sua chave Pix (recebimento)
+                </label>
+                <input
+                  className="input"
+                  type="text"
+                  placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória"
+                  value={pagamentosConfig.openPixChave || ''}
+                  onChange={e => atualizarPagamentosConfig({ openPixChave: e.target.value })}
+                />
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '4px 0 0' }}>
+                  O QR Code é gerado com essa chave — o pagamento cai direto nessa conta.
+                </p>
+              </div>
+
             </div>
           )}
         </div>

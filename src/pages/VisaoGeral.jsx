@@ -388,6 +388,12 @@ export default function VisaoGeral() {
     ? (getCaixaInicial(dataInicio) ?? null)
     : getCaixaInicialPeriodo(dataInicio, dataFim)
 
+  // ── Totais financeiros via entradasVendas (distingue pago vs pendente)
+  const entradasPeriodo = entradasVendas.filter(e => e.data >= dataInicio && e.data <= dataFim)
+  const entradasFiltradas = canalFiltro === 'todos' ? entradasPeriodo
+    : canalFiltro === 'delivery' ? entradasPeriodo.filter(e => e.canal === 'delivery')
+    : entradasPeriodo.filter(e => !e.canal || e.canal !== 'delivery')
+
   // ── Agrega dados do período (rankings, chart)
   let maisVendidoQtd = 0, maisVendido = null
   let maisLucrativoMargem = -Infinity, maisLucrativo = null
@@ -413,12 +419,6 @@ export default function VisaoGeral() {
       if (margemUnit < menosLucrativoMargem) { menosLucrativoMargem = margemUnit; menosLucrativo = prato }
     }
   }
-
-  // ── Totais financeiros via entradasVendas (distingue pago vs pendente)
-  const entradasPeriodo = entradasVendas.filter(e => e.data >= dataInicio && e.data <= dataFim)
-  const entradasFiltradas = canalFiltro === 'todos' ? entradasPeriodo
-    : canalFiltro === 'delivery' ? entradasPeriodo.filter(e => e.canal === 'delivery')
-    : entradasPeriodo.filter(e => !e.canal || e.canal !== 'delivery')
   let receitaTotal = 0, lucroTotal = 0, receitaPendente = 0, lucroPendente = 0
   if (!semDados) {
     for (const entrada of entradasFiltradas) {

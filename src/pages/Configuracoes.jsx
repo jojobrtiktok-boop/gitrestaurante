@@ -4,10 +4,14 @@ import {
   Lock, CheckCircle, AlertCircle,
   BellOff, BellRing, Chrome, Camera, Pencil,
   Wallet, Banknote, QrCode, CreditCard, ExternalLink,
-  Headphones, MessageCircle, Mail, Clock, Store,
+  Headphones, MessageCircle, Mail, Clock, Store, Printer, Usb, Bluetooth,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import { uploadImagem } from '../utils/storage.js'
+import {
+  buildComanda, conectarUSB, imprimirUSB, conectarSerial, imprimirSerial,
+  suportaUSB, suportaSerial, usbConectado, serialConectado,
+} from '../utils/escpos.js'
 
 /* helpers */
 function Toggle({ value, onChange, disabled }) {
@@ -1023,6 +1027,112 @@ function AbaFormasPagamento() {
 }
 
 /* Aba Suporte */
+function AbaImpressora() {
+  const { kanbanConfig, atualizarKanbanConfig, cardapioConfig, pratos } = useApp()
+  const [statusUSB,    setStatusUSB]    = useState('')
+  const [statusSerial, setStatusSerial] = useState('')
+  const [testando,     setTestando]     = useState(false)
+
+  const escAtivo = kanbanConfig.escposAtivo || false
+  const modo     = kanbanConfig.escposModo  || 'usb' // 'usb' | 'serial'
+
+  async function conectar() {
+    if (modo === 'usb') {
+      setStatusUSB('Conectando...')
+      const r = await conectarUSB()
+      setStatusUSB(r.ok ? '✓ Conectada!' : `Erro: ${r.erro}`)
+    } else {
+      setStatusSerial('Conectando...')
+      const r = await conectarSerial()
+      setStatusSerial(r.ok ? '✓ Conectada!' : `Erro: ${r.erro}`)
+    }
+  }
+
+  async function testar() {
+    setTestando(true)
+    const pedidoTeste = {
+      id: crypto.randomUUID(),
+      hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      itens: [{ pratoId: pratos[0]?.id || 'x', quantidade: 1, opcoes: [] }],
+      obs: 'Teste de impressão',
+    }
+    const dados = buildComanda(pedidoTeste, pratos, cardapioConfig?.nomeRestaurante || 'Restaurante')
+    const r = modo === 'usb' ? await imprimirUSB(dados) : await imprimirSerial(dados)
+    setTestando(false)
+    if (!r.ok) alert(`Erro ao imprimir: ${r.erro}`)
+  }
+
+  const conectado = modo === 'usb' ? usbConectado() : serialConectado()
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <SecaoHeader icon={Printer} title="Impressora Térmica (ESC/POS)" cor="var(--accent)" />
+
+      <div style={{ padding: '14px 18px', borderRadius: 12, background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+        Conecte uma impressora térmica via <strong>USB</strong> ou <strong>Serial/Bluetooth</strong> para imprimir comandas diretamente da cozinha, sem abrir janela do navegador.<br />
+        Funciona no <strong>Chrome 89+</strong> e <strong>Edge</strong> (desktop). Não funciona no Firefox ou Safari.
+      </div>
+
+      {/* Ativar */}
+      <Row label="Ativar impressão ESC/POS" sub="Ao ativar, o botão de imprimir no Kanban usará a impressora térmica">
+        <Toggle value={escAtivo} onChange={v => atualizarKanbanConfig({ escposAtivo: v })} />
+      </Row>
+
+      {escAtivo && (
+        <>
+          {/* Modo */}
+          <div>
+            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>Modo de conexão</p>
+            <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)', width: 'fit-content' }}>
+              {[
+                { id: 'usb',    label: 'USB',            Icon: Usb,       suporta: suportaUSB() },
+                { id: 'serial', label: 'Serial/BT',      Icon: Bluetooth, suporta: suportaSerial() },
+              ].map(op => (
+                <button key={op.id} onClick={() => atualizarKanbanConfig({ escposModo: op.id })}
+                  disabled={!op.suporta}
+                  style={{
+                    padding: '8px 18px', fontSize: 13, fontWeight: 600, border: 'none', cursor: op.suporta ? 'pointer' : 'not-allowed',
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    background: modo === op.id ? 'var(--accent)' : 'var(--bg-hover)',
+                    color: modo === op.id ? '#fff' : op.suporta ? 'var(--text-secondary)' : 'var(--text-muted)',
+                    opacity: op.suporta ? 1 : 0.4,
+                  }}>
+                  <op.Icon size={14} /> {op.label}
+                  {!op.suporta && <span style={{ fontSize: 10 }}>(não suportado)</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Conectar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <button className="btn btn-primary" onClick={conectar} style={{ gap: 6 }}>
+              <Printer size={14} />
+              {conectado ? 'Reconectar impressora' : 'Conectar impressora'}
+            </button>
+            {conectado && (
+              <button className="btn btn-secondary" onClick={testar} disabled={testando} style={{ gap: 6 }}>
+                {testando ? 'Imprimindo...' : 'Imprimir teste'}
+              </button>
+            )}
+            {(statusUSB || statusSerial) && (
+              <span style={{ fontSize: 12, color: (statusUSB || statusSerial).startsWith('✓') ? '#22c55e' : '#ef4444' }}>
+                {statusUSB || statusSerial}
+              </span>
+            )}
+          </div>
+
+          {conectado && (
+            <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', fontSize: 12, color: '#16a34a' }}>
+              ✓ Impressora conectada via {modo === 'usb' ? 'USB' : 'Serial/Bluetooth'}. O botão de imprimir no Kanban agora usa ESC/POS.
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 function AbaSuporte() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -1137,11 +1247,12 @@ function AbaSuporte() {
 
 /* Página principal */
 const TABS = [
-  { id: 'conta',      label: 'Conta',               Icon: User,        cor: 'var(--accent)' },
-  { id: 'notif',      label: 'Notificações',        Icon: Bell,        cor: 'var(--accent)' },
-  { id: 'app',        label: 'App',                 Icon: Smartphone,  cor: 'var(--accent)' },
-  { id: 'pagamentos', label: 'Pagamentos',           Icon: CreditCard,  cor: 'var(--accent)' },
-  { id: 'suporte',    label: 'Suporte',             Icon: Headphones,  cor: 'var(--accent)' },
+  { id: 'conta',       label: 'Conta',        Icon: User,        cor: 'var(--accent)' },
+  { id: 'notif',       label: 'Notificações', Icon: Bell,        cor: 'var(--accent)' },
+  { id: 'app',         label: 'App',          Icon: Smartphone,  cor: 'var(--accent)' },
+  { id: 'pagamentos',  label: 'Pagamentos',   Icon: CreditCard,  cor: 'var(--accent)' },
+  { id: 'impressora',  label: 'Impressora',   Icon: Printer,     cor: 'var(--accent)' },
+  { id: 'suporte',     label: 'Suporte',      Icon: Headphones,  cor: 'var(--accent)' },
 ]
 
 export default function Configuracoes() {
@@ -1189,11 +1300,12 @@ export default function Configuracoes() {
         })}
       </div>
 
-      {aba === 'conta'      && <AbaConta />}
-      {aba === 'notif'      && <AbaNotificacoes />}
-      {aba === 'app'        && <AbaApp />}
-      {aba === 'pagamentos' && <AbaFormasPagamento />}
-      {aba === 'suporte'    && <AbaSuporte />}
+      {aba === 'conta'       && <AbaConta />}
+      {aba === 'notif'       && <AbaNotificacoes />}
+      {aba === 'app'         && <AbaApp />}
+      {aba === 'pagamentos'  && <AbaFormasPagamento />}
+      {aba === 'impressora'  && <AbaImpressora />}
+      {aba === 'suporte'     && <AbaSuporte />}
     </div>
   )
 }

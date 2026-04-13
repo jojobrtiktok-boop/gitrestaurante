@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ShoppingCart, Trash2, Clock, X, Check, Printer, FileText, Truck, MapPin, User } from 'lucide-react'
+import { ShoppingCart, Trash2, Clock, X, Check, Printer, FileText, Truck, MapPin, User, Timer, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import TabelaVazia from '../components/ui/TabelaVazia.jsx'
 import FiltroPeriodo from '../components/ui/FiltroPeriodo.jsx'
@@ -100,6 +100,168 @@ function ModalPedido({ entrada, pedido, prato, garcon, onFechar }) {
           </p>
         )}
       </div>
+    </div>
+  )
+}
+
+// ── Relatório de Tempo ────────────────────────────────────────────────────────
+function RelatorioTempo({ pedidos, pratos, dataInicio, dataFim }) {
+  const [canal, setCanal] = useState('restaurante') // 'restaurante' | 'delivery'
+  const [expandido, setExpandido] = useState(null)
+
+  const fmt = min => {
+    if (min === null || min === undefined) return '—'
+    if (min < 1) return '< 1min'
+    if (min < 60) return `${Math.round(min)}min`
+    return `${Math.floor(min / 60)}h ${Math.round(min % 60)}min`
+  }
+
+  // Pedidos concluídos no período, pelo canal
+  const pedidosFiltrados = pedidos.filter(p => {
+    if (p.cancelado) return false
+    if (p.data < dataInicio || p.data > dataFim) return false
+    if (canal === 'delivery') return p.canal === 'delivery' && p.timestamps?.novo && (p.timestamps?.entregue || p.timestamps?.completo)
+    return p.canal !== 'delivery' && p.timestamps?.novo && p.timestamps?.completo
+  })
+
+  // Agrupa tempos por prato
+  const porPrato = {}
+  pedidosFiltrados.forEach(p => {
+    const ts = p.timestamps || {}
+    // restaurante: novo→preparando→completo | delivery: novo→preparando→pronto→saindo→entregue
+    const fim = canal === 'delivery' ? (ts.entregue || ts.completo) : ts.completo
+    const tempoEspera  = ts.novo && ts.preparando ? (new Date(ts.preparando) - new Date(ts.novo)) / 60000 : null
+    const tempoPreparo = ts.preparando && fim       ? (new Date(fim) - new Date(ts.preparando)) / 60000 : null
+    const tempoTotal   = ts.novo && fim             ? (new Date(fim) - new Date(ts.novo)) / 60000 : null
+
+    ;(p.itens || []).forEach(item => {
+      if (!porPrato[item.pratoId]) porPrato[item.pratoId] = { somaEspera: 0, somaPreparo: 0, somaTotal: 0, nEspera: 0, nPreparo: 0, nTotal: 0, pedidos: [] }
+      const r = porPrato[item.pratoId]
+      if (tempoEspera  !== null) { r.somaEspera  += tempoEspera  * item.quantidade; r.nEspera  += item.quantidade }
+      if (tempoPreparo !== null) { r.somaPreparo += tempoPreparo * item.quantidade; r.nPreparo += item.quantidade }
+      if (tempoTotal   !== null) { r.somaTotal   += tempoTotal   * item.quantidade; r.nTotal   += item.quantidade }
+      r.pedidos.push({ id: p.id, hora: p.hora, data: p.data, tempoEspera, tempoPreparo, tempoTotal, quantidade: item.quantidade })
+    })
+  })
+
+  const ranking = Object.entries(porPrato).map(([pratoId, r]) => {
+    const prato = pratos.find(x => x.id === pratoId)
+    if (!prato) return null
+    const mediaEspera  = r.nEspera  > 0 ? r.somaEspera  / r.nEspera  : null
+    const mediaPreparo = r.nPreparo > 0 ? r.somaPreparo / r.nPreparo : null
+    const mediaTotal   = r.nTotal   > 0 ? r.somaTotal   / r.nTotal   : null
+    return { prato, mediaEspera, mediaPreparo, mediaTotal, amostras: r.nTotal, pedidos: r.pedidos }
+  }).filter(Boolean).sort((a, b) => (b.mediaTotal || 0) - (a.mediaTotal || 0))
+
+  const maxTotal = ranking[0]?.mediaTotal || 1
+
+  if (pedidosFiltrados.length === 0) {
+    return (
+      <div className="card flex flex-col items-center justify-center py-16 gap-3">
+        <Timer size={32} style={{ color: 'var(--text-muted)', opacity: 0.4 }} />
+        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
+          Nenhum pedido {canal === 'delivery' ? 'delivery' : 'do restaurante'} concluído no período
+        </p>
+        <p style={{ color: 'var(--text-muted)', fontSize: 12 }}>Os dados aparecem quando pedidos passam por todo o fluxo do Kanban</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Canal toggle */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }}>
+          {[{ id: 'restaurante', label: 'Restaurante' }, { id: 'delivery', label: 'Delivery' }].map(op => (
+            <button key={op.id} onClick={() => { setCanal(op.id); setExpandido(null) }} style={{
+              padding: '7px 16px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
+              background: canal === op.id ? 'var(--accent)' : 'var(--bg-hover)',
+              color: canal === op.id ? '#fff' : 'var(--text-secondary)',
+            }}>{op.label}</button>
+          ))}
+        </div>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{pedidosFiltrados.length} pedidos analisados · {ranking.length} pratos</span>
+      </div>
+
+      {/* Legenda etapas */}
+      <div className="card p-3" style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+        {[
+          { cor: '#3b82f6', label: 'Espera (aguardando preparo)' },
+          { cor: '#f59e0b', label: canal === 'delivery' ? 'Preparo + entrega' : 'Preparo (na cozinha)' },
+          { cor: '#6b7280', label: 'Total (do pedido à entrega)' },
+        ].map(({ cor, label }) => (
+          <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 10, height: 10, borderRadius: 3, background: cor, flexShrink: 0 }} />
+            <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Ranking */}
+      {ranking.map(({ prato, mediaEspera, mediaPreparo, mediaTotal, amostras, pedidos: peds }) => {
+        const isAlert = mediaTotal !== null && mediaTotal > 25
+        const barW = mediaTotal ? (mediaTotal / maxTotal) * 100 : 0
+        const open = expandido === prato.id
+
+        return (
+          <div key={prato.id} className="card p-0 overflow-hidden" style={{ border: isAlert ? '1px solid rgba(239,68,68,0.3)' : undefined }}>
+            <button
+              onClick={() => setExpandido(open ? null : prato.id)}
+              style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '14px 16px', textAlign: 'left' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 120 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {isAlert && <AlertTriangle size={13} style={{ color: '#ef4444', flexShrink: 0 }} />}
+                    <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>{prato.nome}</span>
+                  </div>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{amostras} pedido{amostras !== 1 ? 's' : ''} analisado{amostras !== 1 ? 's' : ''}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ fontSize: 10, color: '#3b82f6', marginBottom: 2 }}>Espera</p>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: '#3b82f6' }}>{fmt(mediaEspera)}</p>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ fontSize: 10, color: '#f59e0b', marginBottom: 2 }}>Preparo</p>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: '#f59e0b' }}>{fmt(mediaPreparo)}</p>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ fontSize: 10, color: '#6b7280', marginBottom: 2 }}>Total</p>
+                    <p style={{ fontSize: 15, fontWeight: 800, color: isAlert ? '#ef4444' : 'var(--text-primary)' }}>{fmt(mediaTotal)}</p>
+                  </div>
+                </div>
+                {open ? <ChevronUp size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} /> : <ChevronDown size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />}
+              </div>
+
+              {/* Barra visual */}
+              <div style={{ display: 'flex', gap: 3, height: 6, borderRadius: 4, overflow: 'hidden', background: 'var(--bg-hover)' }}>
+                {mediaEspera && <div style={{ width: `${(mediaEspera / (maxTotal || 1)) * 100}%`, background: '#3b82f6', transition: 'width .4s' }} />}
+                {mediaPreparo && <div style={{ width: `${(mediaPreparo / (maxTotal || 1)) * 100}%`, background: '#f59e0b', transition: 'width .4s' }} />}
+              </div>
+            </button>
+
+            {/* Detalhe pedido a pedido */}
+            {open && (
+              <div style={{ borderTop: '1px solid var(--border)', padding: '12px 16px' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Histórico de pedidos</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {[...peds].sort((a, b) => (b.data || '').localeCompare(a.data || '')).slice(0, 20).map((ped, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, padding: '4px 0', borderBottom: '1px solid var(--border)' }}>
+                      <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', minWidth: 50 }}>{ped.data?.split('-').reverse().join('/') || '--'}</span>
+                      <span style={{ color: 'var(--text-muted)', minWidth: 40 }}>{ped.hora}</span>
+                      <span style={{ color: 'var(--text-secondary)' }}>×{ped.quantidade}</span>
+                      <span style={{ color: '#3b82f6', minWidth: 60 }}>espera: {fmt(ped.tempoEspera)}</span>
+                      <span style={{ color: '#f59e0b', minWidth: 70 }}>preparo: {fmt(ped.tempoPreparo)}</span>
+                      <span style={{ fontWeight: 700, color: ped.tempoTotal > 25 ? '#ef4444' : '#16a34a' }}>total: {fmt(ped.tempoTotal)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -393,7 +555,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
       {/* Abas */}
       <div style={{ overflowX: 'auto', paddingBottom: 2, marginBottom: 16 }}>
         <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--bg-hover)', width: 'fit-content', display: 'flex', gap: 4 }}>
-          {[{ id: 'lancamentos', label: 'Lançamentos' }, { id: 'funcionarios', label: 'Funcionários' }, { id: 'clientes', label: 'Clientes' }, { id: 'extrato', label: 'Extrato de Vendas' }, { id: 'delivery', label: 'Delivery' }].map(a => (
+          {[{ id: 'lancamentos', label: 'Lançamentos' }, { id: 'funcionarios', label: 'Funcionários' }, { id: 'clientes', label: 'Clientes' }, { id: 'extrato', label: 'Extrato de Vendas' }, { id: 'delivery', label: 'Delivery' }, { id: 'tempo', label: '⏱ Tempo' }].map(a => (
             <button key={a.id} onClick={() => setAba(a.id)}
               className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
               style={aba === a.id
@@ -943,6 +1105,15 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
 
       </>
       )} {/* fecha aba lancamentos */}
+
+      {aba === 'tempo' && (
+        <RelatorioTempo
+          pedidos={pedidos}
+          pratos={pratos}
+          dataInicio={dataInicio}
+          dataFim={dataFim}
+        />
+      )}
 
       {aba === 'delivery' && (() => {
         const pedidosDelivery = pedidos

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-import { Clock, Check, ChefHat, Volume2, Settings, Plus, Trash2, Copy, ExternalLink, RefreshCw, Link2, Truck } from 'lucide-react'
+import { Clock, Check, ChefHat, Volume2, Settings, Plus, Trash2, Copy, ExternalLink, RefreshCw, Link2, Truck, Printer } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import { hoje } from '../utils/formatacao.js'
+import { buildComanda, imprimirUSB, imprimirSerial, usbConectado, serialConectado } from '../utils/escpos.js'
 
 function IconMotoqueiro({ size = 24, color = 'currentColor' }) {
   return (
@@ -190,20 +191,35 @@ function CardPedido({ pedido, coluna, pratos, garcons, mesas, onAvancar, cfg }) 
       )}
 
       {/* Rodapé */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: compact ? 5 : 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: compact ? 5 : 8, gap: 6 }}>
         {cfg.mostrarPrecos !== false
           ? <span style={{ fontSize: compact ? 12 : 13, fontWeight: 700, color: 'var(--text-primary)' }}>
               {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </span>
           : <span />
         }
-        {coluna.proximoStatus && (
-          <button onClick={() => onAvancar(pedido.id, coluna.proximoStatus)}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: compact ? '4px 10px' : '5px 12px', borderRadius: 8, border: 'none', background: coluna.cor, color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-            {coluna.proximoStatus === 'preparando' ? <ChefHat size={12} /> : <Check size={12} />}
-            {coluna.proximoLabel}
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+          {cfg.escposAtivo && (
+            <button
+              title="Imprimir comanda (ESC/POS)"
+              onClick={async () => {
+                const dados = buildComanda(pedido, pratos, cfg.nomeRestaurante || 'Restaurante')
+                const modo = cfg.escposModo || 'usb'
+                const r = modo === 'usb' ? await imprimirUSB(dados) : await imprimirSerial(dados)
+                if (!r.ok) alert(`Impressão falhou: ${r.erro}\nConecte a impressora em Configurações → Impressora`)
+              }}
+              style={{ display: 'flex', alignItems: 'center', padding: compact ? '3px 7px' : '4px 9px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-hover)', color: 'var(--text-muted)', fontSize: 11, gap: 4, cursor: 'pointer' }}>
+              <Printer size={11} />
+            </button>
+          )}
+          {coluna.proximoStatus && (
+            <button onClick={() => onAvancar(pedido.id, coluna.proximoStatus)}
+              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: compact ? '4px 10px' : '5px 12px', borderRadius: 8, border: 'none', background: coluna.cor, color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+              {coluna.proximoStatus === 'preparando' ? <ChefHat size={12} /> : <Check size={12} />}
+              {coluna.proximoLabel}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )

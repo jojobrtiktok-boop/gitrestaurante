@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   User, Bell, Smartphone, Eye, EyeOff,
-  Lock, CheckCircle, AlertCircle, ShoppingBasket,
+  Lock, CheckCircle, AlertCircle,
   BellOff, BellRing, Chrome, Camera, Pencil,
   Wallet, Banknote, QrCode, CreditCard, ExternalLink,
   Headphones, MessageCircle, Mail, Clock,
@@ -473,26 +473,45 @@ function AbaApp() {
 
 /* Aba Formas de Pagamento */
 function AbaFormasPagamento() {
-  const { pagamentosConfig, atualizarPagamentosConfig, configuracaoGeral, atualizarConfiguracaoGeral } = useApp()
+  const { pagamentosConfig, atualizarPagamentosConfig } = useApp()
   const [mostrarToken, setMostrarToken] = useState(false)
-  const [testando, setTestando] = useState(false)
-  const [testeResultado, setTesteResultado] = useState(null)
+  const [mostrarEfiToken, setMostrarEfiToken] = useState(false)
+  const [testando, setTestando] = useState(null) // 'mp' | 'efi'
+  const [testeResultado, setTesteResultado] = useState({})
 
-  async function testarConexao() {
+  async function testarMP() {
     if (!pagamentosConfig.mercadoPagoAccessToken) return
-    setTestando(true)
-    setTesteResultado(null)
+    setTestando('mp'); setTesteResultado(p => ({ ...p, mp: null }))
     try {
       const res = await fetch('https://api.mercadopago.com/v1/payment_methods', {
         headers: { Authorization: `Bearer ${pagamentosConfig.mercadoPagoAccessToken}` },
       })
-      if (res.ok) setTesteResultado({ ok: true, msg: 'Conexão bem-sucedida! Token válido.' })
-      else setTesteResultado({ ok: false, msg: 'Token inválido ou sem permissão.' })
+      setTesteResultado(p => ({ ...p, mp: res.ok
+        ? { ok: true,  msg: 'Token válido! Conexão bem-sucedida.' }
+        : { ok: false, msg: 'Token inválido ou sem permissão.' },
+      }))
     } catch {
-      setTesteResultado({ ok: false, msg: 'Erro de rede. Verifique sua conexão.' })
-    } finally {
-      setTestando(false)
-    }
+      setTesteResultado(p => ({ ...p, mp: { ok: false, msg: 'Erro de rede.' } }))
+    } finally { setTestando(null) }
+  }
+
+  async function testarEfi() {
+    if (!pagamentosConfig.efiClientId || !pagamentosConfig.efiClientSecret) return
+    setTestando('efi'); setTesteResultado(p => ({ ...p, efi: null }))
+    try {
+      const creds = btoa(`${pagamentosConfig.efiClientId}:${pagamentosConfig.efiClientSecret}`)
+      const res = await fetch('https://pix.api.efipay.com.br/oauth/token', {
+        method: 'POST',
+        headers: { Authorization: `Basic ${creds}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ grant_type: 'client_credentials' }),
+      })
+      setTesteResultado(p => ({ ...p, efi: res.ok
+        ? { ok: true,  msg: 'Credenciais válidas! Conexão bem-sucedida.' }
+        : { ok: false, msg: 'Credenciais inválidas ou sem permissão.' },
+      }))
+    } catch {
+      setTesteResultado(p => ({ ...p, efi: { ok: false, msg: 'Erro de rede (CORS esperado em dev).' } }))
+    } finally { setTestando(null) }
   }
 
   const formas = [
@@ -606,20 +625,20 @@ function AbaFormasPagamento() {
                 </p>
               </div>
 
-              {/* Botão testar */}
+              {/* Botão testar MP */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <button
                   className="btn btn-primary"
-                  onClick={testarConexao}
-                  disabled={testando || !pagamentosConfig.mercadoPagoAccessToken}
+                  onClick={testarMP}
+                  disabled={testando === 'mp' || !pagamentosConfig.mercadoPagoAccessToken}
                   style={{ alignSelf: 'flex-start', opacity: !pagamentosConfig.mercadoPagoAccessToken ? 0.45 : 1 }}
                 >
-                  {testando ? 'Testando...' : 'Testar conexão'}
+                  {testando === 'mp' ? 'Testando...' : 'Testar conexão'}
                 </button>
-                {testeResultado && (
-                  <span style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, color: testeResultado.ok ? '#22c55e' : '#ef4444' }}>
-                    {testeResultado.ok ? <CheckCircle size={13} /> : <AlertCircle size={13} />}
-                    {testeResultado.msg}
+                {testeResultado.mp && (
+                  <span style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, color: testeResultado.mp.ok ? '#22c55e' : '#ef4444' }}>
+                    {testeResultado.mp.ok ? <CheckCircle size={13} /> : <AlertCircle size={13} />}
+                    {testeResultado.mp.msg}
                   </span>
                 )}
               </div>
@@ -628,20 +647,133 @@ function AbaFormasPagamento() {
         </div>
       </div>
 
-      {/* ── Estoque (movido do Sistema) ── */}
+      {/* ── Efí (Gerencianet) ── */}
       <div>
-        <SecaoHeader icon={ShoppingBasket} title="Mercadorias / Estoque" cor="#16a34a" />
-        <Row label="Estoque mínimo padrão" sub="Aplicado a insumos sem valor individual configurado">
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-            <input
-              type="number" className="input" min={0}
-              value={configuracaoGeral.estoqueMinimoPadrao}
-              onChange={e => atualizarConfiguracaoGeral({ estoqueMinimoPadrao: Math.max(0, +e.target.value) })}
-              style={{ width: 80, textAlign: 'center' }}
-            />
-            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>unidades</span>
-          </div>
-        </Row>
+        <SecaoHeader icon={({ size, style }) => (
+          <svg viewBox="0 0 40 40" width={size} height={size} style={style} fill="currentColor">
+            <circle cx="20" cy="20" r="20" fill="#00b4aa" opacity="0.15"/>
+            <text x="50%" y="55%" dominantBaseline="middle" textAnchor="middle" fontSize="14" fontWeight="800" fill="#00b4aa">Efí</text>
+          </svg>
+        )} title="Efí Pay (Gerencianet)" cor="#00b4aa" />
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Row
+            label="Ativar integração Efí Pay"
+            sub="Pix com QR dinâmico integrado direto ao Banco Central"
+          >
+            <Toggle value={!!pagamentosConfig.efiAtivo} onChange={v => atualizarPagamentosConfig({ efiAtivo: v })} />
+          </Row>
+
+          {pagamentosConfig.efiAtivo && (
+            <div style={{
+              padding: '18px', borderRadius: 12, border: '1px solid var(--border)',
+              background: 'var(--bg-hover)', display: 'flex', flexDirection: 'column', gap: 14,
+            }}>
+              {/* Instrução */}
+              <div style={{
+                padding: '10px 14px', borderRadius: 9, fontSize: 12,
+                background: 'rgba(0,180,170,0.07)', border: '1px solid rgba(0,180,170,0.2)',
+                color: 'var(--text-secondary)', lineHeight: 1.6,
+              }}>
+                Acesse o{' '}
+                <a
+                  href="https://dev.efipay.com.br/docs/api-pix/credenciais"
+                  target="_blank" rel="noopener noreferrer"
+                  style={{ color: '#00b4aa', textDecoration: 'none', fontWeight: 600 }}
+                >
+                  Painel Efí Pay → API Pix → Credenciais <ExternalLink size={10} style={{ verticalAlign: 'middle' }} />
+                </a>
+                {' '}e crie uma aplicação para obter o Client ID e Client Secret.
+              </div>
+
+              {/* Client ID */}
+              <div>
+                <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>
+                  Client ID
+                </label>
+                <input
+                  className="input"
+                  type="text"
+                  placeholder="Client_Id_..."
+                  value={pagamentosConfig.efiClientId || ''}
+                  onChange={e => atualizarPagamentosConfig({ efiClientId: e.target.value })}
+                  style={{ fontFamily: 'monospace', fontSize: 12 }}
+                />
+              </div>
+
+              {/* Client Secret */}
+              <div>
+                <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>
+                  Client Secret
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    className="input"
+                    type={mostrarEfiToken ? 'text' : 'password'}
+                    placeholder="Client_Secret_..."
+                    value={pagamentosConfig.efiClientSecret || ''}
+                    onChange={e => atualizarPagamentosConfig({ efiClientSecret: e.target.value })}
+                    style={{ paddingRight: 40, fontFamily: 'monospace', fontSize: 12 }}
+                  />
+                  <button
+                    onClick={() => setMostrarEfiToken(v => !v)}
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0 }}
+                  >
+                    {mostrarEfiToken ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Chave Pix */}
+              <div>
+                <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>
+                  Chave Pix (recebimento)
+                </label>
+                <input
+                  className="input"
+                  type="text"
+                  placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória"
+                  value={pagamentosConfig.efiChavePix || ''}
+                  onChange={e => atualizarPagamentosConfig({ efiChavePix: e.target.value })}
+                />
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '4px 0 0' }}>
+                  Cadastre a chave Pix previamente no painel Efí Pay.
+                </p>
+              </div>
+
+              {/* Ambiente */}
+              <Row label="Ambiente" sub="Use Homologação para testes sem movimentar dinheiro real">
+                <select
+                  className="input"
+                  value={pagamentosConfig.efiAmbiente || 'producao'}
+                  onChange={e => atualizarPagamentosConfig({ efiAmbiente: e.target.value })}
+                  style={{ width: 'auto', fontSize: 12 }}
+                >
+                  <option value="producao">Produção</option>
+                  <option value="homologacao">Homologação</option>
+                </select>
+              </Row>
+
+              {/* Botão testar Efí */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={testarEfi}
+                  disabled={testando === 'efi' || !pagamentosConfig.efiClientId || !pagamentosConfig.efiClientSecret}
+                  style={{ alignSelf: 'flex-start', opacity: (!pagamentosConfig.efiClientId || !pagamentosConfig.efiClientSecret) ? 0.45 : 1, background: '#00b4aa', borderColor: '#00b4aa' }}
+                >
+                  {testando === 'efi' ? 'Testando...' : 'Testar conexão'}
+                </button>
+                {testeResultado.efi && (
+                  <span style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, color: testeResultado.efi.ok ? '#22c55e' : '#ef4444' }}>
+                    {testeResultado.efi.ok ? <CheckCircle size={13} /> : <AlertCircle size={13} />}
+                    {testeResultado.efi.msg}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
     </div>

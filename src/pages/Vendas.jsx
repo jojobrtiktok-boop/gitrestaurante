@@ -1116,10 +1116,53 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
       )}
 
       {aba === 'delivery' && (() => {
-        const pedidosDelivery = pedidos
-          .filter(p => p.canal === 'delivery' && !p.cancelado && p.data >= dataInicio && p.data <= dataFim)
-          .sort((a, b) => b.data.localeCompare(a.data) || b.hora.localeCompare(a.hora))
+        // ── dados base ────────────────────────────────────────────────────
+        const todosDelivery = pedidos.filter(p => p.canal === 'delivery' && p.data >= dataInicio && p.data <= dataFim)
+        const pedidosDelivery = todosDelivery.filter(p => !p.cancelado).sort((a, b) => b.data.localeCompare(a.data) || b.hora.localeCompare(a.hora))
+        const cancelados = todosDelivery.filter(p => p.cancelado)
+        const entregues  = pedidosDelivery.filter(p => p.status === 'entregue')
+        const retiradas  = pedidosDelivery.filter(p => p.enderecoEntrega === 'Retirada no local')
 
+        function totalPedido(p) {
+          return (p.itens || []).reduce((s, i) => {
+            const prato = pratos.find(x => x.id === i.pratoId)
+            return s + (prato?.precoVenda || 0) * i.quantidade
+          }, 0)
+        }
+
+        const faturamento   = pedidosDelivery.reduce((s, p) => s + totalPedido(p), 0)
+        const ticketMedio   = pedidosDelivery.length ? faturamento / pedidosDelivery.length : 0
+        const taxaCancelamento = todosDelivery.length ? (cancelados.length / todosDelivery.length) * 100 : 0
+
+        // ticket médio local para comparação
+        const pedidosLocal  = pedidos.filter(p => p.canal !== 'delivery' && !p.cancelado && p.data >= dataInicio && p.data <= dataFim)
+        const fatLocal      = pedidosLocal.reduce((s, p) => s + totalPedido(p), 0)
+        const ticketLocal   = pedidosLocal.length ? fatLocal / pedidosLocal.length : 0
+
+        // ── bairros ───────────────────────────────────────────────────────
+        const bairroMap = {}
+        pedidosDelivery.forEach(p => {
+          const end = p.enderecoEntrega || ''
+          const bairro = end === 'Retirada no local' ? 'Retirada' : end.includes(' - ') ? end.split(' - ')[0] : 'Outros'
+          if (!bairroMap[bairro]) bairroMap[bairro] = { qtd: 0, total: 0 }
+          bairroMap[bairro].qtd++
+          bairroMap[bairro].total += totalPedido(p)
+        })
+        const bairros = Object.entries(bairroMap).sort((a, b) => b[1].qtd - a[1].qtd).slice(0, 8)
+        const maxBairroQtd = bairros[0]?.[1].qtd || 1
+
+        // ── horários de pico ──────────────────────────────────────────────
+        const horaMap = {}
+        pedidosDelivery.forEach(p => {
+          const h = (p.hora || '00:00').slice(0, 2)
+          horaMap[h] = (horaMap[h] || 0) + 1
+        })
+        const horas = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
+          .filter(h => horaMap[h])
+          .map(h => ({ h, qtd: horaMap[h] }))
+        const maxHoraQtd = Math.max(...horas.map(x => x.qtd), 1)
+
+        // ── print nota ────────────────────────────────────────────────────
         function printNotaDelivery(p) {
           const win = window.open('', '_blank', 'width=400,height=600')
           if (!win) return
@@ -1127,35 +1170,162 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
             const prato = pratos.find(x => x.id === i.pratoId)
             return `<tr><td>×${i.quantidade} ${prato?.nome || i.pratoId}</td><td style="text-align:right">${((prato?.precoVenda || 0) * i.quantidade).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td></tr>`
           }).join('')
-          const total = (p.itens || []).reduce((s, i) => {
-            const prato = pratos.find(x => x.id === i.pratoId)
-            return s + (prato?.precoVenda || 0) * i.quantidade
-          }, 0)
-          win.document.write(`
-            <html><head><title>Pedido Delivery</title>
+          const total = totalPedido(p)
+          win.document.write(`<html><head><title>Pedido Delivery</title>
             <style>body{font-family:monospace;padding:20px;max-width:320px;margin:0 auto}h2{text-align:center}table{width:100%;border-collapse:collapse}td{padding:4px 0}hr{border:1px dashed #ccc}.total{font-weight:bold;font-size:16px}</style>
-            </head><body>
-            <h2>Pedido Delivery</h2><hr/>
+            </head><body><h2>Pedido Delivery</h2><hr/>
             <p><b>Cliente:</b> ${p.clienteNome || '—'}</p>
             <p><b>Endereço:</b> ${p.enderecoEntrega || '—'}</p>
             <p><b>Data:</b> ${p.data} às ${p.hora}</p>
             <hr/><table>${itensHtml}</table><hr/>
             ${p.obs ? `<p><i>Obs: ${p.obs}</i></p><hr/>` : ''}
             <p class="total">Total: ${total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-            <p style="text-align:center;font-size:11px">Status: ${p.status === 'entregue' ? 'Entregue ✓' : p.status === 'saindo' ? 'Saindo para entregar' : p.status === 'pronto' ? 'Pronto' : p.status}</p>
-            <script>window.print();window.close()</script></body></html>`)
+            <p style="text-align:center;font-size:11px">Status: ${p.status === 'entregue' ? 'Entregue ✓' : p.status === 'saindo' ? 'Saindo' : p.status === 'pronto' ? 'Pronto' : p.status}</p>
+            <script>window.addEventListener('load',()=>{window.print()})<\/script></body></html>`)
+          win.document.close()
         }
 
-        const statusLabel = { novo: 'Aguardando', preparando: 'Preparando', pronto: 'Pronto', saindo: 'Saindo', entregue: 'Entregue' }
-        const statusCor = { novo: '#3b82f6', preparando: '#f59e0b', pronto: '#22c55e', saindo: '#f97316', entregue: '#16a34a' }
+        const statusLabel = { pendente: 'Pendente', novo: 'Aguardando', preparando: 'Preparando', pronto: 'Pronto', saindo: 'Saindo', entregue: 'Entregue' }
+        const statusCor   = { pendente: '#a1a1aa', novo: '#3b82f6', preparando: '#f59e0b', pronto: '#22c55e', saindo: '#f97316', entregue: '#16a34a' }
 
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+            {/* ── Cards de resumo ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+              {[
+                { label: 'Pedidos',        valor: pedidosDelivery.length, sub: `${todosDelivery.length} total`, cor: '#3b82f6' },
+                { label: 'Faturamento',    valor: formatarMoeda(faturamento), sub: 'pedidos aceitos', cor: '#22c55e' },
+                { label: 'Ticket Médio',   valor: formatarMoeda(ticketMedio), sub: 'por pedido', cor: 'var(--accent)' },
+                { label: 'Cancelamentos',  valor: `${taxaCancelamento.toFixed(1)}%`, sub: `${cancelados.length} pedido${cancelados.length !== 1 ? 's' : ''}`, cor: taxaCancelamento > 15 ? '#ef4444' : '#a1a1aa' },
+              ].map(c => (
+                <div key={c.label} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.04em' }}>{c.label}</span>
+                  <span style={{ fontSize: 20, fontWeight: 800, color: c.cor }}>{c.valor}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.sub}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* ── Comparação ticket médio ── */}
+            {ticketLocal > 0 && ticketMedio > 0 && (
+              <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Ticket Médio — Delivery vs Restaurante</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[
+                    { label: 'Delivery', valor: ticketMedio, cor: '#f97316' },
+                    { label: 'Restaurante', valor: ticketLocal, cor: '#3b82f6' },
+                  ].map(item => {
+                    const pct = (item.valor / Math.max(ticketMedio, ticketLocal)) * 100
+                    return (
+                      <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)', width: 90, flexShrink: 0 }}>{item.label}</span>
+                        <div style={{ flex: 1, background: 'var(--bg-hover)', borderRadius: 6, height: 10, overflow: 'hidden' }}>
+                          <div style={{ width: `${pct}%`, height: '100%', background: item.cor, borderRadius: 6, transition: 'width .4s' }} />
+                        </div>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: item.cor, width: 72, textAlign: 'right', flexShrink: 0 }}>{formatarMoeda(item.valor)}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  Delivery {ticketMedio > ticketLocal ? `${((ticketMedio / ticketLocal - 1) * 100).toFixed(0)}% maior` : `${((1 - ticketMedio / ticketLocal) * 100).toFixed(0)}% menor`} que restaurante
+                </span>
+              </div>
+            )}
+
+            {/* ── Pedidos por bairro + Horários de pico (lado a lado) ── */}
+            {pedidosDelivery.length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
+
+                {/* Bairros */}
+                {bairros.length > 0 && (
+                  <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <MapPin size={14} color="var(--accent)" />
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Pedidos por Bairro</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {bairros.map(([bairro, d]) => (
+                        <div key={bairro} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>{bairro}</span>
+                            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{formatarMoeda(d.total)}</span>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', minWidth: 28, textAlign: 'right' }}>{d.qtd}×</span>
+                            </div>
+                          </div>
+                          <div style={{ background: 'var(--bg-hover)', borderRadius: 4, height: 6, overflow: 'hidden' }}>
+                            <div style={{ width: `${(d.qtd / maxBairroQtd) * 100}%`, height: '100%', background: 'var(--accent)', borderRadius: 4, transition: 'width .4s' }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Horários de pico */}
+                {horas.length > 0 && (
+                  <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Clock size={14} color="var(--accent)" />
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Horários de Pico</span>
+                    </div>
+                    <div style={{ display: 'flex', align: 'flex-end', gap: 4, height: 80, alignItems: 'flex-end' }}>
+                      {horas.map(({ h, qtd }) => (
+                        <div key={h} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                          <span style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700 }}>{qtd}</span>
+                          <div style={{
+                            width: '100%', minWidth: 8,
+                            height: `${(qtd / maxHoraQtd) * 60}px`,
+                            background: qtd === maxHoraQtd ? 'var(--accent)' : 'var(--accent-bg, rgba(253,75,1,0.25))',
+                            borderRadius: '3px 3px 0 0',
+                            border: qtd === maxHoraQtd ? '1px solid var(--accent)' : '1px solid transparent',
+                          }} />
+                          <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>{h}h</span>
+                        </div>
+                      ))}
+                    </div>
+                    {horas.length > 0 && (
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                        Pico às <strong style={{ color: 'var(--accent)' }}>{horas.sort((a,b) => b.qtd - a.qtd)[0].h}h</strong> com {horas.sort((a,b) => b.qtd - a.qtd)[0].qtd} pedido{horas.sort((a,b) => b.qtd - a.qtd)[0].qtd !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Entrega vs Retirada ── */}
+            {pedidosDelivery.length > 0 && (
+              <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+                <Truck size={16} color="var(--accent)" />
+                <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                  <div>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block' }}>Entrega</span>
+                    <span style={{ fontSize: 18, fontWeight: 800, color: '#f97316' }}>{pedidosDelivery.length - retiradas.length}</span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block' }}>Retirada</span>
+                    <span style={{ fontSize: 18, fontWeight: 800, color: '#3b82f6' }}>{retiradas.length}</span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block' }}>Entregues</span>
+                    <span style={{ fontSize: 18, fontWeight: 800, color: '#22c55e' }}>{entregues.length}</span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block' }}>Cancelados</span>
+                    <span style={{ fontSize: 18, fontWeight: 800, color: cancelados.length > 0 ? '#ef4444' : 'var(--text-muted)' }}>{cancelados.length}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Lista de pedidos ── */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Truck size={16} color="var(--accent)" />
-              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                {pedidosDelivery.length} pedido{pedidosDelivery.length !== 1 ? 's' : ''} no período
-              </span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Pedidos</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>— {pedidosDelivery.length} no período</span>
             </div>
 
             {pedidosDelivery.length === 0 ? (
@@ -1163,10 +1333,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {pedidosDelivery.map(p => {
-                  const total = (p.itens || []).reduce((s, i) => {
-                    const prato = pratos.find(x => x.id === i.pratoId)
-                    return s + (prato?.precoVenda || 0) * i.quantidade
-                  }, 0)
+                  const total = totalPedido(p)
                   const cor = statusCor[p.status] || '#a1a1aa'
                   return (
                     <div key={p.id} className="card" style={{ borderLeft: `3px solid ${cor}` }}>
@@ -1188,27 +1355,20 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
-                            {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            {formatarMoeda(total)}
                           </span>
-                          <button onClick={() => printNotaDelivery(p)}
-                            className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <button onClick={() => printNotaDelivery(p)} className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
                             <Printer size={13} />Nota
                           </button>
                         </div>
                       </div>
-
-                      {/* Itens */}
                       <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 3 }}>
                         {(p.itens || []).map((item, idx) => {
                           const prato = pratos.find(x => x.id === item.pratoId)
                           return (
                             <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>×{item.quantidade} {prato?.nome || item.pratoId}</span>
-                              {prato && (
-                                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                                  {(prato.precoVenda * item.quantidade).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                </span>
-                              )}
+                              {prato && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{formatarMoeda(prato.precoVenda * item.quantidade)}</span>}
                             </div>
                           )
                         })}

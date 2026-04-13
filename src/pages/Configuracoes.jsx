@@ -143,7 +143,7 @@ function AbaConta() {
 
       {/* ── Perfil ── */}
       <div>
-        <SecaoHeader icon={User} title="Perfil" cor="#3b82f6" />
+        <SecaoHeader icon={User} title="Perfil" cor="var(--accent)" />
         <div style={{
           padding: '20px', background: 'var(--bg-hover)', borderRadius: 12,
           border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 16,
@@ -234,7 +234,7 @@ function AbaConta() {
 
       {/* ── Alterar Senha ── */}
       <div>
-        <SecaoHeader icon={Lock} title="Alterar Senha" cor="#f59e0b" />
+        <SecaoHeader icon={Lock} title="Alterar Senha" cor="var(--accent)" />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div>
             <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>Senha atual</label>
@@ -311,7 +311,7 @@ function AbaNotificacoes() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div>
-        <SecaoHeader icon={Bell} title="Notificações Push" cor="#8b5cf6" />
+        <SecaoHeader icon={Bell} title="Notificações Push" cor="var(--accent)" />
         {!suportado && (
           <div style={{
             padding: '12px 16px', borderRadius: 10, marginBottom: 10,
@@ -352,7 +352,7 @@ function AbaNotificacoes() {
       </div>
 
       <div>
-        <SecaoHeader icon={BellRing} title="Tipos de Notificação" cor="#3b82f6" />
+        <SecaoHeader icon={BellRing} title="Tipos de Notificação" cor="var(--accent)" />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <Row label="💰 Vendas" sub="Notificar quando um pedido for pago">
             <Toggle value={notifConfig.notifVendas} onChange={v => atualizarNotifConfig({ notifVendas: v })} disabled={!pushOn} />
@@ -434,7 +434,7 @@ function AbaApp() {
           <svg viewBox="0 0 814 1000" width={size} height={size} style={style} fill="currentColor">
             <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46 680 0 563.5 0 448.3c0-84.5 16.2-167.2 52.2-237.8 50.8-99.4 133.8-164.1 218.9-164.1 81.8 0 144.5 48.8 193.7 48.8 49.3 0 121.1-52.2 214-52.2zm-470-45.2C346 285.9 383.2 195.8 383.2 105.7c0-12.8-1.3-25.9-3.2-38.1C302 67 224 117.5 183.6 195.8c-34.6 67.9-40.8 136.8-39.5 191.2 8.3 0.6 35.8 5.1 55.5 5.1z"/>
           </svg>
-        )} title="Instalar no iPhone (iOS)" cor="#1d1d1f" />
+        )} title="Instalar no iPhone (iOS)" cor="var(--accent)" />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <StepCard num={1} title="Abra o Safari" desc="Acesse o link do sistema pelo Safari - no iOS só funciona via Safari." />
           <StepCard num={2} title='Toque em "Compartilhar" (ícone ↑)' desc="Botão de compartilhamento na barra inferior do Safari." />
@@ -452,7 +452,7 @@ function AbaApp() {
 
       {/* Android */}
       <div>
-        <SecaoHeader icon={Chrome} title="Instalar no Android" cor="#22c55e" />
+        <SecaoHeader icon={Chrome} title="Instalar no Android" cor="var(--accent)" />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <StepCard num={1} title="Abra o Google Chrome" desc="Acesse o link do sistema pelo Chrome (padrão no Android)." />
           <StepCard num={2} title="Toque nos 3 pontos ⋮ (canto superior direito)" desc="Menu de opções do Chrome." />
@@ -552,7 +552,7 @@ function AbaFormasPagamento() {
           <svg viewBox="0 0 32 32" width={size} height={size} style={style} fill="currentColor">
             <path d="M16 2C8.268 2 2 8.268 2 16s6.268 14 14 14 14-6.268 14-14S23.732 2 16 2zm6.5 10.5c0 .276-.224.5-.5.5h-1.5v1h1.5c.276 0 .5.224.5.5s-.224.5-.5.5h-1.5v2.5c0 .276-.224.5-.5.5s-.5-.224-.5-.5V13h-2.5c-.276 0-.5-.224-.5-.5v-4c0-.276.224-.5.5-.5h5c.276 0 .5.224.5.5v4zm-10 4c-2.485 0-4.5-2.015-4.5-4.5s2.015-4.5 4.5-4.5 4.5 2.015 4.5 4.5-2.015 4.5-4.5 4.5z"/>
           </svg>
-        )} title="Mercado Pago" cor="#00b1ea" />
+        )} title="Mercado Pago" cor="var(--accent)" />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <Row
@@ -570,14 +570,14 @@ function AbaFormasPagamento() {
               {/* Instrução */}
               <div style={{
                 padding: '10px 14px', borderRadius: 9, fontSize: 12,
-                background: 'rgba(0,177,234,0.07)', border: '1px solid rgba(0,177,234,0.2)',
+                background: 'var(--accent-bg)', border: '1px solid var(--border)',
                 color: 'var(--text-secondary)', lineHeight: 1.6,
               }}>
                 Para obter suas credenciais, acesse o{' '}
                 <a
                   href="https://www.mercadopago.com.br/developers/pt/docs/credentials"
                   target="_blank" rel="noopener noreferrer"
-                  style={{ color: '#00b1ea', textDecoration: 'none', fontWeight: 600 }}
+                  style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}
                 >
                   Painel de Desenvolvedores do Mercado Pago <ExternalLink size={10} style={{ verticalAlign: 'middle' }} />
                 </a>
@@ -651,10 +651,10 @@ function AbaFormasPagamento() {
       <div>
         <SecaoHeader icon={({ size, style }) => (
           <svg viewBox="0 0 40 40" width={size} height={size} style={style} fill="currentColor">
-            <circle cx="20" cy="20" r="20" fill="#00b4aa" opacity="0.15"/>
-            <text x="50%" y="55%" dominantBaseline="middle" textAnchor="middle" fontSize="14" fontWeight="800" fill="#00b4aa">Efí</text>
+            <circle cx="20" cy="20" r="20" fill="var(--accent)" opacity="0.15"/>
+            <text x="50%" y="55%" dominantBaseline="middle" textAnchor="middle" fontSize="14" fontWeight="800" fill="var(--accent)">Efí</text>
           </svg>
-        )} title="Efí Pay (Gerencianet)" cor="#00b4aa" />
+        )} title="Efí Pay (Gerencianet)" cor="var(--accent)" />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <Row
@@ -672,14 +672,14 @@ function AbaFormasPagamento() {
               {/* Instrução */}
               <div style={{
                 padding: '10px 14px', borderRadius: 9, fontSize: 12,
-                background: 'rgba(0,180,170,0.07)', border: '1px solid rgba(0,180,170,0.2)',
+                background: 'var(--accent-bg)', border: '1px solid var(--border)',
                 color: 'var(--text-secondary)', lineHeight: 1.6,
               }}>
                 Acesse o{' '}
                 <a
                   href="https://dev.efipay.com.br/docs/api-pix/credenciais"
                   target="_blank" rel="noopener noreferrer"
-                  style={{ color: '#00b4aa', textDecoration: 'none', fontWeight: 600 }}
+                  style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}
                 >
                   Painel Efí Pay → API Pix → Credenciais <ExternalLink size={10} style={{ verticalAlign: 'middle' }} />
                 </a>
@@ -760,7 +760,7 @@ function AbaFormasPagamento() {
                   className="btn btn-primary"
                   onClick={testarEfi}
                   disabled={testando === 'efi' || !pagamentosConfig.efiClientId || !pagamentosConfig.efiClientSecret}
-                  style={{ alignSelf: 'flex-start', opacity: (!pagamentosConfig.efiClientId || !pagamentosConfig.efiClientSecret) ? 0.45 : 1, background: '#00b4aa', borderColor: '#00b4aa' }}
+                  style={{ alignSelf: 'flex-start', opacity: (!pagamentosConfig.efiClientId || !pagamentosConfig.efiClientSecret) ? 0.45 : 1 }}
                 >
                   {testando === 'efi' ? 'Testando...' : 'Testar conexão'}
                 </button>
@@ -812,7 +812,7 @@ function AbaSuporte() {
 
       {/* Canais */}
       <div>
-        <SecaoHeader icon={MessageCircle} title="Canais de Atendimento" cor="var(--accent)" />
+        <SecaoHeader icon={MessageCircle} title="Canais de Atendimento" />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
           {/* WhatsApp */}
@@ -895,11 +895,11 @@ function AbaSuporte() {
 
 /* Página principal */
 const TABS = [
-  { id: 'conta',      label: 'Conta',               Icon: User,        cor: '#3b82f6' },
-  { id: 'notif',      label: 'Notificações',        Icon: Bell,        cor: '#8b5cf6' },
-  { id: 'app',        label: 'App',                 Icon: Smartphone,  cor: '#16a34a' },
+  { id: 'conta',      label: 'Conta',               Icon: User,        cor: 'var(--accent)' },
+  { id: 'notif',      label: 'Notificações',        Icon: Bell,        cor: 'var(--accent)' },
+  { id: 'app',        label: 'App',                 Icon: Smartphone,  cor: 'var(--accent)' },
   { id: 'pagamentos', label: 'Formas de Pagamento', Icon: Wallet,      cor: 'var(--accent)' },
-  { id: 'suporte',    label: 'Suporte',             Icon: Headphones,  cor: '#22c55e' },
+  { id: 'suporte',    label: 'Suporte',             Icon: Headphones,  cor: 'var(--accent)' },
 ]
 
 export default function Configuracoes() {
@@ -938,7 +938,7 @@ export default function Configuracoes() {
               {t.label}
               {t.id === 'notif' && notifBadge && (
                 <span style={{
-                  width: 7, height: 7, borderRadius: '50%', background: '#f59e0b',
+                  width: 7, height: 7, borderRadius: '50%', background: 'var(--accent)',
                   position: 'absolute', top: 6, right: 8,
                 }} />
               )}

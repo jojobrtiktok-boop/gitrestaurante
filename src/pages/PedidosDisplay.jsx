@@ -26,6 +26,29 @@ export default function PedidosDisplay() {
   const [dataStr, setDataStr] = useState('')
   const [flashIds, setFlashIds] = useState(new Set())
   const prontosIdsRef = useRef([])
+  const pendentesIdsRef = useRef([])
+  const audioCtxRef = useRef(null)
+
+  function tocarAlertaDelivery() {
+    try {
+      if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
+      const ctx = audioCtxRef.current
+      // 3 bipes curtos
+      const bipes = [0, 0.18, 0.36]
+      bipes.forEach(offset => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.type = 'sine'
+        osc.frequency.value = 880
+        gain.gain.setValueAtTime(0.4, ctx.currentTime + offset)
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + offset + 0.15)
+        osc.start(ctx.currentTime + offset)
+        osc.stop(ctx.currentTime + offset + 0.15)
+      })
+    } catch { /* ignore */ }
+  }
 
   useEffect(() => {
     const tick = () => {
@@ -49,6 +72,17 @@ export default function PedidosDisplay() {
       setTimeout(() => setFlashIds(prev => { const next = new Set(prev); chegaram.forEach(id => next.delete(id)); return next }), 4000)
     }
     prontosIdsRef.current = novosIds
+  }, [pedidos])
+
+  // Alerta sonoro quando chega delivery pendente novo
+  useEffect(() => {
+    const h = hoje()
+    const pendentesIds = pedidos
+      .filter(p => p.data === h && p.canal === 'delivery' && p.status === 'pendente')
+      .map(p => p.id)
+    const novos = pendentesIds.filter(id => !pendentesIdsRef.current.includes(id))
+    if (novos.length > 0) tocarAlertaDelivery()
+    pendentesIdsRef.current = pendentesIds
   }, [pedidos])
 
   if (authLoading || !displayReady) {

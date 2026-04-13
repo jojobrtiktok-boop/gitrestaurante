@@ -969,12 +969,12 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
             <hr/><table>${itensHtml}</table><hr/>
             ${p.obs ? `<p><i>Obs: ${p.obs}</i></p><hr/>` : ''}
             <p class="total">Total: ${total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-            <p style="text-align:center;font-size:11px">Status: ${p.status === 'entregue' ? 'Entregue ✓' : p.status === 'saindo' ? 'Saindo para entregar' : p.status}</p>
+            <p style="text-align:center;font-size:11px">Status: ${p.status === 'entregue' ? 'Entregue ✓' : p.status === 'saindo' ? 'Saindo para entregar' : p.status === 'pronto' ? 'Pronto' : p.status}</p>
             <script>window.print();window.close()</script></body></html>`)
         }
 
-        const statusLabel = { novo: 'Aguardando', preparando: 'Preparando', saindo: 'Saindo', entregue: 'Entregue' }
-        const statusCor = { novo: '#3b82f6', preparando: '#f59e0b', saindo: '#8b5cf6', entregue: '#16a34a' }
+        const statusLabel = { novo: 'Aguardando', preparando: 'Preparando', pronto: 'Pronto', saindo: 'Saindo', entregue: 'Entregue' }
+        const statusCor = { novo: '#3b82f6', preparando: '#f59e0b', pronto: '#22c55e', saindo: '#8b5cf6', entregue: '#16a34a' }
 
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

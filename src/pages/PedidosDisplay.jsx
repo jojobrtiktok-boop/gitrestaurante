@@ -4,10 +4,11 @@ import { useApp } from '../context/AppContext.jsx'
 import { hoje } from '../utils/formatacao.js'
 
 const STATUS_DELIVERY = {
-  novo:       { label: 'Aguardando',        cor: '#60a5fa', bg: 'rgba(59,130,246,0.15)',  borda: 'rgba(59,130,246,0.3)',  emoji: '🕐' },
-  preparando: { label: 'Preparando',         cor: '#fbbf24', bg: 'rgba(245,158,11,0.15)', borda: 'rgba(245,158,11,0.3)',  emoji: '🔥' },
-  saindo:     { label: 'Saindo p/ entregar', cor: '#c084fc', bg: 'rgba(192,132,252,0.15)', borda: 'rgba(192,132,252,0.3)', emoji: '🛵' },
-  entregue:   { label: 'Entregue',           cor: '#4ade80', bg: 'rgba(74,222,128,0.12)', borda: 'rgba(74,222,128,0.3)',  emoji: '✓'  },
+  novo:       { label: 'Aguardando',        cor: '#60a5fa', bg: 'rgba(59,130,246,0.15)',   borda: 'rgba(59,130,246,0.3)',   icone: '○' },
+  preparando: { label: 'Preparando',         cor: '#fbbf24', bg: 'rgba(245,158,11,0.15)',  borda: 'rgba(245,158,11,0.3)',   icone: '◎' },
+  pronto:     { label: 'Pronto',             cor: '#4ade80', bg: 'rgba(74,222,128,0.15)',  borda: 'rgba(74,222,128,0.3)',   icone: '✓' },
+  saindo:     { label: 'Saindo p/ entregar', cor: '#c084fc', bg: 'rgba(192,132,252,0.15)', borda: 'rgba(192,132,252,0.3)', icone: '→' },
+  entregue:   { label: 'Entregue',           cor: '#94a3b8', bg: 'rgba(148,163,184,0.1)',  borda: 'rgba(148,163,184,0.2)', icone: '✓' },
 }
 
 export default function PedidosDisplay() {
@@ -406,7 +407,7 @@ export default function PedidosDisplay() {
                       <span style={{
                         display: 'inline-block',
                         animation: p.status === 'saindo' ? 'pd-moto 0.7s ease-in-out infinite' : 'none',
-                      }}>{st.emoji}</span>
+                      }}>{st.icone}</span>
                       {st.label.toUpperCase()}
                     </span>
                     <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', fontWeight: 600 }}>
@@ -440,7 +441,7 @@ export default function PedidosDisplay() {
                   <div style={{ marginTop: 'auto', height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
                     <div style={{
                       height: '100%', borderRadius: 2, background: st.cor,
-                      width: p.status === 'novo' ? '25%' : p.status === 'preparando' ? '50%' : p.status === 'saindo' ? '80%' : '100%',
+                      width: p.status === 'novo' ? '20%' : p.status === 'preparando' ? '40%' : p.status === 'pronto' ? '60%' : p.status === 'saindo' ? '80%' : '100%',
                       transition: 'width 0.5s ease',
                     }} />
                   </div>

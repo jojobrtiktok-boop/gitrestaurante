@@ -263,6 +263,11 @@ export default function DeliveryPublico() {
   // ── carrinho ───────────────────────────────────────────────────────────────
   const [carrinho, setCarrinho] = useState([])
 
+  // ── cupom ──────────────────────────────────────────────────────────────────
+  const [cupomInput, setCupomInput] = useState('')
+  const [cupomAplicado, setCupomAplicado] = useState(null) // { codigo, tipo, valor }
+  const [cupomErro, setCupomErro] = useState('')
+
   // ── checkout ───────────────────────────────────────────────────────────────
   const [checkoutAberto, setCheckoutAberto] = useState(false)
   const [checkoutStep, setCheckoutStep] = useState(1) // 1 = pedido, 2 = entrega/pgto
@@ -333,7 +338,19 @@ export default function DeliveryPublico() {
     const adExtra = (i.adicionaisEscolhidos || []).reduce((a, ad) => a + ad.precoExtra * ad.qtd, 0)
     return s + (i.preco + adExtra) * i.qtd
   }, 0)
-  const total = subtotal + freteValor
+
+  // cupom desconto
+  const descontoCupom = cupomAplicado
+    ? cupomAplicado.tipo === 'percent'
+      ? subtotal * (cupomAplicado.valor / 100)
+      : Math.min(cupomAplicado.valor, subtotal)
+    : 0
+  const total = subtotal - descontoCupom + freteValor
+
+  // produtos sugeridos (configDelivery.produtosSugeridos = array de pratoIds)
+  const sugeridos = (configDelivery.produtosSugeridos || [])
+    .map(id => pratos.find(p => p.id === id && p.disponivel !== false))
+    .filter(Boolean)
 
   // ── modal helpers ──────────────────────────────────────────────────────────
   function abrirModal(prato) {
@@ -409,16 +426,32 @@ export default function DeliveryPublico() {
   }
 
   function alterarQtdCarrinho(chave, delta) {
-    setCarrinho(prev =>
-      prev.map(i => i.chave === chave ? { ...i, qtd: i.qtd + delta } : i)
+    setCarrinho(prev => {
+      const novo = prev.map(i => i.chave === chave ? { ...i, qtd: Math.max(0, i.qtd + delta) } : i)
         .filter(i => i.qtd > 0)
-    )
+      return novo
+    })
+  }
+
+  function aplicarCupom() {
+    const cupons = configDelivery.cupons || []
+    const code = cupomInput.trim().toUpperCase()
+    const cupom = cupons.find(c => c.codigo.toUpperCase() === code)
+    if (!cupom) { setCupomErro('Cupom inválido'); return }
+    if (cupom.minimoCompra && subtotal < cupom.minimoCompra) {
+      setCupomErro(`Mínimo ${formatarMoeda(cupom.minimoCompra)} para usar este cupom`); return
+    }
+    setCupomAplicado(cupom)
+    setCupomErro('')
   }
 
   // ── checkout ───────────────────────────────────────────────────────────────
   function abrirCheckout() {
     setCheckoutStep(1)
     setCheckoutAberto(true)
+    setCupomInput('')
+    setCupomAplicado(null)
+    setCupomErro('')
   }
 
   function validarStep2() {
@@ -457,6 +490,9 @@ export default function DeliveryPublico() {
       `Subtotal: ${formatarMoeda(subtotal)}`,
     ]
 
+    if (descontoCupom > 0) {
+      partes.push(`Cupom (${cupomAplicado.codigo}): -${formatarMoeda(descontoCupom)}`)
+    }
     if (tipoEntrega === 'entrega') {
       partes.push(`Frete (${bairroSelecionado?.nome || ''}): ${freteValor > 0 ? formatarMoeda(freteValor) : 'Grátis'}`)
     }
@@ -1058,61 +1094,179 @@ export default function DeliveryPublico() {
           WebkitOverflowScrolling: 'touch',
         }}>
 
-          {/* ── Step 1: Seu pedido ── */}
+          {/* ── Step 1: Sacola ── */}
           {checkoutStep === 1 && (
-            <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 0 100px' }}>
+            <div style={{ maxWidth: 640, margin: '0 auto', paddingBottom: 100 }}>
               {/* Header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', borderBottom: '1px solid ' + bordaCard, position: 'sticky', top: 0, background: fundo, zIndex: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid ' + bordaCard, position: 'sticky', top: 0, background: fundo, zIndex: 10 }}>
                 <button onClick={() => setCheckoutAberto(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: corTextoBase, display: 'flex', padding: 4 }}>
-                  <IcoX size={22} />
+                  <IcoChevronLeft size={22} />
                 </button>
-                <h2 style={{ fontSize: 18, fontWeight: 800, color: corTextoBase, margin: 0 }}>Seu pedido</h2>
+                <h2 style={{ fontSize: 16, fontWeight: 800, color: corTextoBase, margin: 0, textTransform: 'uppercase', letterSpacing: 1 }}>Sacola</h2>
+                <button onClick={() => { setCarrinho([]); setCheckoutAberto(false) }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: destaque, padding: 4 }}>
+                  Limpar
+                </button>
               </div>
 
-              {/* Items */}
-              <div style={{ padding: '0 20px' }}>
+              {/* Restaurante + itens */}
+              <div style={{ padding: '12px 0' }}>
+                {/* Nome do restaurante */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 20px 10px' }}>
+                  {config.logo
+                    ? <img src={config.logo} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} />
+                    : <div style={{ width: 34, height: 34, borderRadius: '50%', background: destaque, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 14 }}>{(config.nomeRestaurante || 'R')[0]}</div>
+                  }
+                  <div>
+                    <p style={{ fontWeight: 700, fontSize: 14, color: corTextoBase, margin: 0 }}>{config.nomeRestaurante || 'Restaurante'}</p>
+                    <button onClick={() => setCheckoutAberto(false)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: destaque, padding: 0 }}>
+                      Adicionar mais itens
+                    </button>
+                  </div>
+                </div>
+
+                {/* Items */}
                 {carrinho.map(item => {
                   const adExtra = (item.adicionaisEscolhidos || []).reduce((a, ad) => a + ad.precoExtra * ad.qtd, 0)
                   const subtotalItem = (item.preco + adExtra) * item.qtd
                   return (
-                    <div key={item.chave} style={{ padding: '14px 0', borderBottom: '1px solid ' + bordaCard }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                        {item.foto && (
-                          <img src={item.foto} alt="" style={{ width: 56, height: 56, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
-                        )}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ fontWeight: 700, fontSize: 14, color: corTextoBase, margin: '0 0 3px' }}>{item.nome}</p>
-                          {(item.adicionaisEscolhidos || []).length > 0 && (
-                            <div style={{ marginBottom: 4 }}>
-                              {item.adicionaisEscolhidos.map(a => (
-                                <p key={a.id} style={{ fontSize: 12, color: corTextoSec, margin: '1px 0' }}>
-                                  + {a.nome}{a.qtd > 1 ? ` x${a.qtd}` : ''}{a.precoExtra > 0 ? ` (${formatarMoeda(a.precoExtra * a.qtd)})` : ''}
-                                </p>
-                              ))}
-                            </div>
-                          )}
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <button onClick={() => alterarQtdCarrinho(item.chave, -1)} style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid ' + destaque, background: 'transparent', color: destaque, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <IcoMinus />
-                              </button>
-                              <span style={{ fontWeight: 700, minWidth: 20, textAlign: 'center', color: corTextoBase }}>{item.qtd}</span>
-                              <button onClick={() => alterarQtdCarrinho(item.chave, 1)} style={{ width: 28, height: 28, borderRadius: '50%', border: 'none', background: destaque, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <IcoPlus />
-                              </button>
-                            </div>
-                            <span style={{ fontWeight: 700, fontSize: 14, color: corTextoBase }}>{formatarMoeda(subtotalItem)}</span>
+                    <div key={item.chave} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 20px', borderBottom: '1px solid ' + bordaCard }}>
+                      {/* Foto ou placeholder */}
+                      {item.foto
+                        ? <div style={{ position: 'relative', flexShrink: 0 }}>
+                            <img src={item.foto} alt="" style={{ width: 52, height: 52, borderRadius: 10, objectFit: 'cover', display: 'block' }} />
+                            <button onClick={() => abrirModal(pratos.find(p => p.id === item.pratoId) || { id: item.pratoId, nome: item.nome, foto: item.foto, precoVenda: item.preco })}
+                              style={{ position: 'absolute', bottom: -4, right: -4, width: 20, height: 20, borderRadius: '50%', background: destaque, border: '2px solid ' + fundo, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>
+                              ✏
+                            </button>
                           </div>
-                        </div>
+                        : null
+                      }
+                      {/* Info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontWeight: 700, fontSize: 13, color: corTextoBase, margin: '0 0 1px' }}>{item.nome}</p>
+                        {(item.adicionaisEscolhidos || []).length > 0 && (
+                          <p style={{ fontSize: 11, color: corTextoSec, margin: '0 0 3px' }}>
+                            {item.adicionaisEscolhidos.map(a => a.nome + (a.qtd > 1 ? ` x${a.qtd}` : '')).join(', ')}
+                          </p>
+                        )}
+                        <p style={{ fontSize: 13, fontWeight: 700, color: corPreco, margin: 0 }}>{formatarMoeda(subtotalItem)}</p>
+                      </div>
+                      {/* Controles qty */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: modoClaro ? '#f0f0f0' : 'rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', flexShrink: 0 }}>
+                        <button
+                          onClick={() => alterarQtdCarrinho(item.chave, -1)}
+                          style={{ width: 34, height: 34, border: 'none', background: 'transparent', color: item.qtd === 1 ? '#ef4444' : destaque, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>
+                          {item.qtd === 1 ? '🗑' : <IcoMinus />}
+                        </button>
+                        <span style={{ minWidth: 24, textAlign: 'center', fontWeight: 800, fontSize: 14, color: corTextoBase }}>{item.qtd}</span>
+                        <button
+                          onClick={() => alterarQtdCarrinho(item.chave, 1)}
+                          style={{ width: 34, height: 34, border: 'none', background: 'transparent', color: destaque, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <IcoPlus />
+                        </button>
                       </div>
                     </div>
                   )
                 })}
 
-                {/* Subtotal */}
-                <div style={{ padding: '16px 0', display: 'flex', justifyContent: 'space-between', fontSize: 15, color: corTextoSec }}>
-                  <span>Subtotal</span>
-                  <span style={{ fontWeight: 700, color: corTextoBase }}>{formatarMoeda(subtotal)}</span>
+                {/* Adicionar mais itens link */}
+                <button onClick={() => setCheckoutAberto(false)}
+                  style={{ display: 'block', width: '100%', padding: '14px 20px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 700, color: destaque, textAlign: 'center', borderBottom: '1px solid ' + bordaCard }}>
+                  + Adicionar mais itens
+                </button>
+              </div>
+
+              {/* Peça também */}
+              {sugeridos.length > 0 && (
+                <div style={{ padding: '16px 0' }}>
+                  <p style={{ fontSize: 14, fontWeight: 800, color: corTextoBase, margin: '0 0 12px', paddingLeft: 20 }}>Peça também</p>
+                  <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingLeft: 20, paddingRight: 20, paddingBottom: 4, scrollbarWidth: 'none' }}>
+                    {sugeridos.map(prato => {
+                      const preco = prato.precoVenda ?? prato.preco ?? 0
+                      return (
+                        <div key={prato.id} onClick={() => { setCheckoutAberto(false); setTimeout(() => abrirModal(prato), 100) }}
+                          style={{ flexShrink: 0, width: 130, borderRadius: 14, overflow: 'hidden', cursor: 'pointer',
+                            background: modoClaro ? '#fff' : 'rgba(255,255,255,0.07)', border: '1px solid ' + bordaCard,
+                            boxShadow: '0 1px 6px rgba(0,0,0,0.08)' }}>
+                          {prato.foto
+                            ? <img src={prato.foto} alt={prato.nome} style={{ width: '100%', height: 80, objectFit: 'cover', display: 'block' }} />
+                            : <div style={{ width: '100%', height: 80, background: modoClaro ? '#f0f0f0' : 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>🍽</div>
+                          }
+                          <div style={{ padding: '8px 10px' }}>
+                            <p style={{ fontSize: 12, fontWeight: 700, color: corTextoBase, margin: '0 0 3px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{prato.nome}</p>
+                            <p style={{ fontSize: 12, fontWeight: 700, color: corPreco, margin: 0 }}>{formatarMoeda(preco)}</p>
+                            <div style={{ marginTop: 6, display: 'flex', justifyContent: 'flex-end' }}>
+                              <div style={{ width: 24, height: 24, borderRadius: '50%', background: destaque, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+                                <IcoPlus size={13} />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Cupom */}
+              <div style={{ padding: '14px 20px', borderTop: '1px solid ' + bordaCard, borderBottom: '1px solid ' + bordaCard }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: cupomAplicado ? 8 : 0 }}>
+                  <span style={{ fontSize: 18 }}>🎟</span>
+                  <div style={{ flex: 1 }}>
+                    {cupomAplicado ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: '#16a34a', margin: 0 }}>Cupom aplicado: {cupomAplicado.codigo}</p>
+                          <p style={{ fontSize: 12, color: corTextoSec, margin: 0 }}>
+                            -{cupomAplicado.tipo === 'percent' ? `${cupomAplicado.valor}%` : formatarMoeda(cupomAplicado.valor)} de desconto
+                          </p>
+                        </div>
+                        <button onClick={() => { setCupomAplicado(null); setCupomInput('') }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#ef4444', fontWeight: 600 }}>Remover</button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <input
+                          value={cupomInput}
+                          onChange={e => { setCupomInput(e.target.value.toUpperCase()); setCupomErro('') }}
+                          onKeyDown={e => e.key === 'Enter' && aplicarCupom()}
+                          placeholder="Adicionar cupom"
+                          style={{ flex: 1, padding: '8px 12px', borderRadius: 10, border: '1.5px solid ' + (cupomErro ? '#ef4444' : bordaCard), background: modoClaro ? '#f8f8f8' : 'rgba(255,255,255,0.06)', color: corTextoBase, fontSize: 13, outline: 'none' }} />
+                        <button onClick={aplicarCupom}
+                          style={{ padding: '8px 14px', background: destaque, color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                          Aplicar
+                        </button>
+                      </div>
+                    )}
+                    {cupomErro && <p style={{ fontSize: 12, color: '#ef4444', margin: '4px 0 0' }}>{cupomErro}</p>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Resumo de valores */}
+              <div style={{ padding: '14px 20px' }}>
+                <p style={{ fontSize: 14, fontWeight: 800, color: corTextoBase, margin: '0 0 10px' }}>Resumo de valores</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: corTextoSec }}>
+                    <span>{totalItens} {totalItens === 1 ? 'item' : 'itens'}</span>
+                    <span>{formatarMoeda(subtotal)}</span>
+                  </div>
+                  {descontoCupom > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#16a34a', fontWeight: 600 }}>
+                      <span>Desconto ({cupomAplicado.codigo})</span>
+                      <span>-{formatarMoeda(descontoCupom)}</span>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: corTextoSec }}>
+                    <span>Entrega</span>
+                    <span style={{ color: corTextoSec }}>—</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 16, fontWeight: 800, color: corTextoBase, paddingTop: 8, borderTop: '1px solid ' + bordaCard }}>
+                    <span>Total com a entrega</span>
+                    <span style={{ color: destaque }}>{formatarMoeda(subtotal - descontoCupom)}</span>
+                  </div>
                 </div>
               </div>
 
@@ -1120,10 +1274,12 @@ export default function DeliveryPublico() {
               <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 20px', background: fundo, borderTop: '1px solid ' + bordaCard, zIndex: 10 }}>
                 <button onClick={() => setCheckoutStep(2)} style={{
                   width: '100%', background: destaque, color: '#fff', border: 'none', borderRadius: 14,
-                  padding: '14px 0', fontSize: 15, fontWeight: 800, cursor: 'pointer',
-                  maxWidth: 640, display: 'block', margin: '0 auto',
+                  padding: '14px 20px', fontSize: 15, fontWeight: 800, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  maxWidth: 640, margin: '0 auto', boxSizing: 'border-box',
                 }}>
-                  Continuar
+                  <span>Continuar</span>
+                  <span>{formatarMoeda(subtotal - descontoCupom)}</span>
                 </button>
               </div>
             </div>

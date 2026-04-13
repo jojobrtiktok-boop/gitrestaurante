@@ -245,7 +245,7 @@ function TabMotoboys() {
 
 // ── Configurações Tab ─────────────────────────────────────────────────────────
 function TabConfiguracoes() {
-  const { configuracaoDelivery, atualizarConfiguracaoDelivery, definirSlugDelivery, adicionarBairro, editarBairro, removerBairro } = useApp()
+  const { configuracaoDelivery, atualizarConfiguracaoDelivery, definirSlugDelivery, adicionarBairro, editarBairro, removerBairro, pratos } = useApp()
   const cfg = configuracaoDelivery || {}
   const base = window.location.origin
 
@@ -253,6 +253,12 @@ function TabConfiguracoes() {
   const [erroSlug, setErroSlug] = useState('')
   const [okSlug, setOkSlug] = useState(false)
   const [copiado, setCopiado] = useState(false)
+
+  // cupons
+  const [novoCupomCodigo, setNovoCupomCodigo] = useState('')
+  const [novoCupomTipo, setNovoCupomTipo] = useState('percent')
+  const [novoCupomValor, setNovoCupomValor] = useState('')
+  const [novoCupomMinimo, setNovoCupomMinimo] = useState('')
 
   const [novoBairroNome, setNovoBairroNome] = useState('')
   const [novoBairroFrete, setNovoBairroFrete] = useState('')
@@ -619,6 +625,102 @@ function TabConfiguracoes() {
           </div>
         )}
         <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>Frete 0 = entrega grátis nesse bairro.</p>
+      </div>
+
+      {/* Peça também — produtos sugeridos */}
+      <div className="card p-5">
+        <div className="flex items-center gap-2 mb-1">
+          <h2 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Peça também (sugestões)</h2>
+        </div>
+        <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>Produtos exibidos na sacola para o cliente adicionar rapidinho</p>
+        <div className="flex flex-col gap-2">
+          {(pratos || []).filter(p => p.disponivel !== false).map(p => {
+            const selecionado = (cfg.produtosSugeridos || []).includes(p.id)
+            return (
+              <label key={p.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer"
+                style={{ background: 'var(--bg-hover)', border: `1px solid ${selecionado ? 'var(--accent)' : 'var(--border)'}` }}>
+                <input type="checkbox" checked={selecionado} onChange={() => {
+                  const atual = cfg.produtosSugeridos || []
+                  atualizarConfiguracaoDelivery({ produtosSugeridos: selecionado ? atual.filter(id => id !== p.id) : [...atual, p.id] })
+                }} style={{ accentColor: 'var(--accent)', width: 16, height: 16, flexShrink: 0 }} />
+                {p.foto && <img src={p.foto} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)', margin: 0 }}>{p.nome}</p>
+                  {p.categoria && <p className="text-xs" style={{ color: 'var(--text-muted)', margin: 0 }}>{p.categoria}</p>}
+                </div>
+              </label>
+            )
+          })}
+          {(pratos || []).filter(p => p.disponivel !== false).length === 0 && (
+            <p className="text-xs text-center py-3" style={{ color: 'var(--text-muted)' }}>Nenhum produto cadastrado ainda</p>
+          )}
+        </div>
+      </div>
+
+      {/* Cupons de desconto */}
+      <div className="card p-5">
+        <h2 className="font-bold text-sm mb-1" style={{ color: 'var(--text-primary)' }}>Cupons de desconto</h2>
+        <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>Clientes inserem o código na sacola para ganhar desconto</p>
+
+        {/* Lista */}
+        {(cfg.cupons || []).length > 0 && (
+          <div className="flex flex-col gap-2 mb-4">
+            {(cfg.cupons || []).map((c, i) => (
+              <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+                <div style={{ flex: 1 }}>
+                  <p className="font-bold text-sm" style={{ color: 'var(--accent)', fontFamily: 'monospace' }}>{c.codigo}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    {c.tipo === 'percent' ? `${c.valor}% de desconto` : `R$ ${Number(c.valor).toFixed(2).replace('.', ',')} de desconto`}
+                    {c.minimoCompra ? ` · mínimo R$ ${Number(c.minimoCompra).toFixed(2).replace('.', ',')}` : ''}
+                  </p>
+                </div>
+                <button onClick={() => atualizarConfiguracaoDelivery({ cupons: (cfg.cupons || []).filter((_, j) => j !== i) })}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', display: 'flex', padding: 4 }}>
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Adicionar cupom */}
+        <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>Código</label>
+              <input className="input" placeholder="EX: PROMO10" value={novoCupomCodigo}
+                onChange={e => setNovoCupomCodigo(e.target.value.toUpperCase())} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>Tipo</label>
+              <select className="input" value={novoCupomTipo} onChange={e => setNovoCupomTipo(e.target.value)}>
+                <option value="percent">Porcentagem (%)</option>
+                <option value="fixed">Valor fixo (R$)</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>{novoCupomTipo === 'percent' ? 'Desconto (%)' : 'Desconto (R$)'}</label>
+              <input className="input" type="number" placeholder={novoCupomTipo === 'percent' ? '10' : '5,00'} value={novoCupomValor}
+                onChange={e => setNovoCupomValor(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>Pedido mínimo (R$)</label>
+              <input className="input" type="number" placeholder="Opcional" value={novoCupomMinimo}
+                onChange={e => setNovoCupomMinimo(e.target.value)} />
+            </div>
+          </div>
+          <button className="btn btn-primary w-fit" onClick={() => {
+            if (!novoCupomCodigo.trim() || !novoCupomValor) return
+            const novo = { codigo: novoCupomCodigo.trim(), tipo: novoCupomTipo, valor: Number(novoCupomValor), minimoCompra: Number(novoCupomMinimo) || 0 }
+            atualizarConfiguracaoDelivery({ cupons: [...(cfg.cupons || []), novo] })
+            setNovoCupomCodigo(''); setNovoCupomValor(''); setNovoCupomMinimo('')
+          }}>
+            <Plus size={14} /> Adicionar cupom
+          </button>
+        </div>
       </div>
     </div>
   )

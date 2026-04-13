@@ -411,14 +411,9 @@ function AbaApp() {
           <div>
             <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
               Cheffya
-              <span style={{
-                marginLeft: 8, fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 5,
-                background: '#fff', color: 'var(--accent)', verticalAlign: 'middle',
-                border: '1px solid rgba(240,64,0,0.2)',
-              }}>PWA</span>
             </p>
             <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '3px 0 0' }}>
-              App disponível para iPhone e Android via instalação direta no navegador (PWA)
+              App disponível para iPhone e Android via instalação direta no navegador
             </p>
           </div>
         </div>

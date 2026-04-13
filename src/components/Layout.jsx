@@ -4,9 +4,10 @@ import { Outlet } from 'react-router-dom'
 
 export default function Layout() {
   return (
-    <div className="flex min-h-screen">
+    <div style={{ display: 'flex', height: '100dvh', overflow: 'hidden' }}>
       <Sidebar />
-      <main className="flex-1 overflow-auto pb-20 md:pb-0">
+      <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingBottom: 'env(safe-area-inset-bottom)' }}
+        className="pb-20 md:pb-0">
         <Outlet />
       </main>
       <BottomNav />

@@ -92,8 +92,8 @@ export default function Sidebar() {
 
   return (
     <aside
-      className="hidden md:flex flex-col w-56 shrink-0 h-screen sticky top-0"
-      style={{ background: 'var(--bg-sidebar)', borderRight: '1px solid var(--border)' }}
+      className="hidden md:flex flex-col w-56 shrink-0"
+      style={{ height: '100dvh', background: 'var(--bg-sidebar)', borderRight: '1px solid var(--border)', position: 'sticky', top: 0, flexShrink: 0 }}
     >
       {/* Logo */}
       <div style={{ padding: '18px 16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'center' }}>

@@ -339,6 +339,8 @@ function rowToPedido(row) {
     clienteTelefone: row.cliente_telefone || null,
     enderecoEntrega: row.endereco_entrega || null,
     motoboyId: row.motoboy_id || null,
+    ifoodOrderId: row.ifood_order_id || null,
+    ifoodShortId: row.ifood_short_id || null,
   }
 }
 

@@ -3,6 +3,20 @@ import { useParams } from 'react-router-dom'
 import { useApp } from '../context/AppContext.jsx'
 import { hoje } from '../utils/formatacao.js'
 
+const SUPABASE_URL = 'https://api.cheffya.com.br'
+
+async function ifoodAction(ifoodOrderId, action, userId) {
+  try {
+    await fetch(`${SUPABASE_URL}/functions/v1/ifood-action`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ifood_order_id: ifoodOrderId, action, user_id: userId }),
+    })
+  } catch (e) {
+    console.warn('ifood-action falhou:', e.message)
+  }
+}
+
 function IconWpp({ size = 16 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
@@ -21,7 +35,7 @@ const STATUS_DELIVERY = {
 
 export default function PedidosDisplay() {
   const { token } = useParams()
-  const { pedidos, clientes, mesas, kanbanConfig, cardapioConfig, authLoading, displayReady, atualizarStatusPedido, cancelarPedido } = useApp()
+  const { pedidos, clientes, mesas, kanbanConfig, cardapioConfig, authLoading, displayReady, atualizarStatusPedido, cancelarPedido, auth } = useApp()
   const [hora, setHora] = useState('')
   const [dataStr, setDataStr] = useState('')
   const [flashIds, setFlashIds] = useState(new Set())
@@ -251,9 +265,21 @@ export default function PedidosDisplay() {
               }}>
                 {/* Nome + pedido */}
                 <div>
-                  <p style={{ margin: 0, fontSize: 16, fontWeight: 900, color: '#fef08a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {getNomeCliente(p)}
-                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                    {p.canal === 'ifood' && (
+                      <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 7px', borderRadius: 20, background: '#ea1d2c', color: '#fff', letterSpacing: '0.04em', flexShrink: 0 }}>
+                        iFood
+                      </span>
+                    )}
+                    <p style={{ margin: 0, fontSize: 16, fontWeight: 900, color: '#fef08a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {getNomeCliente(p)}
+                    </p>
+                  </div>
+                  {p.ifoodShortId && (
+                    <p style={{ margin: '1px 0 0', fontSize: 10, color: 'rgba(234,29,44,0.7)', fontFamily: 'monospace' }}>
+                      #{p.ifoodShortId}
+                    </p>
+                  )}
                   {p.enderecoEntrega && (
                     <p style={{ margin: '2px 0 0', fontSize: 11, color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       📍 {p.enderecoEntrega}
@@ -284,7 +310,12 @@ export default function PedidosDisplay() {
                   )}
                   {/* Confirmar */}
                   <button
-                    onClick={() => atualizarStatusPedido(p.id, 'novo')}
+                    onClick={async () => {
+                      atualizarStatusPedido(p.id, 'novo')
+                      if (p.canal === 'ifood' && p.ifoodOrderId) {
+                        await ifoodAction(p.ifoodOrderId, 'confirm', auth.userId)
+                      }
+                    }}
                     style={{
                       flex: 1, padding: '6px 0', borderRadius: 8, border: 'none', cursor: 'pointer',
                       background: '#16a34a', color: '#fff', fontSize: 12, fontWeight: 800,
@@ -295,7 +326,12 @@ export default function PedidosDisplay() {
                   </button>
                   {/* Cancelar */}
                   <button
-                    onClick={() => cancelarPedido(p.id)}
+                    onClick={async () => {
+                      cancelarPedido(p.id)
+                      if (p.canal === 'ifood' && p.ifoodOrderId) {
+                        await ifoodAction(p.ifoodOrderId, 'cancel', auth.userId)
+                      }
+                    }}
                     style={{
                       padding: '6px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
                       background: 'rgba(239,68,68,0.2)', color: '#f87171', fontSize: 12, fontWeight: 700,

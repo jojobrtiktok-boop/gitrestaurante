@@ -270,11 +270,180 @@ function Modal({ tab, onClose }) {
   )
 }
 
+// ─── Conteúdo legal ──────────────────────────────────────────────
+const legalContent = {
+  privacidade: {
+    title: 'Política de Privacidade',
+    updated: '12 de abril de 2026',
+    sections: [
+      {
+        heading: '1. Informações que coletamos',
+        text: 'A Cheffya coleta informações que você fornece diretamente ao criar uma conta, como nome de usuário, endereço de e-mail e senha. Também coletamos dados gerados pelo uso do sistema, incluindo pedidos registrados, insumos cadastrados, vendas e configurações do estabelecimento.',
+      },
+      {
+        heading: '2. Como usamos suas informações',
+        text: 'Utilizamos suas informações exclusivamente para operar e melhorar a plataforma Cheffya: autenticação de conta, sincronização de dados entre dispositivos, suporte ao cliente e comunicações relacionadas ao serviço. Não vendemos nem compartilhamos seus dados com terceiros para fins comerciais.',
+      },
+      {
+        heading: '3. Armazenamento e segurança',
+        text: 'Seus dados são armazenados em servidores seguros com criptografia em trânsito (TLS/HTTPS) e em repouso. Utilizamos o Supabase como provedor de banco de dados, que segue as melhores práticas de segurança do setor. O acesso aos dados é restrito por políticas de Row Level Security (RLS), garantindo que cada usuário acesse apenas seus próprios dados.',
+      },
+      {
+        heading: '4. Retenção de dados',
+        text: 'Mantemos seus dados enquanto sua conta estiver ativa. Ao solicitar a exclusão da conta, removeremos seus dados pessoais em até 30 dias, exceto quando obrigados a mantê-los por lei.',
+      },
+      {
+        heading: '5. Seus direitos',
+        text: 'Você tem direito a acessar, corrigir ou solicitar a exclusão de seus dados pessoais a qualquer momento. Para exercer esses direitos, entre em contato pelo e-mail suporte@cheffya.com.br. Atendemos solicitações em conformidade com a Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018).',
+      },
+      {
+        heading: '6. Cookies e tecnologias similares',
+        text: 'Utilizamos cookies essenciais para manter sua sessão ativa e armazenar preferências como tema (claro/escuro). Não utilizamos cookies de rastreamento ou publicidade de terceiros.',
+      },
+      {
+        heading: '7. Alterações nesta política',
+        text: 'Podemos atualizar esta Política de Privacidade periodicamente. Notificaremos sobre mudanças significativas por e-mail ou mediante aviso em destaque na plataforma. O uso continuado do serviço após a notificação implica aceite das alterações.',
+      },
+      {
+        heading: '8. Contato',
+        text: 'Para dúvidas sobre esta política ou sobre o tratamento de seus dados, entre em contato: suporte@cheffya.com.br',
+      },
+    ],
+  },
+  termos: {
+    title: 'Termos de Uso',
+    updated: '12 de abril de 2026',
+    sections: [
+      {
+        heading: '1. Aceitação dos termos',
+        text: 'Ao criar uma conta e utilizar a plataforma Cheffya, você concorda com estes Termos de Uso. Se não concordar com alguma cláusula, não utilize o serviço.',
+      },
+      {
+        heading: '2. Descrição do serviço',
+        text: 'A Cheffya é uma plataforma SaaS (Software as a Service) de gestão para restaurantes, oferecendo funcionalidades de cardápio digital, controle de pedidos, gestão de estoque, delivery, mesas e relatórios financeiros. O acesso é fornecido mediante assinatura de um dos planos disponíveis.',
+      },
+      {
+        heading: '3. Cadastro e conta',
+        text: 'Você é responsável por manter a confidencialidade de suas credenciais de acesso. Ao criar uma conta, você declara que as informações fornecidas são verdadeiras e que tem capacidade legal para celebrar este acordo. Uma conta não pode ser compartilhada entre estabelecimentos distintos.',
+      },
+      {
+        heading: '4. Uso aceitável',
+        text: 'Você concorda em utilizar a plataforma apenas para fins legítimos de gestão do seu estabelecimento. É proibido: tentar acessar contas de outros usuários, realizar engenharia reversa do software, usar a plataforma para atividades ilegais ou fraudulentas, sobrecarregar intencionalmente a infraestrutura do serviço.',
+      },
+      {
+        heading: '5. Pagamento e assinatura',
+        text: 'O acesso à plataforma requer assinatura de um plano pago. O valor e a periodicidade variam conforme o plano escolhido. O cancelamento pode ser feito a qualquer momento, sem multa, com efeito ao final do período já pago.',
+      },
+      {
+        heading: '6. Disponibilidade do serviço',
+        text: 'A Cheffya se esforça para manter a plataforma disponível 24/7, mas não garante disponibilidade ininterrupta. Manutenções programadas serão comunicadas com antecedência. Não nos responsabilizamos por perdas decorrentes de indisponibilidade fora do nosso controle.',
+      },
+      {
+        heading: '7. Propriedade intelectual',
+        text: 'Todo o software, design, marca e conteúdo da plataforma Cheffya são de propriedade exclusiva da Cheffya. O uso do serviço não transfere qualquer direito de propriedade intelectual ao usuário. Seus dados permanecem de sua propriedade.',
+      },
+      {
+        heading: '8. Rescisão',
+        text: 'A Cheffya pode suspender ou encerrar sua conta em caso de violação destes termos. Você pode encerrar sua conta a qualquer momento pelo painel de configurações ou pelo contato com o suporte.',
+      },
+      {
+        heading: '9. Limitação de responsabilidade',
+        text: 'A Cheffya não se responsabiliza por danos indiretos, incidentais ou consequentes decorrentes do uso ou impossibilidade de uso do serviço. Nossa responsabilidade total está limitada ao valor pago pelo serviço nos últimos 3 meses.',
+      },
+      {
+        heading: '10. Legislação aplicável',
+        text: 'Estes termos são regidos pela legislação brasileira. Eventuais disputas serão resolvidas no foro da comarca de domicílio do usuário, conforme o Código de Defesa do Consumidor.',
+      },
+    ],
+  },
+  cookies: {
+    title: 'Política de Cookies',
+    updated: '12 de abril de 2026',
+    sections: [
+      {
+        heading: '1. O que são cookies',
+        text: 'Cookies são pequenos arquivos de texto armazenados no seu dispositivo quando você acessa um site. Eles permitem que o site lembre suas preferências e mantenha sua sessão ativa entre visitas.',
+      },
+      {
+        heading: '2. Cookies que utilizamos',
+        text: 'A Cheffya utiliza apenas cookies essenciais para o funcionamento do serviço:\n\n• rd_tema — armazena sua preferência de tema (claro ou escuro)\n• sb-* (Supabase Auth) — mantém sua sessão de autenticação ativa pelo período selecionado (sessão ou 60 dias)\n\nNão utilizamos cookies de publicidade, rastreamento ou analytics de terceiros.',
+      },
+      {
+        heading: '3. Cookies de terceiros',
+        text: 'Não utilizamos cookies de terceiros para rastreamento ou publicidade. Serviços externos como Supabase podem armazenar cookies técnicos necessários para autenticação segura.',
+      },
+      {
+        heading: '4. Controle de cookies',
+        text: 'Você pode controlar e excluir cookies nas configurações do seu navegador. A remoção dos cookies de sessão resultará em logout automático. A remoção da preferência de tema fará com que o sistema utilize o tema padrão na próxima visita.',
+      },
+      {
+        heading: '5. Contato',
+        text: 'Dúvidas sobre nossa política de cookies? Fale conosco: suporte@cheffya.com.br',
+      },
+    ],
+  },
+}
+
+function LegalModal({ tipo, onClose }) {
+  const content = legalContent[tipo]
+  const overlay = useRef(null)
+
+  useEffect(() => {
+    const fn = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', fn)
+    document.body.style.overflow = 'hidden'
+    return () => { document.removeEventListener('keydown', fn); document.body.style.overflow = '' }
+  }, [onClose])
+
+  return (
+    <div ref={overlay} onClick={e => e.target === overlay.current && onClose()}
+      style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', animation: 'lp-fade .2s ease' }}>
+
+      <div style={{ width: '100%', maxWidth: 680, background: b.surface, borderRadius: 20, border: `1px solid ${b.border2}`, boxShadow: '0 32px 80px rgba(0,0,0,0.7)', overflow: 'hidden', maxHeight: '90dvh', display: 'flex', flexDirection: 'column', animation: 'lp-up .25s ease' }}>
+        {/* Barra topo */}
+        <div style={{ height: 3, background: `linear-gradient(90deg, ${b.accent}, #ff7040)`, flexShrink: 0 }} />
+
+        {/* Header fixo */}
+        <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${b.border}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexShrink: 0 }}>
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 800, color: b.text, margin: '0 0 4px', letterSpacing: '-0.02em' }}>{content.title}</h2>
+            <p style={{ fontSize: 12, color: b.muted, margin: 0 }}>Última atualização: {content.updated}</p>
+          </div>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.07)', border: 'none', cursor: 'pointer', color: b.muted, display: 'flex', padding: 8, borderRadius: 9, flexShrink: 0, transition: 'background .15s' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}>
+            <X size={17} />
+          </button>
+        </div>
+
+        {/* Conteúdo com scroll */}
+        <div style={{ overflowY: 'auto', padding: '24px 24px 28px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {content.sections.map(({ heading, text }) => (
+            <div key={heading}>
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: b.text, marginBottom: 8, letterSpacing: '-0.01em' }}>{heading}</h3>
+              <p style={{ fontSize: 13.5, color: b.muted, lineHeight: 1.75, whiteSpace: 'pre-line' }}>{text}</p>
+            </div>
+          ))}
+
+          {/* Rodapé do modal */}
+          <div style={{ marginTop: 8, padding: '16px 20px', background: b.accentDim, border: `1px solid ${b.accentBdr}`, borderRadius: 12 }}>
+            <p style={{ fontSize: 12.5, color: b.muted, lineHeight: 1.6, margin: 0 }}>
+              Dúvidas? Entre em contato pelo e-mail{' '}
+              <a href="mailto:suporte@cheffya.com.br" style={{ color: b.accent, textDecoration: 'none' }}>suporte@cheffya.com.br</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Página principal ────────────────────────────────────────────
 export default function LandingPage() {
   const { auth } = useApp()
   const navigate = useNavigate()
   const [modal, setModal] = useState(null)
+  const [legalModal, setLegalModal] = useState(null)
   const [navSolid, setNavSolid] = useState(false)
 
   useEffect(() => {
@@ -355,7 +524,9 @@ export default function LandingPage() {
         .lp-plan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 14px; margin-top: 48px; align-items: start; }
 
         /* Footer */
-        .lp-footer-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+        .lp-footer-top { display: flex; gap: 48px; flex-wrap: wrap; justify-content: space-between; }
+        .lp-footer-links-grid { display: flex; gap: 48px; flex-wrap: wrap; }
+        .lp-footer-bottom { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
 
         /* Mobile overrides */
         @media (max-width: 480px) {
@@ -372,7 +543,9 @@ export default function LandingPage() {
           .lp-section-title { text-align: center; }
           .lp-section-sub   { text-align: center; }
 
-          .lp-footer-inner { justify-content: center; text-align: center; }
+          .lp-footer-top { flex-direction: column; gap: 32px; }
+          .lp-footer-links-grid { gap: 28px; }
+          .lp-footer-bottom { justify-content: center; text-align: center; }
         }
 
         /* Tablet: 2 col features */
@@ -511,14 +684,102 @@ export default function LandingPage() {
       </section>
 
       {/* ── FOOTER ────────────────────────────────────────────── */}
-      <footer style={{ borderTop: `1px solid ${b.border}`, padding: '24px 20px' }}>
-        <div className="lp-footer-inner">
-          <img src="/logo-dark.png" alt="Cheffya" style={{ height: 22, objectFit: 'contain' }} />
-          <p style={{ fontSize: 12, color: b.subtle }}>© {new Date().getFullYear()} Cheffya · Todos os direitos reservados</p>
+      <footer style={{ borderTop: `1px solid ${b.border}`, padding: '48px 20px 32px', background: b.surface }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+          {/* Topo do footer */}
+          <div className="lp-footer-top">
+            <div style={{ maxWidth: 280 }}>
+              <img src="/logo-dark.png" alt="Cheffya" style={{ height: 28, objectFit: 'contain', display: 'block', marginBottom: 12 }} />
+              <p style={{ fontSize: 13.5, color: b.muted, lineHeight: 1.65 }}>
+                Sistema de gestão completo para restaurantes. Simples, rápido e feito para o seu negócio.
+              </p>
+            </div>
+
+            <div className="lp-footer-links-grid">
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 700, color: b.subtle, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14 }}>Produto</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {[
+                    { label: 'Funcionalidades', fn: null },
+                    { label: 'Planos',          fn: null },
+                    { label: 'Entrar',          fn: () => setModal('entrar') },
+                    { label: 'Criar conta',     fn: () => setModal('cadastro') },
+                  ].map(({ label, fn }) => (
+                    <button key={label} onClick={fn || undefined} style={{ background: 'none', border: 'none', cursor: fn ? 'pointer' : 'default', padding: 0, fontSize: 13.5, color: fn ? b.muted : b.subtle, textAlign: 'left', fontFamily: 'inherit', transition: 'color .15s' }}
+                      onMouseEnter={e => { if (fn) e.currentTarget.style.color = '#fff' }}
+                      onMouseLeave={e => { if (fn) e.currentTarget.style.color = b.muted }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 700, color: b.subtle, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14 }}>Legal</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {[
+                    { label: 'Política de Privacidade', fn: () => setLegalModal('privacidade') },
+                    { label: 'Termos de Uso',           fn: () => setLegalModal('termos') },
+                    { label: 'Cookies',                 fn: () => setLegalModal('cookies') },
+                  ].map(({ label, fn }) => (
+                    <button key={label} onClick={fn} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 13.5, color: b.muted, textAlign: 'left', fontFamily: 'inherit', transition: 'color .15s' }}
+                      onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+                      onMouseLeave={e => e.currentTarget.style.color = b.muted}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 700, color: b.subtle, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14 }}>Contato</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <a href="mailto:suporte@cheffya.com.br" style={{ fontSize: 13.5, color: b.muted, textDecoration: 'none', transition: 'color .15s' }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+                    onMouseLeave={e => e.currentTarget.style.color = b.muted}>
+                    suporte@cheffya.com.br
+                  </a>
+                  <a href="https://wa.me/5531999999999" target="_blank" rel="noreferrer" style={{ fontSize: 13.5, color: b.muted, textDecoration: 'none', transition: 'color .15s' }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+                    onMouseLeave={e => e.currentTarget.style.color = b.muted}>
+                    WhatsApp
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Divisor */}
+          <div style={{ height: 1, background: b.border, margin: '36px 0 24px' }} />
+
+          {/* Rodapé inferior */}
+          <div className="lp-footer-bottom">
+            <p style={{ fontSize: 12, color: b.subtle }}>
+              © {new Date().getFullYear()} Cheffya. Todos os direitos reservados.
+            </p>
+            <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <button onClick={() => setLegalModal('privacidade')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: b.subtle, fontFamily: 'inherit', transition: 'color .15s', padding: 0 }}
+                onMouseEnter={e => e.currentTarget.style.color = b.muted}
+                onMouseLeave={e => e.currentTarget.style.color = b.subtle}>
+                Política de Privacidade
+              </button>
+              <button onClick={() => setLegalModal('termos')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: b.subtle, fontFamily: 'inherit', transition: 'color .15s', padding: 0 }}
+                onMouseEnter={e => e.currentTarget.style.color = b.muted}
+                onMouseLeave={e => e.currentTarget.style.color = b.subtle}>
+                Termos de Uso
+              </button>
+              <button onClick={() => setLegalModal('cookies')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: b.subtle, fontFamily: 'inherit', transition: 'color .15s', padding: 0 }}
+                onMouseEnter={e => e.currentTarget.style.color = b.muted}
+                onMouseLeave={e => e.currentTarget.style.color = b.subtle}>
+                Cookies
+              </button>
+            </div>
+          </div>
         </div>
       </footer>
 
       {modal && <Modal tab={modal} onClose={() => setModal(null)} />}
+      {legalModal && <LegalModal tipo={legalModal} onClose={() => setLegalModal(null)} />}
     </div>
   )
 }

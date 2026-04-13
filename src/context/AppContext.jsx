@@ -677,45 +677,96 @@ export function AppProvider({ children }) {
       setDisplayReady(true)
     }
 
-    try {
-      // ── Estágio 1: 1 request RPC no lugar de 7 ───────────────────────
-      const { data: d1 } = await supabase.rpc('load_display_data')
-      if (d1) {
-        const kbcData  = rowToKanbanConfig(d1.kanban_config)
-        const prtsData = (d1.pratos   || []).map(rowToPrato)
-        const garsData = (d1.garcons  || []).map(rowToGarcon)
-        const mssData  = (d1.mesas    || []).map(rowToMesa)
-        const clisData = (d1.clientes || []).map(rowToCliente)
-        const ccsData  = rowToCardapioConfig(d1.cardapio_config)
-        setKanbanConfig(kbcData)
-        setPedidos((d1.pedidos || []).map(rowToPedido))
-        setPratos(prtsData)
-        setGarcons(garsData)
-        setMesas(mssData)
-        setClientes(clisData)
-        setCardapioConfig(ccsData)
-        setDisplayReady(true)
-        _saveCache(uid, { kbc: kbcData, prts: prtsData, gars: garsData, mss: mssData, clis: clisData, ccs: ccsData })
-      }
+    // Data limite: últimos 60 dias
+    const d = new Date(); d.setDate(d.getDate() - 60)
+    const dataLimite = d.toISOString().slice(0, 10)
 
-      // ── Estágio 2: 1 request RPC no lugar de 14 ──────────────────────
-      const { data: d2 } = await supabase.rpc('load_background_data')
-      if (d2) {
-        if (d2.ingredientes)     setIngredientes(d2.ingredientes.map(rowToIng))
-        if (d2.registros_vendas) setRegistrosVendas(d2.registros_vendas.map(rowToRegistroVenda))
-        if (d2.entradas_vendas)  setEntradasVendas(d2.entradas_vendas.map(rowToEntradaVenda))
-        if (d2.compras)          setCompras(d2.compras.map(rowToCompra))
-        if (d2.caixa_inicial)    setCaixaInicialState(d2.caixa_inicial.map(rowToCaixaInicial))
-        if (d2.sessoes_mesas)    setSessoesMesas(d2.sessoes_mesas.map(rowToSessaoMesa))
-        setConfiguracaoGeral(d2.configuracao_geral ? { estoqueMinimoPadrao: Number(d2.configuracao_geral.estoque_minimo_padrao || 0) } : { estoqueMinimoPadrao: 0 })
-        setConfiguracaoDelivery(rowToDeliveryConfig(d2.config_delivery))
-        if (d2.lista_compras)    setListaCompras(d2.lista_compras.map(rowToListaCompra))
-        if (d2.despesas)         setDespesas(d2.despesas.map(rowToDespesa))
-        if (d2.despesas_fixas)   setDespesasFixas(d2.despesas_fixas.map(rowToDespesaFixa))
-        if (d2.impostos_config)  setImpostosConfig(d2.impostos_config.map(rowToImposto))
-        setNotifConfig(rowToNotifConfig(d2.notif_config))
-        if (d2.profiles?.nome_exibicao) setPerfil(prev => ({ ...prev, nomeExibicao: d2.profiles.nome_exibicao }))
-      }
+    try {
+      // ── Estágio 1: dados críticos para exibição (parallel) ───────────
+      const [
+        { data: prtsRaw },
+        { data: garsRaw },
+        { data: mssRaw },
+        { data: clisRaw },
+        { data: pdsRaw },
+        { data: kbcRaw },
+        { data: ccsRaw },
+      ] = await Promise.all([
+        supabase.from('pratos').select('*').eq('user_id', uid),
+        supabase.from('garcons').select('*').eq('user_id', uid),
+        supabase.from('mesas').select('*').eq('user_id', uid),
+        supabase.from('clientes').select('*').eq('user_id', uid),
+        supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', dataLimite),
+        supabase.from('kanban_config').select('*').eq('user_id', uid).maybeSingle(),
+        supabase.from('cardapio_config').select('*').eq('user_id', uid).maybeSingle(),
+      ])
+
+      const kbc  = rowToKanbanConfig(kbcRaw)
+      const prts = (prtsRaw || []).map(rowToPrato)
+      const gars = (garsRaw || []).map(rowToGarcon)
+      const mss  = (mssRaw  || []).map(rowToMesa)
+      const clis = (clisRaw || []).map(rowToCliente)
+      const ccs  = rowToCardapioConfig(ccsRaw)
+
+      setKanbanConfig(kbc)
+      setPedidos((pdsRaw || []).map(rowToPedido))
+      setPratos(prts)
+      setGarcons(gars)
+      setMesas(mss)
+      setClientes(clis)
+      setCardapioConfig(ccs)
+      setDisplayReady(true)
+      _saveCache(uid, { kbc, prts, gars, mss, clis, ccs })
+
+      // ── Estágio 2: dados de fundo (parallel) ─────────────────────────
+      const [
+        { data: ingsRaw },
+        { data: rvsRaw },
+        { data: evsRaw },
+        { data: cosRaw },
+        { data: cisRaw },
+        { data: smsRaw },
+        { data: cgRaw },
+        { data: cdRaw },
+        { data: lcsRaw },
+        { data: desRaw },
+        { data: dfsRaw },
+        { data: icsRaw },
+        { data: ncRaw },
+        { data: profRaw },
+      ] = await Promise.all([
+        supabase.from('ingredientes').select('*').eq('user_id', uid),
+        supabase.from('registros_vendas').select('*').eq('user_id', uid),
+        supabase.from('entradas_vendas').select('*').eq('user_id', uid).gte('data', dataLimite),
+        supabase.from('compras').select('*').eq('user_id', uid),
+        supabase.from('caixa_inicial').select('*').eq('user_id', uid),
+        supabase.from('sessoes_mesas').select('*').eq('user_id', uid),
+        supabase.from('configuracao_geral').select('*').eq('user_id', uid).maybeSingle(),
+        supabase.from('config_delivery').select('*').eq('user_id', uid).maybeSingle(),
+        supabase.from('lista_compras').select('*').eq('user_id', uid),
+        supabase.from('despesas').select('*').eq('user_id', uid),
+        supabase.from('despesas_fixas').select('*').eq('user_id', uid),
+        supabase.from('impostos_config').select('*').eq('user_id', uid),
+        supabase.from('notif_config').select('*').eq('user_id', uid).maybeSingle(),
+        supabase.from('profiles').select('*').eq('id', uid).maybeSingle(),
+      ])
+
+      if (ingsRaw) setIngredientes(ingsRaw.map(rowToIng))
+      if (rvsRaw)  setRegistrosVendas(rvsRaw.map(rowToRegistroVenda))
+      if (evsRaw)  setEntradasVendas(evsRaw.map(rowToEntradaVenda))
+      if (cosRaw)  setCompras(cosRaw.map(rowToCompra))
+      if (cisRaw)  setCaixaInicialState(cisRaw.map(rowToCaixaInicial))
+      if (smsRaw)  setSessoesMesas(smsRaw.map(rowToSessaoMesa))
+      setConfiguracaoGeral(cgRaw ? { estoqueMinimoPadrao: Number(cgRaw.estoque_minimo_padrao || 0) } : { estoqueMinimoPadrao: 0 })
+      setConfiguracaoDelivery(rowToDeliveryConfig(cdRaw))
+      if (lcsRaw)  setListaCompras(lcsRaw.map(rowToListaCompra))
+      if (desRaw)  setDespesas(desRaw.map(rowToDespesa))
+      if (dfsRaw)  setDespesasFixas(dfsRaw.map(rowToDespesaFixa))
+      if (icsRaw)  setImpostosConfig(icsRaw.map(rowToImposto))
+      setNotifConfig(rowToNotifConfig(ncRaw))
+      if (profRaw?.nome_exibicao) setPerfil(prev => ({ ...prev, nomeExibicao: profRaw.nome_exibicao }))
+      if (profRaw?.foto)          setPerfil(prev => ({ ...prev, foto: profRaw.foto }))
+
     } catch (e) {
       console.error('[loadAllData]', e)
     } finally {

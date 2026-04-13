@@ -217,10 +217,11 @@ export default function DeliveryPublico() {
 
   // ── formas de pagamento ativas (baseadas em pagamentosConfig) ─────────────
   const FORMAS_DEF = [
-    { key: 'dinheiro',      label: 'Dinheiro',          icone: <IcoBanknote /> },
-    { key: 'pix',           label: 'PIX',               icone: <IcoQr /> },
-    { key: 'cartaoCredito', label: 'Crédito',           icone: <IcoCard /> },
-    { key: 'cartaoDebito',  label: 'Débito',            icone: <IcoCard /> },
+    { key: 'dinheiro',    label: 'Dinheiro',          icone: <IcoBanknote /> },
+    { key: 'pix',         label: 'PIX',               icone: <IcoQr /> },
+    { key: 'pixWhatsapp', label: 'PIX via WhatsApp',  icone: <IcoWhatsapp /> },
+    { key: 'cartaoCredito', label: 'Crédito',         icone: <IcoCard /> },
+    { key: 'cartaoDebito',  label: 'Débito',          icone: <IcoCard /> },
   ]
   function isFormaAtiva(key) {
     const cfg = pagamentosConfig
@@ -231,6 +232,7 @@ export default function DeliveryPublico() {
       const temOpenPix = cfg.openPixAtivo && !!cfg.openPixAppId && !!cfg.openPixChave
       return !!(temMP || temEfi || temOpenPix)
     }
+    if (key === 'pixWhatsapp') return !!(cfg.pixWhatsapp && cfg.pixWhatsappNumero)
     return true
   }
   // Se pagamentosConfig ainda não carregou (vazio), cai no fallback antigo
@@ -476,7 +478,7 @@ export default function DeliveryPublico() {
     partes.push(`Nome: ${nome}`)
     partes.push(`Telefone: ${telefone}`)
     partes.push('')
-    const labelPgto = { dinheiro: 'Dinheiro', pix: 'PIX', cartaoCredito: 'Cartão de Crédito', cartaoDebito: 'Cartão de Débito', cartao: 'Cartão' }
+    const labelPgto = { dinheiro: 'Dinheiro', pix: 'PIX', pixWhatsapp: 'PIX via WhatsApp', cartaoCredito: 'Cartão de Crédito', cartaoDebito: 'Cartão de Débito', cartao: 'Cartão' }
     const labelBandeira = bandeira ? ` - ${bandeira}` : ''
     partes.push(`💳 Pagamento: ${labelPgto[pagamento] || pagamento}${labelBandeira}`)
 
@@ -489,8 +491,16 @@ export default function DeliveryPublico() {
 
     const mensagem = partes.filter(l => l !== null && l !== undefined).join('\n')
     const tel = configDelivery.telefone?.replace(/\D/g, '')
-    const url = `https://wa.me/${tel ? '55' + tel : ''}?text=${encodeURIComponent(mensagem)}`
-    window.open(url, '_blank')
+    window.open(`https://wa.me/${tel ? '55' + tel : ''}?text=${encodeURIComponent(mensagem)}`, '_blank')
+
+    // Se PIX WhatsApp: abre segundo zap com mensagem de pagamento
+    if (pagamento === 'pixWhatsapp' && pagamentosConfig.pixWhatsappNumero) {
+      const msgPix = pagamentosConfig.pixWhatsappMensagem || 'Olá! Quero pagar meu pedido via PIX.'
+      const numPix = pagamentosConfig.pixWhatsappNumero.replace(/\D/g, '')
+      setTimeout(() => {
+        window.open(`https://wa.me/55${numPix}?text=${encodeURIComponent(msgPix)}`, '_blank')
+      }, 800)
+    }
 
     setPedidoEnviado(true)
     setCheckoutAberto(false)

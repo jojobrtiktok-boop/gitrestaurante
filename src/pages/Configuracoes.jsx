@@ -618,14 +618,19 @@ function AbaFormasPagamento() {
       if (temMP || temEfi || temOpenPix) return { ativo: true,  motivo: 'Ativo' }
       return { ativo: false, motivo: 'Aguardando integração' }
     }
+    if (key === 'pixWhatsapp') {
+      if (!pagamentosConfig.pixWhatsappNumero) return { ativo: false, motivo: 'Informe o número do WhatsApp' }
+      return { ativo: true, motivo: 'Ativo' }
+    }
     return { ativo: true, motivo: 'Ativo' }
   }
 
   const formas = [
-    { key: 'dinheiro',      label: 'Dinheiro',          sub: 'Pagamento em espécie — não requer integração',      Icon: Banknote },
-    { key: 'pix',           label: 'PIX',               sub: 'Requer Mercado Pago ou Efí Pay configurado abaixo', Icon: QrCode },
-    { key: 'cartaoCredito', label: 'Cartão de Crédito', sub: 'Maquininha na entrega — não requer integração',     Icon: CreditCard },
-    { key: 'cartaoDebito',  label: 'Cartão de Débito',  sub: 'Maquininha na entrega — não requer integração',     Icon: CreditCard },
+    { key: 'dinheiro',      label: 'Dinheiro',             sub: 'Pagamento em espécie — não requer integração',      Icon: Banknote },
+    { key: 'pix',           label: 'PIX',                  sub: 'Requer Mercado Pago ou Efí Pay configurado abaixo', Icon: QrCode },
+    { key: 'pixWhatsapp',   label: 'PIX via WhatsApp',     sub: 'Cliente abre WhatsApp para combinar o pagamento PIX', Icon: MessageCircle },
+    { key: 'cartaoCredito', label: 'Cartão de Crédito',    sub: 'Maquininha na entrega — não requer integração',     Icon: CreditCard },
+    { key: 'cartaoDebito',  label: 'Cartão de Débito',     sub: 'Maquininha na entrega — não requer integração',     Icon: CreditCard },
   ]
 
   return (
@@ -677,6 +682,35 @@ function AbaFormasPagamento() {
         </div>
         <style>{`@keyframes cfg-ping { 0%{transform:scale(1);opacity:.7} 70%{transform:scale(2.4);opacity:0} 100%{transform:scale(2.4);opacity:0} }`}</style>
       </div>
+
+      {/* ── PIX via WhatsApp — número ── */}
+      {pagamentosConfig.pixWhatsapp && (
+        <div>
+          <SecaoHeader icon={MessageCircle} title="PIX via WhatsApp" cor="#25d366" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Row label="Número do WhatsApp" sub="Com DDD, sem espaços ou traços. Ex: 31999998888">
+              <input
+                className="input"
+                type="tel"
+                placeholder="31999998888"
+                value={pagamentosConfig.pixWhatsappNumero || ''}
+                onChange={e => atualizarPagamentosConfig({ pixWhatsappNumero: e.target.value.replace(/\D/g, '') })}
+                style={{ width: 180, textAlign: 'right' }}
+              />
+            </Row>
+            <Row label="Mensagem de abertura" sub="Texto que o cliente vai enviar no WhatsApp">
+              <input
+                className="input"
+                type="text"
+                placeholder="Olá! Quero pagar via PIX."
+                value={pagamentosConfig.pixWhatsappMensagem || ''}
+                onChange={e => atualizarPagamentosConfig({ pixWhatsappMensagem: e.target.value })}
+                style={{ width: 240, textAlign: 'right' }}
+              />
+            </Row>
+          </div>
+        </div>
+      )}
 
       {/* ── Mercado Pago ── */}
       <div>

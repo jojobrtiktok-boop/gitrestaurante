@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ShoppingCart, Trash2, Clock, X, Check, Printer, FileText } from 'lucide-react'
+import { ShoppingCart, Trash2, Clock, X, Check, Printer, FileText, Truck, MapPin, User } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import TabelaVazia from '../components/ui/TabelaVazia.jsx'
 import FiltroPeriodo from '../components/ui/FiltroPeriodo.jsx'
@@ -105,7 +105,7 @@ function ModalPedido({ entrada, pedido, prato, garcon, onFechar }) {
 }
 
 export default function Vendas() {
-  const { entradasVendas, removerEntradaVenda, pratos, ingredientes, garcons, pedidos, mesas, clientes, sessoesMesas, kanbanConfig, marcarPedidoPago, cardapioConfig } = useApp()
+  const { entradasVendas, removerEntradaVenda, pratos, ingredientes, garcons, pedidos, mesas, clientes, sessoesMesas, kanbanConfig, marcarPedidoPago, cardapioConfig, marcarEntregue } = useApp()
   const h = hoje()
   const [periodo, setPeriodo] = useState({ dataInicio: h, dataFim: h })
   const [entradaDetalhe, setEntradaDetalhe] = useState(null)
@@ -392,7 +392,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
 
       {/* Abas */}
       <div className="flex gap-1 p-1 rounded-xl mb-4 w-fit" style={{ background: 'var(--bg-hover)' }}>
-        {[{ id: 'lancamentos', label: 'Lançamentos' }, { id: 'funcionarios', label: 'Funcionários' }, { id: 'clientes', label: 'Clientes' }, { id: 'extrato', label: 'Extrato de Vendas' }].map(a => (
+        {[{ id: 'lancamentos', label: 'Lançamentos' }, { id: 'funcionarios', label: 'Funcionários' }, { id: 'clientes', label: 'Clientes' }, { id: 'extrato', label: 'Extrato de Vendas' }, { id: 'delivery', label: 'Delivery' }].map(a => (
           <button key={a.id} onClick={() => setAba(a.id)}
             className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
             style={aba === a.id
@@ -941,6 +941,114 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
 
       </>
       )} {/* fecha aba lancamentos */}
+
+      {aba === 'delivery' && (() => {
+        const pedidosDelivery = pedidos
+          .filter(p => p.canal === 'delivery' && !p.cancelado && p.data >= dataInicio && p.data <= dataFim)
+          .sort((a, b) => b.data.localeCompare(a.data) || b.hora.localeCompare(a.hora))
+
+        function printNotaDelivery(p) {
+          const win = window.open('', '_blank', 'width=400,height=600')
+          if (!win) return
+          const itensHtml = (p.itens || []).map(i => {
+            const prato = pratos.find(x => x.id === i.pratoId)
+            return `<tr><td>×${i.quantidade} ${prato?.nome || i.pratoId}</td><td style="text-align:right">${((prato?.precoVenda || 0) * i.quantidade).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td></tr>`
+          }).join('')
+          const total = (p.itens || []).reduce((s, i) => {
+            const prato = pratos.find(x => x.id === i.pratoId)
+            return s + (prato?.precoVenda || 0) * i.quantidade
+          }, 0)
+          win.document.write(`
+            <html><head><title>Pedido Delivery</title>
+            <style>body{font-family:monospace;padding:20px;max-width:320px;margin:0 auto}h2{text-align:center}table{width:100%;border-collapse:collapse}td{padding:4px 0}hr{border:1px dashed #ccc}.total{font-weight:bold;font-size:16px}</style>
+            </head><body>
+            <h2>Pedido Delivery</h2><hr/>
+            <p><b>Cliente:</b> ${p.clienteNome || '—'}</p>
+            <p><b>Endereço:</b> ${p.enderecoEntrega || '—'}</p>
+            <p><b>Data:</b> ${p.data} às ${p.hora}</p>
+            <hr/><table>${itensHtml}</table><hr/>
+            ${p.obs ? `<p><i>Obs: ${p.obs}</i></p><hr/>` : ''}
+            <p class="total">Total: ${total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+            <p style="text-align:center;font-size:11px">Status: ${p.status === 'entregue' ? 'Entregue ✓' : p.status === 'saindo' ? 'Saindo para entregar' : p.status}</p>
+            <script>window.print();window.close()</script></body></html>`)
+        }
+
+        const statusLabel = { novo: 'Aguardando', preparando: 'Preparando', saindo: 'Saindo', entregue: 'Entregue' }
+        const statusCor = { novo: '#3b82f6', preparando: '#f59e0b', saindo: '#8b5cf6', entregue: '#16a34a' }
+
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Truck size={16} color="var(--accent)" />
+              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                {pedidosDelivery.length} pedido{pedidosDelivery.length !== 1 ? 's' : ''} no período
+              </span>
+            </div>
+
+            {pedidosDelivery.length === 0 ? (
+              <TabelaVazia icone={Truck} mensagem="Nenhum pedido delivery no período" />
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {pedidosDelivery.map(p => {
+                  const total = (p.itens || []).reduce((s, i) => {
+                    const prato = pratos.find(x => x.id === i.pratoId)
+                    return s + (prato?.precoVenda || 0) * i.quantidade
+                  }, 0)
+                  const cor = statusCor[p.status] || '#a1a1aa'
+                  return (
+                    <div key={p.id} className="card" style={{ borderLeft: `3px solid ${cor}` }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{p.clienteNome || 'Cliente'}</span>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: cor, background: `${cor}1a`, padding: '2px 8px', borderRadius: 20, border: `1px solid ${cor}44` }}>
+                              {statusLabel[p.status] || p.status}
+                            </span>
+                          </div>
+                          {p.enderecoEntrega && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                              <MapPin size={11} color="var(--text-muted)" />
+                              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.enderecoEntrega}</span>
+                            </div>
+                          )}
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{p.data} às {p.hora}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
+                            {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </span>
+                          <button onClick={() => printNotaDelivery(p)}
+                            className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Printer size={13} />Nota
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Itens */}
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        {(p.itens || []).map((item, idx) => {
+                          const prato = pratos.find(x => x.id === item.pratoId)
+                          return (
+                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>×{item.quantidade} {prato?.nome || item.pratoId}</span>
+                              {prato && (
+                                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                  {(prato.precoVenda * item.quantidade).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })}
+                        {p.obs && <p style={{ fontSize: 12, color: '#d97706', fontStyle: 'italic', margin: '4px 0 0' }}>Obs: {p.obs}</p>}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {entradaDetalhe && (
         <ModalPedido

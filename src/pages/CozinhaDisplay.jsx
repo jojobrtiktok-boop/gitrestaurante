@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
-import { ChefHat, Check, Clock, AlertTriangle } from 'lucide-react'
+import { ChefHat, Check, Clock, AlertTriangle, Truck } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import { hoje } from '../utils/formatacao.js'
 import { tocarSom } from '../utils/sons.js'
@@ -72,6 +72,11 @@ function CardCozinha({ pedido, coluna, pratos, garcons, mesas, onAvancar, cfg })
             <span style={{ fontSize: 12, color: '#64748b', background: '#f1f5f9', padding: '2px 8px', borderRadius: 20 }}>
               {garcon ? garcon.nome : 'Caixa'}
             </span>
+            {pedido.canal === 'delivery' && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#f04000', background: 'rgba(240,64,0,0.1)', padding: '2px 8px', borderRadius: 20, border: '1px solid rgba(240,64,0,0.3)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                <Truck size={10} />Delivery
+              </span>
+            )}
           </div>
         </div>
         {inicioEstagio && (
@@ -113,6 +118,12 @@ function CardCozinha({ pedido, coluna, pratos, garcons, mesas, onAvancar, cfg })
         })}
       </div>
 
+      {pedido.canal === 'delivery' && (pedido.clienteNome || pedido.enderecoEntrega) && (
+        <div style={{ background: 'rgba(240,64,0,0.06)', border: '1px solid rgba(240,64,0,0.2)', borderRadius: 8, padding: '6px 10px' }}>
+          {pedido.clienteNome && <p style={{ fontSize: 13, fontWeight: 700, color: '#f04000', margin: 0 }}>{pedido.clienteNome}</p>}
+          {pedido.enderecoEntrega && <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0', fontStyle: 'italic' }}>{pedido.enderecoEntrega}</p>}
+        </div>
+      )}
       {pedido.obs && (
         <div style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, padding: '6px 10px' }}>
           <p style={{ fontSize: 13, color: '#d97706', margin: 0, fontStyle: 'italic' }}>⚠ {pedido.obs}</p>

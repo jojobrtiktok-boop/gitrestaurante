@@ -313,6 +313,10 @@ function pedidoToRow(p, uid) {
     pago: p.pago || false,
     cancelado: p.cancelado || false,
     timestamps: p.timestamps || {},
+    canal: p.canal || 'local',
+    cliente_nome: p.clienteNome || null,
+    endereco_entrega: p.enderecoEntrega || null,
+    motoboy_id: p.motoboyId || null,
   }
 }
 function rowToPedido(row) {
@@ -329,6 +333,10 @@ function rowToPedido(row) {
     pago: row.pago || false,
     cancelado: row.cancelado || false,
     timestamps: row.timestamps || {},
+    canal: row.canal || 'local',
+    clienteNome: row.cliente_nome || null,
+    enderecoEntrega: row.endereco_entrega || null,
+    motoboyId: row.motoboy_id || null,
   }
 }
 
@@ -1442,6 +1450,60 @@ export function AppProvider({ children }) {
     }))
   }
 
+  function atribuirMotoboy(pedidoId, motoboyId) {
+    setPedidos(prev => prev.map(p => {
+      if (p.id !== pedidoId) return p
+      const updated = { ...p, motoboyId, status: 'saindo', timestamps: { ...p.timestamps, saindo: agoraBrasiliaISO() } }
+      if (auth.userId) sbWrite(supabase.from('pedidos').update({ motoboy_id: motoboyId, status: 'saindo', timestamps: updated.timestamps }).eq('id', pedidoId))
+      return updated
+    }))
+  }
+
+  function marcarEntregue(pedidoId) {
+    setPedidos(prev => prev.map(p => {
+      if (p.id !== pedidoId) return p
+      const updated = { ...p, status: 'entregue', pago: true, timestamps: { ...p.timestamps, entregue: agoraBrasiliaISO() } }
+      if (auth.userId) sbWrite(supabase.from('pedidos').update({ status: 'entregue', pago: true, timestamps: updated.timestamps }).eq('id', pedidoId))
+      return updated
+    }))
+  }
+
+  function adicionarPedidoDelivery(itens, obs, clienteNome, enderecoEntrega) {
+    const dataAtual = hojeBrasilia()
+    const hora = horaAtual()
+    const agora = agoraBrasiliaISO()
+    const itensComCusto = itens.map(item => ({
+      ...item,
+      opcoes: (item.opcoes || []).map(o => {
+        if (!o.ingredienteId) return o
+        const ing = ingredientes.find(i => i.id === o.ingredienteId)
+        const fator = ing?.fatorCorrecao > 0 ? ing.fatorCorrecao : 1
+        return { ...o, custoUnitario: ing ? (ing.preco || 0) * fator : 0 }
+      })
+    }))
+    const pedido = {
+      id: crypto.randomUUID(),
+      garconId: null,
+      itens: itensComCusto,
+      obs: obs || '',
+      mesaId: null,
+      clienteId: null,
+      data: dataAtual,
+      hora,
+      status: 'novo',
+      pago: false,
+      cancelado: false,
+      timestamps: { novo: agora },
+      canal: 'delivery',
+      clienteNome: clienteNome || null,
+      enderecoEntrega: enderecoEntrega || null,
+      motoboyId: null,
+    }
+    setPedidos(prev => [...prev, pedido])
+    if (auth.userId) sbWrite(supabase.from('pedidos').insert(pedidoToRow(pedido, auth.userId)))
+    return pedido
+  }
+
   function cancelarPedido(id) {
     const pedido = pedidos.find(p => p.id === id)
     if (!pedido || pedido.cancelado) return
@@ -1623,7 +1685,7 @@ export function AppProvider({ children }) {
     cardapioConfig, atualizarCardapioConfig, definirSlugCardapio,
     garcons, adicionarGarcon, removerGarcon,
     clientes, adicionarCliente, removerCliente,
-    pedidos, adicionarPedido, atualizarStatusPedido, marcarPedidoPago, pagarMesa, cancelarPedido,
+    pedidos, adicionarPedido, adicionarPedidoDelivery, atualizarStatusPedido, atribuirMotoboy, marcarEntregue, marcarPedidoPago, pagarMesa, cancelarPedido,
     caixaInicial, registrarCaixaInicial, getCaixaInicial, getCaixaInicialPeriodo,
     mesas, adicionarMesa, editarMesa, removerMesa, setStatusMesa, alternarStatusMesa,
     sessoesMesas,

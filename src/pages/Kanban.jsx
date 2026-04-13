@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Clock, Check, ChefHat, Volume2, Settings, Plus, Trash2, Copy, ExternalLink, RefreshCw, Link2 } from 'lucide-react'
+import { Clock, Check, ChefHat, Volume2, Settings, Plus, Trash2, Copy, ExternalLink, RefreshCw, Link2, Truck } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import { hoje } from '../utils/formatacao.js'
 
@@ -102,6 +102,11 @@ function CardPedido({ pedido, coluna, pratos, garcons, mesas, onAvancar, cfg }) 
               {mesa.nome}
             </span>
           )}
+          {pedido.canal === 'delivery' && (
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#f04000', background: 'rgba(240,64,0,0.12)', padding: '1px 7px', borderRadius: 20, border: '1px solid rgba(240,64,0,0.35)', display: 'flex', alignItems: 'center', gap: 3 }}>
+              <Truck size={9} />Delivery
+            </span>
+          )}
         </div>
         {coluna.proximoStatus !== null && inicioEstagio
           ? <TimerVivo isoInicio={inicioEstagio} limiteAmarelo={cfg.limiteAmareloMin || 10} limiteVermelho={cfg.limiteVermelhoMin || 20} />
@@ -186,6 +191,14 @@ const DEFAULT_ETAPAS = [
   { id: 'novo',       label: 'Aguardando', cor: '#3b82f6' },
   { id: 'preparando', label: 'Preparando', cor: '#f59e0b' },
   { id: 'completo',   label: 'Entregue',   cor: '#16a34a' },
+]
+
+// ── Colunas fixas do fluxo delivery ─────────────────────────────────────────
+const DELIVERY_COLUNAS = [
+  { id: 'novo',       label: 'Aguardando', cor: '#3b82f6', bgCor: '#3b82f61a', proximoStatus: 'preparando', proximoLabel: '→ Preparando' },
+  { id: 'preparando', label: 'Preparando', cor: '#f59e0b', bgCor: '#f59e0b1a', proximoStatus: 'saindo',     proximoLabel: '→ Saindo' },
+  { id: 'saindo',     label: 'Saindo para entregar', cor: '#8b5cf6', bgCor: '#8b5cf61a', proximoStatus: 'entregue', proximoLabel: '→ Entregue' },
+  { id: 'entregue',   label: 'Entregue',   cor: '#16a34a', bgCor: '#16a34a1a', proximoStatus: null, proximoLabel: null },
 ]
 
 function tocarBeepPreview() {
@@ -385,39 +398,91 @@ export default function Kanban() {
 
       {aba === 'fluxo' ? (
       /* Board */
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${COLUNAS.length}, 1fr)`, gap: 16 }}>
-        {COLUNAS.map(col => {
-          const cards = pedidosFiltrados
-            .filter(p => p.status === col.id)
-            .sort((a, b) => (a.timestamps?.[col.id] || '').localeCompare(b.timestamps?.[col.id] || ''))
-          return (
-            <div key={col.id} style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '10px 14px', borderRadius: '12px 12px 0 0',
-                background: col.bgCor, border: `1px solid ${col.cor}33`, borderBottom: 'none',
-              }}>
-                <span style={{ fontWeight: 700, fontSize: 14, color: col.cor }}>{col.label}</span>
-                <span style={{ minWidth: 24, height: 24, borderRadius: 20, background: col.cor, color: '#fff', fontWeight: 800, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 7px' }}>
-                  {cards.length}
-                </span>
-              </div>
-              <div style={{
-                minHeight: 300, padding: 10, background: 'var(--bg-hover)',
-                border: `1px solid ${col.cor}22`, borderRadius: '0 0 12px 12px',
-                display: 'flex', flexDirection: 'column', gap: 10,
-                maxHeight: 'calc(100vh - 260px)', overflowY: 'auto',
-              }}>
-                {cards.length === 0
-                  ? <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 13 }}>Nenhum pedido</div>
-                  : cards.map(pedido => (
-                    <CardPedido key={pedido.id} pedido={pedido} coluna={col} pratos={pratos} garcons={garcons} mesas={mesas} onAvancar={atualizarStatusPedido} cfg={cfg} />
-                  ))
-                }
-              </div>
-            </div>
-          )
-        })}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+        {/* ── Fluxo Local ── */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--text-muted)' }}>Fluxo Local</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${COLUNAS.length}, 1fr)`, gap: 16 }}>
+            {COLUNAS.map(col => {
+              const cards = pedidosFiltrados
+                .filter(p => p.status === col.id && p.canal !== 'delivery')
+                .sort((a, b) => (a.timestamps?.[col.id] || '').localeCompare(b.timestamps?.[col.id] || ''))
+              return (
+                <div key={col.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 14px', borderRadius: '12px 12px 0 0',
+                    background: col.bgCor, border: `1px solid ${col.cor}33`, borderBottom: 'none',
+                  }}>
+                    <span style={{ fontWeight: 700, fontSize: 14, color: col.cor }}>{col.label}</span>
+                    <span style={{ minWidth: 24, height: 24, borderRadius: 20, background: col.cor, color: '#fff', fontWeight: 800, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 7px' }}>
+                      {cards.length}
+                    </span>
+                  </div>
+                  <div style={{
+                    minHeight: 200, padding: 10, background: 'var(--bg-hover)',
+                    border: `1px solid ${col.cor}22`, borderRadius: '0 0 12px 12px',
+                    display: 'flex', flexDirection: 'column', gap: 10,
+                    maxHeight: 'calc(100vh - 300px)', overflowY: 'auto',
+                  }}>
+                    {cards.length === 0
+                      ? <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)', fontSize: 13 }}>Nenhum pedido</div>
+                      : cards.map(pedido => (
+                        <CardPedido key={pedido.id} pedido={pedido} coluna={col} pratos={pratos} garcons={garcons} mesas={mesas} onAvancar={atualizarStatusPedido} cfg={cfg} />
+                      ))
+                    }
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ── Fluxo Delivery ── */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <Truck size={13} color="#f04000" />
+            <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: '#f04000' }}>Delivery</span>
+            <div style={{ flex: 1, height: 1, background: 'rgba(240,64,0,0.25)' }} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${DELIVERY_COLUNAS.length}, 1fr)`, gap: 16 }}>
+            {DELIVERY_COLUNAS.map(col => {
+              const cards = pedidosFiltrados
+                .filter(p => p.canal === 'delivery' && p.status === col.id)
+                .sort((a, b) => (a.timestamps?.[col.id] || '').localeCompare(b.timestamps?.[col.id] || ''))
+              return (
+                <div key={col.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 14px', borderRadius: '12px 12px 0 0',
+                    background: col.bgCor, border: `1px solid ${col.cor}33`, borderBottom: 'none',
+                  }}>
+                    <span style={{ fontWeight: 700, fontSize: 14, color: col.cor }}>{col.label}</span>
+                    <span style={{ minWidth: 24, height: 24, borderRadius: 20, background: col.cor, color: '#fff', fontWeight: 800, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 7px' }}>
+                      {cards.length}
+                    </span>
+                  </div>
+                  <div style={{
+                    minHeight: 200, padding: 10, background: 'rgba(240,64,0,0.03)',
+                    border: `1px solid ${col.cor}22`, borderRadius: '0 0 12px 12px',
+                    display: 'flex', flexDirection: 'column', gap: 10,
+                    maxHeight: 'calc(100vh - 300px)', overflowY: 'auto',
+                  }}>
+                    {cards.length === 0
+                      ? <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)', fontSize: 13 }}>Nenhum pedido</div>
+                      : cards.map(pedido => (
+                        <CardPedido key={pedido.id} pedido={pedido} coluna={col} pratos={pratos} garcons={garcons} mesas={mesas} onAvancar={atualizarStatusPedido} cfg={cfg} />
+                      ))
+                    }
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
       </div>
       ) : (
       /* ── Configurações ───────────────────────────────────────────────── */

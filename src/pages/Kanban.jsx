@@ -370,7 +370,7 @@ export default function Kanban() {
   const totalPorColuna = (status) => pedidosFiltrados.filter(p => p.status === status).length
 
   return (
-    <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto' }}>
+    <div style={{ padding: 'clamp(16px, 4vw, 24px)', maxWidth: 1400, margin: '0 auto' }}>
       <div className="page-header">
         <div>
           <h1 className="page-title">Fluxo de Pedidos</h1>
@@ -429,7 +429,8 @@ export default function Kanban() {
             <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--text-muted)' }}>Fluxo Local</span>
             <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${COLUNAS.length}, 1fr)`, gap: 16 }}>
+          <div style={{ overflowX: 'auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${COLUNAS.length}, minmax(200px, 1fr))`, gap: 12, minWidth: `${COLUNAS.length * 210}px` }}>
             {COLUNAS.map(col => {
               const cards = pedidosFiltrados
                 .filter(p => p.status === col.id && p.canal !== 'delivery')
@@ -463,6 +464,7 @@ export default function Kanban() {
               )
             })}
           </div>
+          </div>
         </div>
 
         {/* ── Fluxo Delivery ── */}
@@ -472,7 +474,8 @@ export default function Kanban() {
             <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: '#f04000' }}>Delivery</span>
             <div style={{ flex: 1, height: 1, background: 'rgba(240,64,0,0.25)' }} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${DELIVERY_COLUNAS.length}, 1fr)`, gap: 16 }}>
+          <div style={{ overflowX: 'auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${DELIVERY_COLUNAS.length}, minmax(200px, 1fr))`, gap: 12, minWidth: `${DELIVERY_COLUNAS.length * 210}px` }}>
             {DELIVERY_COLUNAS.map(col => {
               const cards = pedidosFiltrados
                 .filter(p => p.canal === 'delivery' && p.status === col.id && p.status !== 'pendente')
@@ -508,6 +511,7 @@ export default function Kanban() {
                 </div>
               )
             })}
+          </div>
           </div>
         </div>
       </div>

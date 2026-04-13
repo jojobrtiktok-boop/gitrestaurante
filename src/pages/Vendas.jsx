@@ -365,7 +365,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
   })()
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-4 md:p-6 max-w-4xl mx-auto">
       <div className="page-header">
         <div>
           <h1 className="page-title">Vendas</h1>
@@ -391,16 +391,18 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
       )}
 
       {/* Abas */}
-      <div className="flex gap-1 p-1 rounded-xl mb-4 w-fit" style={{ background: 'var(--bg-hover)' }}>
-        {[{ id: 'lancamentos', label: 'Lançamentos' }, { id: 'funcionarios', label: 'Funcionários' }, { id: 'clientes', label: 'Clientes' }, { id: 'extrato', label: 'Extrato de Vendas' }, { id: 'delivery', label: 'Delivery' }].map(a => (
-          <button key={a.id} onClick={() => setAba(a.id)}
-            className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
-            style={aba === a.id
-              ? { background: 'var(--bg-card)', color: 'var(--text-primary)', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }
-              : { color: 'var(--text-muted)' }}>
-            {a.label}
-          </button>
-        ))}
+      <div style={{ overflowX: 'auto', paddingBottom: 2, marginBottom: 16 }}>
+        <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--bg-hover)', width: 'fit-content', display: 'flex', gap: 4 }}>
+          {[{ id: 'lancamentos', label: 'Lançamentos' }, { id: 'funcionarios', label: 'Funcionários' }, { id: 'clientes', label: 'Clientes' }, { id: 'extrato', label: 'Extrato de Vendas' }, { id: 'delivery', label: 'Delivery' }].map(a => (
+            <button key={a.id} onClick={() => setAba(a.id)}
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+              style={aba === a.id
+                ? { background: 'var(--bg-card)', color: 'var(--text-primary)', boxShadow: '0 1px 4px rgba(0,0,0,0.15)', whiteSpace: 'nowrap' }
+                : { color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+              {a.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {aba === 'funcionarios' ? (

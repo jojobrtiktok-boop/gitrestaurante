@@ -315,3 +315,26 @@ tbody tr:last-child { border-bottom: none; }
 @media (max-width: 640px)  { .cozinha-board { grid-template-columns: 1fr; } }
 @media (min-width: 641px) and (max-width: 1024px) { .cozinha-board { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1025px) { .cozinha-board { grid-template-columns: repeat(var(--colunas, 3), 1fr); } }
+
+/* ─── Mobile responsive utilities ─────────────────── */
+@media (max-width: 767px) {
+  .page-header {
+    margin-bottom: 16px;
+    gap: 10px;
+  }
+  .page-title {
+    font-size: 18px;
+  }
+  .card {
+    padding: 14px;
+    border-radius: 12px;
+  }
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .btn {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+}

@@ -776,7 +776,7 @@ export default function Mercadorias() {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto">
       <div className="page-header">
         <div>
           <h1 className="page-title">Mercadorias</h1>

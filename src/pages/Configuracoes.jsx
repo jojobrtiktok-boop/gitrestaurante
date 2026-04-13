@@ -1150,7 +1150,7 @@ export default function Configuracoes() {
   const notifBadge = !notifConfig.pushAtivo
 
   return (
-    <div style={{ padding: 24, maxWidth: 760, margin: '0 auto' }}>
+    <div style={{ padding: 'clamp(16px, 4vw, 24px)', maxWidth: 760, margin: '0 auto' }}>
       <div className="page-header">
         <div>
           <h1 className="page-title">Configurações</h1>

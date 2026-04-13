@@ -169,7 +169,7 @@ export default function Mesas() {
   }
 
   return (
-    <div style={{ padding: 24, maxWidth: 1100, margin: '0 auto' }}>
+    <div style={{ padding: 'clamp(16px, 4vw, 24px)', maxWidth: 1100, margin: '0 auto' }}>
       {/* Header */}
       <div className="page-header">
         <div>

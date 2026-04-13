@@ -462,7 +462,7 @@ export default function VisaoGeral() {
   detalhesPorPrato.sort((a, b) => b.receita - a.receita)
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-4 md:p-6 max-w-6xl mx-auto">
       <div className="flex gap-1 mb-4 flex-wrap">
         {[
           { id: 'resumo', label: 'Resumo' },
@@ -489,7 +489,7 @@ export default function VisaoGeral() {
               <h1 className="page-title">Relatório</h1>
               <p className="page-subtitle">Resumo financeiro do período</p>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap" style={{ justifyContent: 'flex-end' }}>
               <button
                 className="btn btn-secondary"
                 onClick={() => setModalCaixa(true)}

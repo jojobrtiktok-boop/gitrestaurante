@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { UtensilsCrossed, Camera, X, Search, Check, Smartphone, Copy, Settings, Plus, Trash2, Link2, Users, FileText, Monitor, RefreshCw, Star, LayoutGrid, List, Truck, MapPin, ToggleLeft, ToggleRight, Banknote, QrCode, CreditCard, Clock } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
+import { uploadImagem } from '../utils/storage.js'
 import Badge, { margemCor, cmvCor } from '../components/ui/Badge.jsx'
 import { custoPrato, lucroPrato, margemPrato, cmvPrato } from '../utils/calculos.js'
 import { formatarMoeda, formatarPorcentagem } from '../utils/formatacao.js'
@@ -24,13 +25,21 @@ function ModalDetalhe({ prato, onFechar, onFotoChange }) {
   const margem = margemPrato(prato, ingredientes)
   const cmv    = cmvPrato(prato, ingredientes)
 
-  function handleUpload(e) {
+  const [enviandoFoto, setEnviandoFoto] = useState(false)
+
+  async function handleUpload(e) {
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > 4 * 1024 * 1024) { alert('Máx 4 MB.'); return }
-    const reader = new FileReader()
-    reader.onload = ev => onFotoChange(prato.id, ev.target.result)
-    reader.readAsDataURL(file)
+    setEnviandoFoto(true)
+    try {
+      const url = await uploadImagem(file, 'pratos')
+      onFotoChange(prato.id, url)
+    } catch {
+      alert('Erro ao enviar foto. Verifique a conexão e tente novamente.')
+    } finally {
+      setEnviandoFoto(false)
+    }
     e.target.value = ''
   }
 
@@ -73,11 +82,11 @@ function ModalDetalhe({ prato, onFechar, onFotoChange }) {
 
             {/* Botão foto */}
             <button
-              onClick={() => fileRef.current?.click()}
+              onClick={() => !enviandoFoto && fileRef.current?.click()}
               className="flex items-center gap-1.5 mt-2 text-xs font-medium transition-colors"
-              style={{ color: 'var(--accent)' }}
+              style={{ color: enviandoFoto ? 'var(--text-muted)' : 'var(--accent)', cursor: enviandoFoto ? 'not-allowed' : 'pointer' }}
             >
-              <Camera size={12} /> {prato.foto ? 'Alterar foto' : 'Adicionar foto'}
+              <Camera size={12} /> {enviandoFoto ? 'Enviando...' : prato.foto ? 'Alterar foto' : 'Adicionar foto'}
             </button>
             {prato.foto && (
               <button

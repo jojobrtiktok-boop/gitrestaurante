@@ -7,6 +7,7 @@ import {
   Headphones, MessageCircle, Mail, Clock, Store,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
+import { uploadImagem } from '../utils/storage.js'
 
 /* helpers */
 function Toggle({ value, onChange, disabled }) {
@@ -103,14 +104,18 @@ function AbaConta() {
   const [lojaOk,      setLojaOk]      = useState(false)
   const [erroLogoLoja, setErroLogoLoja] = useState('')
 
-  function handleLogoLoja(e) {
+  async function handleLogoLoja(e) {
     const file = e.target.files[0]
     if (!file) return
     setErroLogoLoja('')
     if (file.size > 3 * 1024 * 1024) { setErroLogoLoja('A logo deve ter menos de 3 MB.'); return }
-    const reader = new FileReader()
-    reader.onload = ev => setLogoLoja(ev.target.result)
-    reader.readAsDataURL(file)
+    try {
+      const url = await uploadImagem(file, 'logos', `logo-${auth.userId}`)
+      setLogoLoja(url)
+    } catch {
+      setErroLogoLoja('Erro ao enviar logo. Verifique a conexão e tente novamente.')
+    }
+    e.target.value = ''
   }
 
   function handleSalvarLoja() {
@@ -128,17 +133,18 @@ function AbaConta() {
   const [erro,        setErro]        = useState('')
   const [ok,          setOk]          = useState(false)
 
-  function handleFoto(e) {
+  async function handleFoto(e) {
     const file = e.target.files[0]
     if (!file) return
     setErroFoto('')
-    if (file.size > 3 * 1024 * 1024) {
-      setErroFoto('A foto deve ter menos de 3 MB.')
-      return
+    if (file.size > 3 * 1024 * 1024) { setErroFoto('A foto deve ter menos de 3 MB.'); return }
+    try {
+      const url = await uploadImagem(file, 'perfil', `avatar-${auth.userId}`)
+      setFotoLocal(url)
+    } catch {
+      setErroFoto('Erro ao enviar foto. Verifique a conexão e tente novamente.')
     }
-    const reader = new FileReader()
-    reader.onload = ev => setFotoLocal(ev.target.result)
-    reader.readAsDataURL(file)
+    e.target.value = ''
   }
 
   function handleSalvarPerfil() {

@@ -597,7 +597,7 @@ export function AppProvider({ children }) {
   async function _aplicarSessao(session) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('is_admin, username, nome_exibicao')
+      .select('is_admin, username, nome_exibicao, foto')
       .eq('id', session.user.id)
       .maybeSingle()
     if (!profile) return
@@ -606,7 +606,11 @@ export function AppProvider({ children }) {
       usuario: profile.username || prev.usuario,
       isAdmin: profile.is_admin || prev.isAdmin,
     }))
-    if (profile.nome_exibicao) setPerfil(prev => ({ ...prev, nomeExibicao: profile.nome_exibicao }))
+    setPerfil(prev => ({
+      ...prev,
+      ...(profile.nome_exibicao ? { nomeExibicao: profile.nome_exibicao } : {}),
+      ...(profile.foto ? { foto: profile.foto } : {}),
+    }))
   }
 
   function _limparDados() {
@@ -834,9 +838,12 @@ export function AppProvider({ children }) {
   function atualizarPerfil(updates) {
     setPerfil(prev => ({ ...prev, ...updates }))
     if (!auth.userId) return
-    sbWrite(supabase.from('profiles').update({
-      nome_exibicao: updates.nomeExibicao,
-    }).eq('id', auth.userId))
+    const dbUp = {}
+    if (updates.nomeExibicao !== undefined) dbUp.nome_exibicao = updates.nomeExibicao
+    if (updates.foto !== undefined) dbUp.foto = updates.foto
+    if (Object.keys(dbUp).length) {
+      sbWrite(supabase.from('profiles').update(dbUp).eq('id', auth.userId))
+    }
   }
 
   // ── Notif Config ──────────────────────────────────────────────────────

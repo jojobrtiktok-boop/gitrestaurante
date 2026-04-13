@@ -425,6 +425,13 @@ function rowToCaixaInicial(row) {
   return { id: row.id, data: row.data, valor: Number(row.valor) }
 }
 
+function movimentoCaixaToRow(m, uid) {
+  return { id: m.id, user_id: uid, data: m.data, hora: m.hora || null, tipo: m.tipo, valor: m.valor, descricao: m.descricao || '' }
+}
+function rowToMovimentoCaixa(row) {
+  return { id: row.id, data: row.data, hora: row.hora || null, tipo: row.tipo, valor: Number(row.valor), descricao: row.descricao || '' }
+}
+
 function rowToCardapioConfig(row) {
   if (!row) return CONFIG_PADRAO
   return { ...CONFIG_PADRAO, ...(row.config || {}) }
@@ -559,6 +566,7 @@ export function AppProvider({ children }) {
   const [pagamentosConfig, setPagamentosConfig] = useState(PAGAMENTOS_CONFIG_PADRAO)
   const [perfil, setPerfil] = useState({ foto: null, nomeExibicao: '' })
   const [motoboys, setMotoboys] = useState([])
+  const [movimentosCaixa, setMovimentosCaixa] = useState([])
 
   const userIdRef = useRef(null)
   const notifConfigRef = useRef(notifConfig)
@@ -640,6 +648,7 @@ export function AppProvider({ children }) {
     setPagamentosConfig(PAGAMENTOS_CONFIG_PADRAO)
     setPerfil({ foto: null, nomeExibicao: '' })
     setMotoboys([])
+    setMovimentosCaixa([])
   }
 
   // ── Carregar todos os dados quando userId muda ────────────────────────
@@ -736,6 +745,7 @@ export function AppProvider({ children }) {
         { data: icsRaw },
         { data: ncRaw },
         { data: profRaw },
+        { data: mvsRaw },
       ] = await Promise.all([
         supabase.from('ingredientes').select('*').eq('user_id', uid),
         supabase.from('registros_vendas').select('*').eq('user_id', uid),
@@ -751,6 +761,7 @@ export function AppProvider({ children }) {
         supabase.from('impostos_config').select('*').eq('user_id', uid),
         supabase.from('notif_config').select('*').eq('user_id', uid).maybeSingle(),
         supabase.from('profiles').select('*').eq('id', uid).maybeSingle(),
+        supabase.from('movimentos_caixa').select('*').eq('user_id', uid).gte('data', dataLimite).then(r => r, () => ({ data: [] })),
       ])
 
       if (ingsRaw) setIngredientes(ingsRaw.map(rowToIng))
@@ -759,6 +770,7 @@ export function AppProvider({ children }) {
       if (cosRaw)  setCompras(cosRaw.map(rowToCompra))
       if (cisRaw)  setCaixaInicialState(cisRaw.map(rowToCaixaInicial))
       if (smsRaw)  setSessoesMesas(smsRaw.map(rowToSessaoMesa))
+      if (mvsRaw)  setMovimentosCaixa(mvsRaw.map(rowToMovimentoCaixa))
       setConfiguracaoGeral(cgRaw ? { estoqueMinimoPadrao: Number(cgRaw.estoque_minimo_padrao || 0) } : { estoqueMinimoPadrao: 0 })
       setConfiguracaoDelivery(rowToDeliveryConfig(cdRaw))
       if (lcsRaw)  setListaCompras(lcsRaw.map(rowToListaCompra))
@@ -1368,6 +1380,23 @@ export function AppProvider({ children }) {
     return getCaixaInicial(dataInicio) ?? 0
   }
 
+  // ── Movimentos de Caixa (Sangrias / Suprimentos) ──────────────────────
+  function adicionarMovimentoCaixa(data, hora, tipo, valor, descricao) {
+    const novo = { id: crypto.randomUUID(), data, hora: hora || null, tipo, valor: Number(valor), descricao: descricao || '' }
+    setMovimentosCaixa(prev => [...prev, novo])
+    if (auth.userId) sbWrite(supabase.from('movimentos_caixa').insert(movimentoCaixaToRow(novo, auth.userId)))
+    return novo
+  }
+
+  function removerMovimentoCaixa(id) {
+    setMovimentosCaixa(prev => prev.filter(m => m.id !== id))
+    if (auth.userId) sbWrite(supabase.from('movimentos_caixa').delete().eq('id', id).eq('user_id', auth.userId))
+  }
+
+  function getMovimentosCaixaDia(data) {
+    return movimentosCaixa.filter(m => m.data === data)
+  }
+
   // ── Pedidos ───────────────────────────────────────────────────────────
   function adicionarPedido(garconId, itens, obs, mesaId = null, clienteId = null) {
     const dataAtual = hojeBrasilia()
@@ -1747,6 +1776,7 @@ export function AppProvider({ children }) {
     clientes, adicionarCliente, removerCliente,
     pedidos, adicionarPedido, adicionarPedidoDelivery, atualizarStatusPedido, atribuirMotoboy, marcarEntregue, marcarPedidoPago, pagarMesa, cancelarPedido,
     caixaInicial, registrarCaixaInicial, getCaixaInicial, getCaixaInicialPeriodo,
+    movimentosCaixa, adicionarMovimentoCaixa, removerMovimentoCaixa, getMovimentosCaixaDia,
     mesas, adicionarMesa, editarMesa, removerMesa, setStatusMesa, alternarStatusMesa,
     sessoesMesas,
     kanbanConfig, atualizarKanbanConfig, gerarTokenCozinha, gerarTokenCaixa, gerarTokenTelao, gerarTokenPedidosDisplay,

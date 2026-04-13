@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { DollarSign, TrendingUp, Award, ShoppingBag, TrendingDown, BarChart2, Wallet, Info, X, ChevronDown, ChevronUp, Clock, Trophy, Layers, UtensilsCrossed, Truck } from 'lucide-react'
+import { DollarSign, TrendingUp, Award, ShoppingBag, TrendingDown, BarChart2, Wallet, Info, X, ChevronDown, ChevronUp, Clock, Trophy, Layers, UtensilsCrossed, Truck, ArrowDownCircle, ArrowUpCircle, LockKeyhole, Printer } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { useApp } from '../context/AppContext.jsx'
 import MetricCard from '../components/ui/MetricCard.jsx'
@@ -39,6 +39,154 @@ function Tooltip2({ children, texto }) {
         }}>{texto}</span>
       )}
     </span>
+  )
+}
+
+function ModalFechamentoCaixa({ data, caixaInicial, totalVendido, movimentos, onAdd, onRemove, onFechar }) {
+  const [tipo, setTipo] = useState('sangria')
+  const [valor, setValor] = useState('')
+  const [descricao, setDescricao] = useState('')
+  const [contado, setContado] = useState('')
+
+  const totalSangrias    = movimentos.filter(m => m.tipo === 'sangria').reduce((s, m) => s + m.valor, 0)
+  const totalSuprimentos = movimentos.filter(m => m.tipo === 'suprimento').reduce((s, m) => s + m.valor, 0)
+  const esperadoCaixa    = (caixaInicial || 0) + totalVendido + totalSuprimentos - totalSangrias
+  const contadoNum       = parseFloat(contado) || 0
+  const diferenca        = contadoNum - esperadoCaixa
+
+  const horaAtualStr = () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+
+  function salvarMovimento() {
+    const v = parseFloat(valor)
+    if (!v || v <= 0) return
+    onAdd(data, horaAtualStr(), tipo, v, descricao.trim())
+    setValor(''); setDescricao('')
+  }
+
+  function imprimir() {
+    const w = window.open('', '_blank')
+    const fmt = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    const linhas = movimentos.map(m =>
+      `<tr><td>${m.hora || '--'}</td><td>${m.tipo === 'sangria' ? 'Sangria' : 'Suprimento'}</td><td>${m.descricao || '--'}</td><td style="color:${m.tipo==='sangria'?'#ef4444':'#22c55e'}">${m.tipo==='sangria'?'-':'+'} ${fmt(m.valor)}</td></tr>`
+    ).join('')
+    w.document.write(`<html><head><title>Fechamento de Caixa - ${data}</title><style>
+      body{font-family:system-ui,sans-serif;padding:24px;color:#111}
+      h2{margin:0 0 4px}p{margin:0 0 16px;color:#666;font-size:13px}
+      table{width:100%;border-collapse:collapse;margin-bottom:16px}
+      th,td{padding:7px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px}
+      th{background:#f9fafb;font-weight:600}.row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:14px}
+      .total{font-weight:700;font-size:15px;padding-top:8px;border-top:2px solid #111}.pos{color:#22c55e}.neg{color:#ef4444}
+    </style></head><body>
+      <h2>Fechamento de Caixa</h2><p>${data}</p>
+      <div class="row"><span>Caixa Inicial</span><span>${fmt(caixaInicial||0)}</span></div>
+      <div class="row"><span>Total Vendido (pago)</span><span class="pos">${fmt(totalVendido)}</span></div>
+      <div class="row"><span>Suprimentos</span><span class="pos">+ ${fmt(totalSuprimentos)}</span></div>
+      <div class="row"><span>Sangrias</span><span class="neg">- ${fmt(totalSangrias)}</span></div>
+      <div class="row total"><span>Esperado em Caixa</span><span>${fmt(esperadoCaixa)}</span></div>
+      ${contadoNum > 0 ? `<div class="row"><span>Contado Fisicamente</span><span>${fmt(contadoNum)}</span></div>
+      <div class="row total"><span>Diferença (${diferenca>=0?'sobra':'falta'})</span><span class="${diferenca>=0?'pos':'neg'}">${fmt(Math.abs(diferenca))}</span></div>` : ''}
+      ${movimentos.length > 0 ? `<br><h3>Movimentos do Dia</h3><table><thead><tr><th>Hora</th><th>Tipo</th><th>Descrição</th><th>Valor</th></tr></thead><tbody>${linhas}</tbody></table>` : ''}
+    </body></html>`)
+    w.document.close(); w.print()
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, overflowY: 'auto' }}
+      onClick={e => e.target === e.currentTarget && onFechar()}>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, width: '100%', maxWidth: 520, padding: 24, maxHeight: '90vh', overflowY: 'auto' }}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <LockKeyhole size={18} style={{ color: 'var(--accent)' }} />
+            <div>
+              <p style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)', margin: 0 }}>Fechamento de Caixa</p>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>{data}</p>
+            </div>
+          </div>
+          <button onClick={onFechar} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={16} /></button>
+        </div>
+
+        {/* Resumo */}
+        <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 16, marginBottom: 16 }}>
+          {[
+            { label: 'Caixa Inicial (abertura)', valor: caixaInicial || 0, cor: '#f59e0b', sinal: '' },
+            { label: 'Total Vendido (pago)', valor: totalVendido, cor: '#22c55e', sinal: '+' },
+            { label: 'Suprimentos', valor: totalSuprimentos, cor: '#22c55e', sinal: '+' },
+            { label: 'Sangrias', valor: totalSangrias, cor: '#ef4444', sinal: '-' },
+          ].map(({ label, valor: v, cor, sinal }) => (
+            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{label}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: cor }}>{sinal} {v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+            </div>
+          ))}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0 0' }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Esperado em Caixa</span>
+            <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--accent)' }}>{esperadoCaixa.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+          </div>
+        </div>
+
+        {/* Conferência física */}
+        <div style={{ background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 12, padding: 14, marginBottom: 16 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: '#818cf8', display: 'block', marginBottom: 6 }}>Dinheiro contado fisicamente (opcional)</label>
+          <input className="input" type="number" min="0" step="0.01" placeholder="0,00"
+            value={contado} onChange={e => setContado(e.target.value)} />
+          {contadoNum > 0 && (
+            <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{diferenca >= 0 ? 'Sobra' : 'Falta'}</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: diferenca >= 0 ? '#22c55e' : '#ef4444' }}>
+                {diferenca >= 0 ? '+' : '-'} {Math.abs(diferenca).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Sangrias / Suprimentos */}
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10 }}>Movimentos do Caixa</p>
+
+          {/* Lista */}
+          {movimentos.length > 0 && (
+            <div style={{ marginBottom: 10 }}>
+              {movimentos.map(m => (
+                <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                  {m.tipo === 'sangria'
+                    ? <ArrowDownCircle size={14} style={{ color: '#ef4444', flexShrink: 0 }} />
+                    : <ArrowUpCircle size={14} style={{ color: '#22c55e', flexShrink: 0 }} />}
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)', flex: 1 }}>{m.hora} · {m.descricao || (m.tipo === 'sangria' ? 'Sangria' : 'Suprimento')}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: m.tipo === 'sangria' ? '#ef4444' : '#22c55e' }}>
+                    {m.tipo === 'sangria' ? '-' : '+'} {m.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </span>
+                  <button onClick={() => onRemove(m.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2, display: 'flex' }}><X size={12} /></button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Novo movimento */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
+              {['sangria', 'suprimento'].map(t => (
+                <button key={t} onClick={() => setTipo(t)} style={{
+                  padding: '6px 12px', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer',
+                  background: tipo === t ? (t === 'sangria' ? '#ef4444' : '#22c55e') : 'var(--bg-hover)',
+                  color: tipo === t ? '#fff' : 'var(--text-secondary)',
+                }}>{t === 'sangria' ? 'Sangria' : 'Suprimento'}</button>
+              ))}
+            </div>
+            <input className="input" style={{ flex: '1 1 80px', minWidth: 80 }} type="number" min="0" step="0.01" placeholder="Valor" value={valor} onChange={e => setValor(e.target.value)} />
+            <input className="input" style={{ flex: '2 1 120px' }} type="text" placeholder="Descrição (opcional)" value={descricao} onChange={e => setDescricao(e.target.value)} />
+            <button className="btn btn-primary" style={{ flexShrink: 0 }} onClick={salvarMovimento}>+ Add</button>
+          </div>
+        </div>
+
+        {/* Ações */}
+        <div className="flex gap-2 justify-end">
+          <button className="btn btn-secondary" onClick={imprimir} style={{ gap: 6 }}><Printer size={14} /> Imprimir</button>
+          <button className="btn btn-primary" onClick={onFechar}>Fechar</button>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -371,10 +519,11 @@ function ResultadoGeral() {
 }
 
 export default function VisaoGeral() {
-  const { pratos, ingredientes, registrosVendas, entradasVendas, pedidos, tema, registrarCaixaInicial, getCaixaInicial, getCaixaInicialPeriodo } = useApp()
+  const { pratos, ingredientes, registrosVendas, entradasVendas, pedidos, tema, registrarCaixaInicial, getCaixaInicial, getCaixaInicialPeriodo, movimentosCaixa, adicionarMovimentoCaixa, removerMovimentoCaixa, getMovimentosCaixaDia } = useApp()
   const h = hoje()
   const [periodo, setPeriodo] = useState({ dataInicio: h, dataFim: h })
   const [modalCaixa, setModalCaixa] = useState(false)
+  const [modalFechamento, setModalFechamento] = useState(false)
   const [aba, setAba] = useState('resumo')
   const [canalFiltro, setCanalFiltro] = useState('todos')
 
@@ -500,6 +649,16 @@ export default function VisaoGeral() {
                   ? `Caixa: ${formatarMoeda(caixaInicialValor)}`
                   : 'Caixa Inicial'}
               </button>
+              {isPeriodoUnico && (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setModalFechamento(true)}
+                  style={{ gap: 6, color: '#f59e0b', borderColor: 'rgba(245,158,11,0.3)' }}
+                >
+                  <LockKeyhole size={14} />
+                  Fechar Caixa
+                </button>
+              )}
 
               {/* Filtro de canal */}
               <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)', flexShrink: 0 }}>
@@ -825,6 +984,18 @@ export default function VisaoGeral() {
           valorAtual={getCaixaInicial(dataInicio)}
           onSalvar={valor => registrarCaixaInicial(dataInicio, valor)}
           onFechar={() => setModalCaixa(false)}
+        />
+      )}
+
+      {modalFechamento && (
+        <ModalFechamentoCaixa
+          data={dataInicio}
+          caixaInicial={caixaInicialValor || 0}
+          totalVendido={receitaPaga}
+          movimentos={getMovimentosCaixaDia(dataInicio)}
+          onAdd={adicionarMovimentoCaixa}
+          onRemove={removerMovimentoCaixa}
+          onFechar={() => setModalFechamento(false)}
         />
       )}
     </div>

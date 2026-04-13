@@ -49,7 +49,7 @@ export function PainelCozinha() {  const { kanbanConfig, atualizarKanbanConfig, 
               style={{ width: 64, height: 64, background: 'var(--bg-hover)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {kanbanConfig.cozinhaLogo
                 ? <img src={kanbanConfig.cozinhaLogo} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : <span style={{ fontSize: 24 }}>👨‍🍳</span>
+                : <Camera size={22} style={{ color: 'var(--text-muted)' }} />
               }
             </div>
             <div className="flex flex-col gap-1.5">
@@ -147,7 +147,7 @@ export function PainelCozinha() {  const { kanbanConfig, atualizarKanbanConfig, 
                 { id: 'preparando', label: kanbanConfig.labelPreparando || 'Preparando' },
                 { id: 'completo',   label: kanbanConfig.labelCompleto || 'Completo' },
               ].map(({ id, label }) => {
-                const visivel = (kanbanConfig.colunasVisivelCozinha || ['novo', 'preparando']).includes(id)
+                const visivel = (kanbanConfig.colunasVisivelCozinha || ['novo', 'preparando', 'completo']).includes(id)
                 return (
                   <button key={id} onClick={() => {
                     const atual = kanbanConfig.colunasVisivelCozinha || ['novo', 'preparando']
@@ -197,17 +197,17 @@ export function PainelCozinha() {  const { kanbanConfig, atualizarKanbanConfig, 
               { key: 'mostrarObs',    label: 'Observações do pedido' },
             ].map(({ key, label }) => (
               <label key={key} className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={!!kanbanConfig[key]} onChange={e => atualizarKanbanConfig({ [key]: e.target.checked })} />
+                <input type="checkbox" checked={kanbanConfig[key] !== false} onChange={e => atualizarKanbanConfig({ [key]: e.target.checked })} />
                 <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{label}</span>
               </label>
             ))}
             {/* Som de alerta */}
             <div className="flex flex-col gap-2" style={{ borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 4 }}>
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={!!kanbanConfig.somAlerta} onChange={e => atualizarKanbanConfig({ somAlerta: e.target.checked })} />
+                <input type="checkbox" checked={kanbanConfig.somAlerta !== false} onChange={e => atualizarKanbanConfig({ somAlerta: e.target.checked })} />
                 <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Som de alerta (novo pedido)</span>
               </label>
-              {kanbanConfig.somAlerta && (
+              {kanbanConfig.somAlerta !== false && (
                 <div className="flex items-center gap-2" style={{ paddingLeft: 20 }}>
                   <select className="input text-xs py-1.5" style={{ flex: 1 }}
                     value={kanbanConfig.somAlertaTipo || 'duplo'}
@@ -256,7 +256,7 @@ export function PainelCaixa() {
       {/* Link */}
       <div className="card p-5">
         <div className="flex items-center gap-2 mb-4">
-          <ShoppingBag size={16} style={{ color: '#3b82f6' }} />
+          <ShoppingBag size={16} style={{ color: 'var(--accent)' }} />
           <h2 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Display do Balcão</h2>
         </div>
 
@@ -269,7 +269,7 @@ export function PainelCaixa() {
               style={{ width: 64, height: 64, background: 'var(--bg-hover)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {kanbanConfig.cozinhaLogo
                 ? <img src={kanbanConfig.cozinhaLogo} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : <span style={{ fontSize: 24 }}>🛋️</span>
+                : <Camera size={22} style={{ color: 'var(--text-muted)' }} />
               }
             </div>
             <div className="flex flex-col gap-1.5">
@@ -299,7 +299,7 @@ export function PainelCaixa() {
           {urlCaixa && (
             <div className="flex gap-2 items-center p-2.5 rounded-xl mb-2" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
               <span className="flex-1 text-xs font-mono truncate" style={{ color: 'var(--text-secondary)' }}>{urlCaixa}</span>
-              <button className="btn btn-primary py-1 px-2.5 text-xs shrink-0" style={{ background: '#3b82f6' }} onClick={() => copiar(urlCaixa)}>
+              <button className="btn btn-primary py-1 px-2.5 text-xs shrink-0" style={{ background: 'var(--accent)' }} onClick={() => copiar(urlCaixa)}>
                 {copiado ? <><Check size={11} /> Copiado!</> : <><Copy size={11} /> Copiar</>}
               </button>
               <a href={urlCaixa} target="_blank" rel="noreferrer" className="btn btn-secondary py-1 px-2.5 text-xs shrink-0">Abrir</a>
@@ -333,7 +333,7 @@ export function PainelCaixa() {
                   }}
                     className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
                     style={visivel
-                      ? { background: '#3b82f6', color: '#fff', border: '1px solid #3b82f6' }
+                      ? { background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)' }
                       : { background: 'var(--bg-hover)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
                     {label}
                   </button>
@@ -353,7 +353,7 @@ export function PainelCaixa() {
               { key: 'caixaImpressaoAtivo',  label: 'Ativar impressão de pedido (cupom fiscal estreito)' },
             ].map(({ key, label }) => (
               <label key={key} className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={!!kanbanConfig[key]} onChange={e => atualizarKanbanConfig({ [key]: e.target.checked })} />
+                <input type="checkbox" checked={kanbanConfig[key] !== false} onChange={e => atualizarKanbanConfig({ [key]: e.target.checked })} />
                 <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{label}</span>
               </label>
             ))}

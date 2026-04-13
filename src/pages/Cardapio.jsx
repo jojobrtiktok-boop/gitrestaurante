@@ -703,72 +703,145 @@ function KDSConfig() {
 }
 
 /* ─── Modal QR Code para mesa ────────────────────── */
+const PAPEIS = {
+  a4:     { label: 'A4 (21 × 29,7 cm)',    w: 19.0, h: 27.7, pageSize: 'A4' },
+  a5:     { label: 'A5 (14,8 × 21 cm)',    w: 12.8, h: 19.0, pageSize: 'A5' },
+  letter: { label: 'Carta (21,6 × 27,9 cm)', w: 19.6, h: 25.9, pageSize: 'Letter' },
+}
+
+function calcGrid(papel, cm) {
+  const cellW = cm + 0.6
+  const cellH = cm + 2.0  // espaço para texto + padding
+  const cols = Math.max(1, Math.floor(papel.w / cellW))
+  const rows = Math.max(1, Math.floor(papel.h / cellH))
+  return { cols, rows, total: cols * rows }
+}
+
 function ModalQRCode({ url, onClose }) {
   const canvasRef = useRef(null)
-  const [tamanho, setTamanho] = useState(6) // cm
-  const [gerando, setGerando] = useState(false)
+  const [tamanho, setTamanho] = useState(6)
+  const [gerando,  setGerando]  = useState(false)
+  const [modo,     setModo]     = useState('unitario') // 'unitario' | 'varios'
+  const [papel,    setPapel]    = useState('a4')
+  const [dataUrl,  setDataUrl]  = useState(null)
 
   const tamanhos = [4, 5, 6, 7, 8, 10, 12]
 
-  useEffect(() => {
-    gerarQR()
-  }, [url]) // eslint-disable-line
+  useEffect(() => { gerarQR() }, [url]) // eslint-disable-line
 
   async function gerarQR() {
     if (!canvasRef.current) return
     const QRCode = (await import('qrcode')).default
     await QRCode.toCanvas(canvasRef.current, url, {
-      width: 400,
+      width: 512,
       margin: 2,
       color: { dark: '#000000', light: '#ffffff' },
       errorCorrectionLevel: 'H',
     })
+    setDataUrl(canvasRef.current.toDataURL('image/png'))
   }
 
-  function imprimir() {
-    if (!canvasRef.current) return
+  function abrirJanela(html, largura = 700, altura = 800) {
+    const win = window.open('', '_blank', `width=${largura},height=${altura}`)
+    win.document.open()
+    win.document.write(html)
+    win.document.close()
+    // aguarda imagens carregarem antes de imprimir
+    win.addEventListener('load', () => {
+      setTimeout(() => { win.focus(); win.print() }, 300)
+    })
+    setTimeout(() => setGerando(false), 1500)
+  }
+
+  function imprimirUnitario() {
+    if (!dataUrl) return
     setGerando(true)
-    const dataUrl = canvasRef.current.toDataURL('image/png')
-    const sizePx = tamanho * 37.8 // 1cm ≈ 37.8px em 96dpi
-    const win = window.open('', '_blank', 'width=600,height=700')
-    win.document.write(`<!DOCTYPE html>
+    abrirJanela(`<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>QR Code Cardápio</title>
+  <title>QR Code</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: Arial, sans-serif; }
-    .card { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 24px; border: 1.5px solid #e5e7eb; border-radius: 12px; }
-    .card img { width: ${tamanho}cm; height: ${tamanho}cm; display: block; }
-    .label { font-size: 12px; color: #555; text-align: center; }
-    .url { font-size: 10px; color: #999; text-align: center; word-break: break-all; max-width: ${tamanho + 2}cm; }
+    .card { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 20px; border: 1.5px solid #e5e7eb; border-radius: 12px; }
     .logo { font-size: 13px; font-weight: 700; color: #fd4b01; letter-spacing: -0.5px; }
-    @media print {
-      body { margin: 0; }
-      .no-print { display: none; }
-    }
+    .qr  { width: ${tamanho}cm; height: ${tamanho}cm; display: block; image-rendering: pixelated; }
+    .label { font-size: 11px; color: #555; text-align: center; }
+    .url   { font-size: 9px;  color: #aaa; text-align: center; word-break: break-all; max-width: ${tamanho + 2}cm; }
+    @media print { @page { margin: 1cm; } }
   </style>
 </head>
 <body>
   <div class="card">
     <span class="logo">Cheffya</span>
-    <img src="${dataUrl}" alt="QR Code" />
+    <img class="qr" src="${dataUrl}" alt="QR Code" />
     <p class="label">Escaneie para ver o cardápio</p>
     <p class="url">${url}</p>
   </div>
-  <script>window.onload = () => { window.print(); }<\/script>
 </body>
 </html>`)
-    win.document.close()
-    setTimeout(() => setGerando(false), 1000)
   }
+
+  function imprimirVarios() {
+    if (!dataUrl) return
+    setGerando(true)
+    const p = PAPEIS[papel]
+    const { cols, rows, total } = calcGrid(p, tamanho)
+    const celulas = Array(total).fill(null).map(() => `
+      <div class="cell">
+        <span class="logo">Cheffya</span>
+        <img class="qr" src="${dataUrl}" alt="QR Code" />
+        <p class="label">Escaneie para ver o cardápio</p>
+        <p class="url">${url}</p>
+      </div>`).join('')
+    abrirJanela(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>QR Codes</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #fff; font-family: Arial, sans-serif; padding: 0; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(${cols}, ${tamanho}cm);
+      gap: 0.5cm;
+      padding: 0;
+      width: fit-content;
+    }
+    .cell {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 4px;
+      border: 1px dashed #ccc;
+      padding: 6px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .logo  { font-size: 10px; font-weight: 700; color: #fd4b01; }
+    .qr    { width: ${tamanho}cm; height: ${tamanho}cm; display: block; image-rendering: pixelated; }
+    .label { font-size: 9px; color: #555; text-align: center; }
+    .url   { font-size: 7px; color: #aaa; text-align: center; word-break: break-all; max-width: ${tamanho}cm; }
+    @media print {
+      @page { size: ${p.pageSize} portrait; margin: 1cm; }
+      body  { padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="grid">${celulas}</div>
+</body>
+</html>`, 900, 900)
+  }
+
+  const gridInfo = calcGrid(PAPEIS[papel], tamanho)
 
   return (
     <div onClick={e => e.target === e.currentTarget && onClose()} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, width: '100%', maxWidth: 400, overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.3)' }}>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, width: '100%', maxWidth: 440, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 60px rgba(0,0,0,0.3)' }}>
+
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px 14px', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px 14px', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--bg-card)', zIndex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <QrCode size={16} style={{ color: 'var(--accent)' }} />
             <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>QR Code para Mesa</span>
@@ -779,40 +852,91 @@ function ModalQRCode({ url, onClose }) {
         </div>
 
         <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Preview do QR */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 20, background: 'var(--bg-hover)', borderRadius: 14, border: '1px solid var(--border)' }}>
-            <canvas ref={canvasRef} style={{ borderRadius: 8, maxWidth: '100%' }} />
+
+          {/* Preview */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: 20, background: 'var(--bg-hover)', borderRadius: 14, border: '1px solid var(--border)' }}>
+            <canvas ref={canvasRef} style={{ width: 180, height: 180, borderRadius: 8, imageRendering: 'pixelated' }} />
             <p style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', wordBreak: 'break-all', maxWidth: 280 }}>{url}</p>
           </div>
 
-          {/* Seletor de tamanho */}
+          {/* Tamanho */}
           <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 10 }}>
-              Tamanho de impressão
-            </label>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 10 }}>Tamanho de impressão</label>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {tamanhos.map(cm => (
                 <button key={cm} onClick={() => setTamanho(cm)} style={{
                   padding: '7px 14px', borderRadius: 9, border: `1.5px solid ${tamanho === cm ? 'var(--accent)' : 'var(--border)'}`,
                   background: tamanho === cm ? 'var(--accent-bg)' : 'transparent',
                   color: tamanho === cm ? 'var(--accent)' : 'var(--text-secondary)',
-                  fontSize: 13, fontWeight: tamanho === cm ? 700 : 500,
-                  cursor: 'pointer', transition: 'all .15s',
-                }}>
-                  {cm} cm
-                </button>
+                  fontSize: 13, fontWeight: tamanho === cm ? 700 : 500, cursor: 'pointer', transition: 'all .15s',
+                }}>{cm} cm</button>
               ))}
             </div>
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 7 }}>
-              Tamanho do QR Code impresso. Recomendado: <strong>6–8 cm</strong> para mesas.
-            </p>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 7 }}>Recomendado: <strong>6–8 cm</strong> para mesas.</p>
           </div>
 
+          {/* Modo */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 10 }}>Modo de impressão</label>
+            <div style={{ display: 'flex', gap: 4, background: 'var(--bg-hover)', borderRadius: 10, padding: 4 }}>
+              {[{ id: 'unitario', label: '1 por folha' }, { id: 'varios', label: 'Vários por folha' }].map(m => (
+                <button key={m.id} onClick={() => setModo(m.id)} style={{
+                  flex: 1, padding: '8px 12px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                  background: modo === m.id ? 'var(--bg-card)' : 'transparent',
+                  color: modo === m.id ? 'var(--text-primary)' : 'var(--text-muted)',
+                  boxShadow: modo === m.id ? '0 1px 4px rgba(0,0,0,0.12)' : 'none',
+                  transition: 'all .15s',
+                }}>{m.label}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Seletor de papel (só no modo vários) */}
+          {modo === 'varios' && (
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 10 }}>Tamanho da folha</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {Object.entries(PAPEIS).map(([id, p]) => (
+                  <button key={id} onClick={() => setPapel(id)} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 14px', borderRadius: 10,
+                    border: `1.5px solid ${papel === id ? 'var(--accent)' : 'var(--border)'}`,
+                    background: papel === id ? 'var(--accent-bg)' : 'transparent',
+                    cursor: 'pointer', transition: 'all .15s',
+                  }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: papel === id ? 'var(--accent)' : 'var(--text-primary)' }}>{p.label}</span>
+                    {papel === id && (() => {
+                      const g = calcGrid(p, tamanho)
+                      return <span style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700 }}>{g.cols}×{g.rows} = {g.total} QRs</span>
+                    })()}
+                  </button>
+                ))}
+              </div>
+              <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 10, background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+                <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
+                  Com <strong>{tamanho} cm</strong> em <strong>{PAPEIS[papel].label}</strong>:&nbsp;
+                  <strong style={{ color: 'var(--accent)' }}>{gridInfo.cols} colunas × {gridInfo.rows} linhas = {gridInfo.total} QR Codes por folha</strong>
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Botão imprimir */}
-          <button className="btn btn-primary" style={{ gap: 8, fontSize: 14, padding: '12px 0' }} onClick={imprimir} disabled={gerando}>
+          <button
+            className="btn btn-primary"
+            style={{ gap: 8, fontSize: 14, padding: '12px 0' }}
+            onClick={modo === 'unitario' ? imprimirUnitario : imprimirVarios}
+            disabled={gerando || !dataUrl}
+          >
             <QrCode size={15} />
-            {gerando ? 'Abrindo impressão...' : `Imprimir QR Code (${tamanho} cm)`}
+            {gerando
+              ? 'Abrindo impressão...'
+              : modo === 'unitario'
+                ? `Imprimir 1 QR Code (${tamanho} cm)`
+                : `Imprimir ${gridInfo.total} QR Codes por folha`
+            }
           </button>
+
         </div>
       </div>
     </div>

@@ -276,6 +276,15 @@ export default function Vendas() {
   const [extratoFim, setExtratoFim] = useState(h)
   const [clienteExpandido, setClienteExpandido] = useState(null)
 
+  // ── Nota Fiscal tab state ──────────────────────────────────────────────────
+  const [nfCnpj, setNfCnpj] = useState('')
+  const [nfRazao, setNfRazao] = useState('')
+  const [nfEndereco, setNfEndereco] = useState('')
+  const [nfTelContador, setNfTelContador] = useState('')
+  const [nfInicio, setNfInicio] = useState(h)
+  const [nfFim, setNfFim] = useState(h)
+  const [nfTipo, setNfTipo] = useState('mes') // 'mes' | 'periodo'
+
   const { dataInicio, dataFim } = periodo
 
   // Encontra o pedido do kanban vinculado a uma entrada (mesma data/hora/prato)
@@ -666,7 +675,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
       {/* Abas */}
       <div style={{ overflowX: 'auto', paddingBottom: 2, marginBottom: 16 }}>
         <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--bg-hover)', width: 'fit-content', display: 'flex', gap: 4 }}>
-          {[{ id: 'lancamentos', label: 'Lançamentos' }, { id: 'funcionarios', label: 'Funcionários' }, { id: 'clientes', label: 'Clientes' }, { id: 'extrato', label: 'Extrato de Vendas' }, { id: 'delivery', label: 'Delivery' }, { id: 'tempo', label: '⏱ Tempo' }].map(a => (
+          {[{ id: 'lancamentos', label: 'Lançamentos' }, { id: 'funcionarios', label: 'Funcionários' }, { id: 'clientes', label: 'Clientes' }, { id: 'extrato', label: 'Extrato de Vendas' }, { id: 'delivery', label: 'Delivery' }, { id: 'tempo', label: '⏱ Tempo' }, { id: 'notafiscal', label: '🧾 Nota Fiscal' }].map(a => (
             <button key={a.id} onClick={() => setAba(a.id)}
               className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
               style={aba === a.id
@@ -1569,6 +1578,348 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
           onFechar={() => setEntradaDetalhe(null)}
         />
       )}
+
+      {aba === 'notafiscal' && (() => {
+        const fmtData = d => d.split('-').reverse().join('/')
+        const fmtVal = v => `R$ ${Number(v).toFixed(2).replace('.', ',')}`
+        const LABEL_PGTO = { dinheiro: 'Dinheiro', pix: 'PIX', pixWhatsapp: 'PIX', cartaoCredito: 'Cartão Crédito', cartaoDebito: 'Cartão Débito', cartao: 'Cartão' }
+
+        // Filtra entradas pelo período escolhido
+        const entradasNF = entradasVendas.filter(e => {
+          if (e.data < nfInicio || e.data > nfFim) return false
+          const ped = pedidoDeEntrada(e)
+          if (ped?.cancelado) return false
+          return !ped || ped.pago === true
+        })
+
+        const totalNF = entradasNF.reduce((s, e) => {
+          const prato = pratos.find(p => p.id === e.pratoId)
+          return s + (prato ? receitaDaEntrada(e, prato) : 0)
+        }, 0)
+
+        // Breakdown por forma de pagamento
+        const pgtoMap = {}
+        entradasNF.forEach(e => {
+          const ped = pedidoDeEntrada(e)
+          const prato = pratos.find(p => p.id === e.pratoId)
+          if (!prato) return
+          const key = ped?.formaPagamento || 'nao_informado'
+          const label = LABEL_PGTO[key] || (key === 'nao_informado' ? 'Não informado' : key)
+          const total = receitaDaEntrada(e, prato)
+          if (!pgtoMap[key]) pgtoMap[key] = { label, total: 0 }
+          pgtoMap[key].total += total
+        })
+        const pgtoResumo = Object.values(pgtoMap).sort((a, b) => b.total - a.total)
+
+        // Linhas detalhadas
+        const linhasNF = entradasNF.map(e => {
+          const prato = pratos.find(p => p.id === e.pratoId)
+          if (!prato) return null
+          const ped = pedidoDeEntrada(e)
+          const total = receitaDaEntrada(e, prato)
+          const pgto = ped?.formaPagamento ? (LABEL_PGTO[ped.formaPagamento] || ped.formaPagamento) : 'Não informado'
+          return { data: fmtData(e.data), hora: e.hora, produto: prato.nome, qtd: e.quantidade, total, pgto }
+        }).filter(Boolean)
+
+        const cnpjFmt = v => v.replace(/\D/g, '').replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')
+        const periodo = nfInicio === nfFim ? fmtData(nfInicio) : `${fmtData(nfInicio)} a ${fmtData(nfFim)}`
+        const nomeEst = nfRazao || cardapioConfig?.nomeRestaurante || 'Estabelecimento'
+        const geradoEm = new Date().toLocaleString('pt-BR')
+
+        // ── Gerar SPED Fiscal ──────────────────────────────────────────────
+        function gerarSPED() {
+          const cnpjLimpo = nfCnpj.replace(/\D/g, '').padEnd(14, '0')
+          const dtIni = nfInicio.replace(/-/g, '')
+          const dtFin = nfFim.replace(/-/g, '')
+          const linhas = []
+
+          // Bloco 0 — Abertura
+          linhas.push(`|0000|013|0|${dtIni}|${dtFin}|${nomeEst}|${cnpjLimpo}|PA|1502301|4721-4/02|01|P||1|`)
+          linhas.push(`|0001|0|`)
+          linhas.push(`|0990|2|`)
+
+          // Bloco C — Documentos fiscais (1 registro por venda)
+          linhas.push(`|C001|0|`)
+          let numDoc = 1
+          const vendasPorDia = {}
+          linhasNF.forEach(l => {
+            if (!vendasPorDia[l.data]) vendasPorDia[l.data] = { itens: [], total: 0 }
+            vendasPorDia[l.data].itens.push(l)
+            vendasPorDia[l.data].total += l.total
+          })
+
+          Object.entries(vendasPorDia).forEach(([data, { itens, total }]) => {
+            const dtSped = data.split('/').join('')
+            const numStr = String(numDoc).padStart(6, '0')
+            linhas.push(`|C100|E|1|${numStr}|55|00|1|${numStr}|${dtSped}|${total.toFixed(2)}|${total.toFixed(2)}|0,00|0,00|0,00|0,00|0,00|0,00|0,00|1|`)
+            itens.forEach((item, i) => {
+              linhas.push(`|C170|${i + 1}|${item.produto}|${item.qtd}|UN|${(item.total / item.qtd).toFixed(2)}|${item.total.toFixed(2)}|5102|0|0,00|0,00|0,00|0,00|0,00|0,00|`)
+            })
+            numDoc++
+          })
+          linhas.push(`|C990|${Object.keys(vendasPorDia).length * 2 + 1}|`)
+
+          // Bloco E — Apuração (simplificado)
+          linhas.push(`|E001|0|`)
+          linhas.push(`|E110|${totalNF.toFixed(2)}|0,00|0,00|0,00|0,00|0,00|0,00|0,00|0,00|0,00|0,00|0,00|0,00|`)
+          linhas.push(`|E990|3|`)
+
+          // Bloco 9 — Encerramento
+          linhas.push(`|9001|0|`)
+          linhas.push(`|9990|2|`)
+          linhas.push(`|9999|${linhas.length + 1}|`)
+
+          const txt = linhas.join('\r\n')
+          const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `SPED-${nfInicio}-${nfFim}.txt`
+          a.click()
+          URL.revokeObjectURL(url)
+        }
+
+        // ── Gerar CSV pro contador ─────────────────────────────────────────
+        function gerarCSVContador() {
+          const header = ['Data', 'Hora', 'Produto', 'Qtd', 'Total (R$)', 'Forma Pgto']
+          const rows = linhasNF.map(l => [l.data, l.hora, l.produto, l.qtd, l.total.toFixed(2).replace('.', ','), l.pgto])
+          const csv = [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\r\n')
+          const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `vendas-contador-${nfInicio}-${nfFim}.csv`
+          a.click()
+          URL.revokeObjectURL(url)
+        }
+
+        // ── Gerar PDF Livro Caixa ──────────────────────────────────────────
+        function gerarPDFContador() {
+          const pgtoLinhas = pgtoResumo.map(p => `<tr><td>${p.label}</td><td style="text-align:right;font-weight:700">${fmtVal(p.total)}</td></tr>`).join('')
+          const itensLinhas = linhasNF.map(l => `<tr><td>${l.data}</td><td>${l.hora}</td><td>${l.produto}</td><td style="text-align:center">${l.qtd}</td><td style="text-align:right">${fmtVal(l.total)}</td><td>${l.pgto}</td></tr>`).join('')
+          const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Relatório Fiscal</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:32px}
+h1{font-size:20px;font-weight:bold;margin-bottom:4px}h2{font-size:14px;font-weight:700;margin:20px 0 8px;color:#1d4ed8}
+.sub{font-size:12px;color:#555;margin-bottom:20px}.badge{display:inline-block;background:#fef3c7;color:#92400e;border:1px solid #fbbf24;border-radius:4px;padding:3px 10px;font-size:11px;font-weight:700;margin-bottom:16px}
+table{width:100%;border-collapse:collapse;margin-bottom:16px}th{background:#f1f5f9;font-size:11px;font-weight:700;text-transform:uppercase;padding:7px 10px;border-bottom:2px solid #cbd5e1;text-align:left}
+td{padding:6px 10px;border-bottom:1px solid #e2e8f0;font-size:11px}.total-box{background:#f8fafc;border:2px solid #cbd5e1;border-radius:8px;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.total-label{font-size:13px;color:#555}.total-val{font-size:22px;font-weight:800;color:#1d4ed8}
+.print-bar{background:#1d4ed8;color:#fff;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;margin:-32px -32px 24px;font-family:Arial}
+@media print{.print-bar{display:none}body{padding:20px}}</style></head><body>
+<div class="print-bar"><span>📋 Relatório Fiscal — ${periodo}</span><button onclick="window.print()" style="background:#fff;color:#1d4ed8;border:none;padding:6px 16px;border-radius:6px;font-weight:700;cursor:pointer">🖨 Imprimir / PDF</button></div>
+<h1>${nomeEst}</h1>
+<div class="sub">${nfCnpj ? 'CNPJ: ' + cnpjFmt(nfCnpj) + ' · ' : ''}Relatório Fiscal — ${periodo}</div>
+<div class="badge">⚠ DOCUMENTO SEM VALOR FISCAL — USO INTERNO / CONTADOR</div>
+<div class="total-box"><span class="total-label">Total do Período</span><span class="total-val">${fmtVal(totalNF)}</span></div>
+<h2>Por Forma de Pagamento</h2>
+<table><thead><tr><th>Forma</th><th style="text-align:right">Total</th></tr></thead><tbody>${pgtoLinhas}</tbody></table>
+<h2>Detalhamento de Vendas</h2>
+<table><thead><tr><th>Data</th><th>Hora</th><th>Produto</th><th style="text-align:center">Qtd</th><th style="text-align:right">Total</th><th>Pagamento</th></tr></thead><tbody>${itensLinhas}</tbody></table>
+<p style="font-size:10px;color:#888;text-align:right">Gerado em ${geradoEm} · ${linhasNF.length} lançamento${linhasNF.length !== 1 ? 's' : ''}</p>
+</body></html>`
+          const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+          const url = URL.createObjectURL(blob)
+          const win = window.open(url, '_blank')
+          if (win) setTimeout(() => URL.revokeObjectURL(url), 10000)
+        }
+
+        // ── WhatsApp pro contador ──────────────────────────────────────────
+        function enviarWhatsApp() {
+          const tel = nfTelContador.replace(/\D/g, '')
+          if (!tel) return
+          const pgtoTexto = pgtoResumo.map(p => `• ${p.label}: ${fmtVal(p.total)}`).join('\n')
+          const msg = `📋 *Relatório de Vendas — ${periodo}*\n\n*${nomeEst}*${nfCnpj ? `\nCNPJ: ${cnpjFmt(nfCnpj)}` : ''}\n\n*Total do período:* ${fmtVal(totalNF)}\n\n*Por forma de pagamento:*\n${pgtoTexto}\n\n*${linhasNF.length} lançamentos* registrados\n\n_Gerado pelo Cheffya_`
+          window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`, '_blank')
+        }
+
+        const camposOk = !!nfCnpj && !!nfRazao
+        const temDados = entradasNF.length > 0
+
+        return (
+          <div className="flex flex-col gap-5">
+
+            {/* Config empresa */}
+            <div className="card p-5">
+              <h2 className="font-bold text-sm mb-4" style={{ color: 'var(--text-primary)' }}>Dados da Empresa</h2>
+              <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>CNPJ *</label>
+                    <input className="input" placeholder="00.000.000/0001-00" value={nfCnpj}
+                      onChange={e => setNfCnpj(e.target.value.replace(/\D/g, '').replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5').slice(0, 18))} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>Razão Social / Nome *</label>
+                    <input className="input" placeholder="Nome do restaurante" value={nfRazao}
+                      onChange={e => setNfRazao(e.target.value)} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>Endereço</label>
+                    <input className="input" placeholder="Rua, número, bairro, cidade" value={nfEndereco}
+                      onChange={e => setNfEndereco(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>WhatsApp do Contador</label>
+                    <input className="input" type="tel" placeholder="(93) 99999-9999" value={nfTelContador}
+                      onChange={e => setNfTelContador(e.target.value)} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Período */}
+            <div className="card p-5">
+              <h2 className="font-bold text-sm mb-3" style={{ color: 'var(--text-primary)' }}>Período</h2>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+                {[{ id: 'mes', label: 'Mês completo' }, { id: 'periodo', label: 'Período personalizado' }].map(op => (
+                  <button key={op.id} onClick={() => {
+                    setNfTipo(op.id)
+                    if (op.id === 'mes') {
+                      const now = new Date()
+                      const ini = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+                      const fim = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()).padStart(2, '0')}`
+                      setNfInicio(ini); setNfFim(fim)
+                    }
+                  }} style={{
+                    padding: '8px 16px', borderRadius: 10, border: `2px solid ${nfTipo === op.id ? 'var(--accent)' : 'var(--border)'}`,
+                    background: nfTipo === op.id ? 'var(--accent-bg)' : 'transparent',
+                    color: nfTipo === op.id ? 'var(--accent)' : 'var(--text-muted)',
+                    fontWeight: 600, fontSize: 13, cursor: 'pointer',
+                  }}>{op.label}</button>
+                ))}
+              </div>
+              <div className="flex items-center gap-3">
+                <div>
+                  <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>De</label>
+                  <input type="date" className="input" style={{ width: 150 }} value={nfInicio} onChange={e => setNfInicio(e.target.value)} />
+                </div>
+                <span className="mt-4" style={{ color: 'var(--text-muted)' }}>—</span>
+                <div>
+                  <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>Até</label>
+                  <input type="date" className="input" style={{ width: 150 }} value={nfFim} onChange={e => setNfFim(e.target.value)} />
+                </div>
+                {temDados && (
+                  <div className="mt-4 ml-2">
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{linhasNF.length} lançamentos</p>
+                    <p className="font-bold text-sm" style={{ color: '#3b82f6' }}>{fmtVal(totalNF)}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Resumo rápido */}
+            {temDados && (
+              <div className="card p-5">
+                <h2 className="font-bold text-sm mb-3" style={{ color: 'var(--text-primary)' }}>Resumo do Período</h2>
+                <div className="flex flex-col gap-2">
+                  {pgtoResumo.map(p => {
+                    const pct = totalNF > 0 ? (p.total / totalNF) * 100 : 0
+                    return (
+                      <div key={p.label}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{p.label}</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{pct.toFixed(1)}%</span>
+                            <span className="text-sm font-bold" style={{ color: '#3b82f6' }}>{fmtVal(p.total)}</span>
+                          </div>
+                        </div>
+                        <div style={{ height: 6, borderRadius: 4, background: 'var(--bg-hover)', overflow: 'hidden' }}>
+                          <div style={{ width: `${pct}%`, height: '100%', background: 'var(--accent)', borderRadius: 4 }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                  <div className="flex items-center justify-between pt-2 mt-1" style={{ borderTop: '1px solid var(--border)' }}>
+                    <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Total Geral</span>
+                    <span className="font-bold text-base" style={{ color: '#3b82f6' }}>{fmtVal(totalNF)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Ações */}
+            <div className="card p-5">
+              <h2 className="font-bold text-sm mb-1" style={{ color: 'var(--text-primary)' }}>Gerar Arquivos</h2>
+              <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>Preencha o CNPJ e razão social antes de gerar</p>
+
+              {/* SPED Fiscal */}
+              <div className="p-4 rounded-xl mb-3" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-bold text-sm mb-0.5" style={{ color: 'var(--text-primary)' }}>📄 SPED Fiscal</p>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Arquivo .txt padrão governo · contador importa direto no sistema contábil dele</p>
+                  </div>
+                  <button onClick={gerarSPED} disabled={!camposOk || !temDados}
+                    className="btn btn-primary shrink-0" style={{ fontSize: 13 }}>
+                    Baixar .txt
+                  </button>
+                </div>
+              </div>
+
+              {/* Mandar pro contador */}
+              <div className="p-4 rounded-xl mb-3" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+                <p className="font-bold text-sm mb-2" style={{ color: 'var(--text-primary)' }}>📊 Mandar pro Contador</p>
+                <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>Relatório completo com todas as vendas e formas de pagamento</p>
+                <div className="flex gap-2 flex-wrap">
+                  <button onClick={gerarCSVContador} disabled={!temDados}
+                    className="btn btn-secondary flex items-center gap-2 text-sm">
+                    <FileText size={14} /> CSV / Excel
+                  </button>
+                  <button onClick={gerarPDFContador} disabled={!temDados}
+                    className="btn btn-secondary flex items-center gap-2 text-sm">
+                    <Printer size={14} /> PDF / Imprimir
+                  </button>
+                  <button onClick={enviarWhatsApp} disabled={!nfTelContador || !temDados}
+                    className="btn btn-secondary flex items-center gap-2 text-sm"
+                    style={{ color: '#25d366', borderColor: '#25d366' }}
+                    title={!nfTelContador ? 'Preencha o WhatsApp do contador acima' : ''}>
+                    <span style={{ fontSize: 15 }}>📱</span> WhatsApp
+                  </button>
+                </div>
+              </div>
+
+              {!camposOk && (
+                <p className="text-xs" style={{ color: '#f59e0b' }}>⚠ Preencha CNPJ e Razão Social para habilitar os downloads</p>
+              )}
+            </div>
+
+            {/* Em breve */}
+            <div className="card p-5" style={{ border: '1px dashed var(--border)', opacity: 0.85 }}>
+              <div className="flex items-center gap-2 mb-3">
+                <span style={{ fontSize: 18 }}>🚀</span>
+                <h2 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Em breve</h2>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(124,58,237,0.12)', color: '#7c3aed' }}>Próximas versões</span>
+              </div>
+              <div className="flex flex-col gap-3">
+                <div className="p-3 rounded-xl" style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                  <p className="font-bold text-sm mb-1" style={{ color: '#3b82f6' }}>📋 XML NF-e / NFC-e Automático</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    Emissão de Nota Fiscal Eletrônica direto pelo sistema. Integração com SEFAZ via certificado digital A1.
+                    O sistema vai gerar, assinar e transmitir a nota automaticamente ao fechar a conta — igual ao que o iFood e sistemas de PDV grandes fazem.
+                    O cliente recebe o XML e o DANFE impresso sem precisar usar outro sistema.
+                  </p>
+                </div>
+                <div className="p-3 rounded-xl" style={{ background: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.2)' }}>
+                  <p className="font-bold text-sm mb-1" style={{ color: '#16a34a' }}>⚡ Envio Automático pro Contador</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    Relatório mensal enviado automaticamente por e-mail pro contador no fechamento do mês.
+                    Sem precisar lembrar de gerar — o sistema faz sozinho todo dia 1°.
+                  </p>
+                </div>
+                <div className="p-3 rounded-xl" style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                  <p className="font-bold text-sm mb-1" style={{ color: '#f59e0b' }}>🔗 Integração Direta com Erion / Bling</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    Exportação automática das vendas pro sistema fiscal que o restaurante já usa.
+                    Zero retrabalho, zero digitação manual.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

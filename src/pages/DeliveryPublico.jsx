@@ -553,6 +553,7 @@ export default function DeliveryPublico() {
           pago: false,
           cancelado: false,
           canal: 'delivery',
+          forma_pagamento: pagamento || null,
           cliente_nome: nome,
           cliente_telefone: telefone,
           endereco_entrega: enderecoEntrega,

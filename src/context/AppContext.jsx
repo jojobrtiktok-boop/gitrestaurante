@@ -320,6 +320,7 @@ function pedidoToRow(p, uid) {
     cliente_telefone: p.clienteTelefone || null,
     endereco_entrega: p.enderecoEntrega || null,
     motoboy_id: p.motoboyId || null,
+    forma_pagamento: p.formaPagamento || null,
   }
 }
 function rowToPedido(row) {
@@ -341,6 +342,7 @@ function rowToPedido(row) {
     clienteTelefone: row.cliente_telefone || null,
     enderecoEntrega: row.endereco_entrega || null,
     motoboyId: row.motoboy_id || null,
+    formaPagamento: row.forma_pagamento || null,
     ifoodOrderId: row.ifood_order_id || null,
     ifoodShortId: row.ifood_short_id || null,
   }
@@ -1670,12 +1672,12 @@ export function AppProvider({ children }) {
     }
   }
 
-  function pagarMesa(mesaId) {
+  function pagarMesa(mesaId, formaPagamento) {
     const h = hojeBrasilia()
     setPedidos(prev => prev.map(p => {
       if (p.mesaId !== mesaId || p.data !== h || p.pago || p.cancelado) return p
-      const updated = { ...p, pago: true }
-      if (auth.userId) sbWrite(supabase.from('pedidos').update({ pago: true }).eq('id', p.id))
+      const updated = { ...p, pago: true, formaPagamento: formaPagamento || null }
+      if (auth.userId) sbWrite(supabase.from('pedidos').update({ pago: true, forma_pagamento: formaPagamento || null }).eq('id', p.id))
       return updated
     }))
     setStatusMesa(mesaId, 'livre')

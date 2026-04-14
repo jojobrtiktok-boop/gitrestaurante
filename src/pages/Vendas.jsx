@@ -481,6 +481,48 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
     if (win) setTimeout(() => URL.revokeObjectURL(url), 10000)
   }
 
+  function exportarCSV() {
+    const fmtData = d => d.split('-').reverse().join('/')
+    const fmtVal = v => v.toFixed(2).replace('.', ',')
+    const LABEL_PGTO = { dinheiro: 'Dinheiro', pix: 'PIX', pixWhatsapp: 'PIX', cartaoCredito: 'Cartão Crédito', cartaoDebito: 'Cartão Débito', cartao: 'Cartão' }
+    const header = ['Data', 'Hora', 'Produto', 'Origem', 'Mesa', 'Qtd', 'Unit. (R$)', 'Total (R$)', 'Forma Pgto']
+    const linhas = entradasExtrato.map(e => {
+      const prato = pratos.find(p => p.id === e.pratoId)
+      if (!prato) return null
+      const ped = pedidoDeEntrada(e)
+      const garcon = garconDeEntrada(e)
+      const mesa = mesaDeEntrada(e)
+      const extrasUnit = e.extrasUnit || 0
+      const unitario = (e.precoVendaUnit !== null && e.precoVendaUnit !== undefined ? Number(e.precoVendaUnit) : prato.precoVenda) + extrasUnit
+      const total = receitaDaEntrada(e, prato)
+      const pgto = ped?.formaPagamento ? (LABEL_PGTO[ped.formaPagamento] || ped.formaPagamento) : ''
+      return [fmtData(e.data), e.hora, prato.nome, garcon ? garcon.nome : 'Balcão', mesa?.nome || '', e.quantidade, fmtVal(unitario), fmtVal(total), pgto]
+    }).filter(Boolean)
+    const csv = [header, ...linhas].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\r\n')
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `extrato-vendas-${extratoInicio}-${extratoFim}.csv`
+    a.click(); URL.revokeObjectURL(url)
+  }
+
+  // Breakdown por forma de pagamento no extrato
+  const porFormaPgto = (() => {
+    const LABEL = { dinheiro: 'Dinheiro', pix: 'PIX', pixWhatsapp: 'PIX', cartaoCredito: 'Cartão Crédito', cartaoDebito: 'Cartão Débito', cartao: 'Cartão' }
+    const mapa = {}
+    entradasExtrato.forEach(e => {
+      const prato = pratos.find(p => p.id === e.pratoId)
+      if (!prato) return
+      const ped = pedidoDeEntrada(e)
+      const key = ped?.formaPagamento || 'nao_informado'
+      const label = LABEL[key] || (key === 'nao_informado' ? 'Não informado' : key)
+      const total = receitaDaEntrada(e, prato)
+      if (!mapa[key]) mapa[key] = { label, total: 0 }
+      mapa[key].total += total
+    })
+    return Object.values(mapa).sort((a, b) => b.total - a.total)
+  })()
+
   // Vendas por funcionário — individual entries per section (Balcão + garçons com pedidos)
   const porFuncionario = (() => {
     const mapa = {}
@@ -862,19 +904,22 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                 </div>
               </div>
               <div className="flex flex-col gap-2">
-                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Imprimir</p>
-                <div className="flex gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Exportar / Imprimir</p>
+                <div className="flex gap-2 flex-wrap">
                   <button className="btn btn-secondary flex items-center gap-2 text-sm"
                     onClick={() => imprimirExtrato('a4')} disabled={entradasExtrato.length === 0}
                     title="Imprimir em A4">
-                    <Printer size={14} />
-                    <span>A4</span>
+                    <Printer size={14} /><span>A4</span>
                   </button>
                   <button className="btn btn-secondary flex items-center gap-2 text-sm"
                     onClick={() => imprimirExtrato('cupom')} disabled={entradasExtrato.length === 0}
-                    title="Imprimir como cupom / nota fiscal">
-                    <FileText size={14} />
-                    <span>Cupom</span>
+                    title="Imprimir como cupom">
+                    <FileText size={14} /><span>Cupom</span>
+                  </button>
+                  <button className="btn btn-secondary flex items-center gap-2 text-sm"
+                    onClick={exportarCSV} disabled={entradasExtrato.length === 0}
+                    title="Exportar CSV (abre no Excel)">
+                    <FileText size={14} /><span>CSV/Excel</span>
                   </button>
                 </div>
               </div>
@@ -895,6 +940,32 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
               <div className="card p-4">
                 <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Lançamentos</p>
                 <p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{entradasExtrato.length} <span className="text-sm font-normal" style={{ color: 'var(--text-muted)' }}>({qtdTotalExtrato} unid.)</span></p>
+              </div>
+            </div>
+          )}
+
+          {/* Breakdown por forma de pagamento */}
+          {porFormaPgto.length > 0 && (
+            <div className="card p-4 mb-4">
+              <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>Por forma de pagamento</p>
+              <div className="flex flex-col gap-2">
+                {porFormaPgto.map(({ label, total }) => {
+                  const pct = totalExtrato > 0 ? (total / totalExtrato) * 100 : 0
+                  return (
+                    <div key={label}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{label}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{pct.toFixed(1)}%</span>
+                          <span className="text-sm font-bold" style={{ color: '#3b82f6' }}>{formatarMoeda(total)}</span>
+                        </div>
+                      </div>
+                      <div style={{ height: 6, borderRadius: 4, background: 'var(--bg-hover)', overflow: 'hidden' }}>
+                        <div style={{ width: `${pct}%`, height: '100%', background: 'var(--accent)', borderRadius: 4, transition: 'width .4s' }} />
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}

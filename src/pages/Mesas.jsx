@@ -66,15 +66,22 @@ function ModalMesa({ mesa, onSalvar, onFechar }) {
   )
 }
 
+const FORMAS_PGTO = [
+  { id: 'dinheiro',      label: 'Dinheiro',    emoji: '💵' },
+  { id: 'pix',           label: 'PIX',         emoji: '📱' },
+  { id: 'cartaoCredito', label: 'Crédito',     emoji: '💳' },
+  { id: 'cartaoDebito',  label: 'Débito',      emoji: '💳' },
+]
+
 function ModalPagar({ cliente, onConfirmar, onFechar }) {
-  const [telefone,    setTelefone]    = useState(cliente?.telefone    || '')
-  const [aniversario, setAniversario] = useState(cliente?.aniversario || '')
-  const temInfo = !!(cliente?.telefone || cliente?.aniversario)
-  if (temInfo) { onConfirmar({ telefone: cliente.telefone, aniversario: cliente.aniversario }); return null }
+  const [telefone,       setTelefone]       = useState(cliente?.telefone    || '')
+  const [aniversario,    setAniversario]    = useState(cliente?.aniversario || '')
+  const [formaPagamento, setFormaPagamento] = useState('')
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
       onClick={e => e.target === e.currentTarget && onFechar()}>
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-active)', borderRadius: 18, width: '100%', maxWidth: 320, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-active)', borderRadius: 18, width: '100%', maxWidth: 340, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <p style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', margin: 0 }}>Confirmar Pagamento</p>
@@ -85,6 +92,23 @@ function ModalPagar({ cliente, onConfirmar, onFechar }) {
           </button>
         </div>
 
+        {/* Forma de pagamento */}
+        <div>
+          <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '.04em' }}>Forma de pagamento</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {FORMAS_PGTO.map(f => (
+              <button key={f.id} onClick={() => setFormaPagamento(f.id)}
+                style={{ padding: '10px 8px', borderRadius: 10, border: `2px solid ${formaPagamento === f.id ? 'var(--accent)' : 'var(--border)'}`,
+                  background: formaPagamento === f.id ? 'var(--accent-bg)' : 'var(--bg-hover)',
+                  color: formaPagamento === f.id ? 'var(--accent)' : 'var(--text-secondary)',
+                  fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                {f.emoji} {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Dados opcionais do cliente */}
         {cliente && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '.04em' }}>Dados opcionais do cliente</p>
@@ -100,19 +124,13 @@ function ModalPagar({ cliente, onConfirmar, onFechar }) {
               </label>
               <input className="input" type="date" value={aniversario} onChange={e => setAniversario(e.target.value)} />
             </div>
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>Opcionais — clique em "Pular" para pagar sem preencher.</p>
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onFechar} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-hover)', color: 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
-            Pular
-          </button>
-          <button onClick={() => onConfirmar({ telefone: telefone.trim() || null, aniversario: aniversario || null })}
-            style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: '#16a34a', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            <Check size={14} /> Confirmar Pago
-          </button>
-        </div>
+        <button onClick={() => onConfirmar({ telefone: telefone.trim() || null, aniversario: aniversario || null, formaPagamento: formaPagamento || null })}
+          style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: 'none', background: '#16a34a', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <Check size={14} /> Confirmar Pago
+        </button>
       </div>
     </div>
   )
@@ -560,14 +578,14 @@ export default function Mesas() {
       {pagarInfo && (
         <ModalPagar
           cliente={clientes.find(c => c.id === pagarInfo.clienteId) || null}
-          onConfirmar={({ telefone, aniversario }) => {
+          onConfirmar={({ telefone, aniversario, formaPagamento }) => {
             if (pagarInfo.clienteId && (telefone || aniversario)) {
               editarCliente(pagarInfo.clienteId, { telefone, aniversario })
             }
-            pagarMesa(pagarInfo.mesaId)
+            pagarMesa(pagarInfo.mesaId, formaPagamento)
             setPagarInfo(null)
           }}
-          onFechar={() => { pagarMesa(pagarInfo.mesaId); setPagarInfo(null) }}
+          onFechar={() => { pagarMesa(pagarInfo.mesaId, null); setPagarInfo(null) }}
         />
       )}
     </div>

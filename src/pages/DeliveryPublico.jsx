@@ -488,28 +488,24 @@ export default function DeliveryPublico() {
       return linha
     }).join('\n')
 
+    const labelPgto = { dinheiro: 'Dinheiro', pix: 'PIX', pixWhatsapp: 'PIX via WhatsApp', cartaoCredito: 'Cartão de Crédito', cartaoDebito: 'Cartão de Débito', cartao: 'Cartão' }
+    const labelBandeira = bandeira ? ` (${bandeira})` : ''
+    const labelPagamento = `${labelPgto[pagamento] || pagamento}${labelBandeira}`
+
     const partes = [
       configDelivery.mensagemIntro || 'Olá! Gostaria de fazer um pedido:',
       '',
-      '📋 *PEDIDO*',
+      `👤 *${nome}*`,
+      `📞 ${telefone}`,
+      '',
+      '📋 *ITENS DO PEDIDO*',
       linhasItens,
       '',
-      `Subtotal: ${formatarMoeda(subtotal)}`,
     ]
 
-    if (descontoCupom > 0) {
-      partes.push(`Cupom (${cupomAplicado.codigo}): -${formatarMoeda(descontoCupom)}`)
-    }
     if (tipoEntrega === 'entrega') {
-      partes.push(`Frete (${bairroSelecionado?.nome || ''}): ${freteValor > 0 ? formatarMoeda(freteValor) : 'Grátis'}`)
-    }
-
-    partes.push(`*Total: ${formatarMoeda(total)}*`)
-    partes.push('')
-
-    if (tipoEntrega === 'entrega') {
-      partes.push('📍 *ENTREGA*')
-      partes.push(`Bairro: ${bairroSelecionado?.nome || ''}`)
+      partes.push('📍 *LOCAL DE ENTREGA*')
+      if (bairroSelecionado?.nome) partes.push(`Bairro: ${bairroSelecionado.nome}`)
       partes.push(`Endereço: ${endereco}`)
       if (complemento) partes.push(`Complemento: ${complemento}`)
     } else {
@@ -517,17 +513,19 @@ export default function DeliveryPublico() {
     }
 
     partes.push('')
-    partes.push('👤 *CLIENTE*')
-    partes.push(`Nome: ${nome}`)
-    partes.push(`Telefone: ${telefone}`)
-    partes.push('')
-    const labelPgto = { dinheiro: 'Dinheiro', pix: 'PIX', pixWhatsapp: 'PIX via WhatsApp', cartaoCredito: 'Cartão de Crédito', cartaoDebito: 'Cartão de Débito', cartao: 'Cartão' }
-    const labelBandeira = bandeira ? ` - ${bandeira}` : ''
-    partes.push(`💳 Pagamento: ${labelPgto[pagamento] || pagamento}${labelBandeira}`)
-
+    partes.push(`💳 *Pagamento:* ${labelPagamento}`)
     if (pagamento === 'dinheiro' && troco) {
-      partes.push(`Troco para: ${troco}`)
+      partes.push(`   Troco para: ${troco}`)
     }
+    partes.push('')
+
+    if (subtotal !== total || descontoCupom > 0 || freteValor > 0) {
+      partes.push(`Subtotal: ${formatarMoeda(subtotal)}`)
+      if (descontoCupom > 0) partes.push(`Cupom (${cupomAplicado.codigo}): -${formatarMoeda(descontoCupom)}`)
+      if (tipoEntrega === 'entrega') partes.push(`Frete: ${freteValor > 0 ? formatarMoeda(freteValor) : 'Grátis'}`)
+    }
+    partes.push(`💰 *Total: ${formatarMoeda(total)}*`)
+
     if (obs) {
       partes.push(`\n📝 Obs: ${obs}`)
     }

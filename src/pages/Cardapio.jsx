@@ -795,6 +795,7 @@ function ModalQRCode({ url, onClose }) {
         <p class="label">Escaneie para ver o cardápio</p>
         <p class="url">${url}</p>
       </div>`).join('')
+    const cellSize = tamanho + 0.8
     abrirJanela(`<!DOCTYPE html>
 <html>
 <head>
@@ -802,26 +803,27 @@ function ModalQRCode({ url, onClose }) {
   <title>QR Codes</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #fff; font-family: Arial, sans-serif; padding: 0; }
+    body { background: #fff; font-family: Arial, sans-serif; }
     .grid {
       display: grid;
-      grid-template-columns: repeat(${cols}, ${tamanho}cm);
-      gap: 0.5cm;
-      padding: 0;
+      grid-template-columns: repeat(${cols}, ${cellSize}cm);
+      gap: 0.4cm;
       width: fit-content;
+      margin: 0 auto;
     }
     .cell {
+      width: ${cellSize}cm;
       display: flex; flex-direction: column; align-items: center;
-      gap: 4px;
+      gap: 3px;
       border: 1px dashed #ccc;
-      padding: 6px;
+      padding: 0.3cm;
       page-break-inside: avoid;
       break-inside: avoid;
     }
-    .logo  { font-size: 10px; font-weight: 700; color: #fd4b01; }
+    .logo  { font-size: 9px; font-weight: 700; color: #fd4b01; }
     .qr    { width: ${tamanho}cm; height: ${tamanho}cm; display: block; image-rendering: pixelated; }
-    .label { font-size: 9px; color: #555; text-align: center; }
-    .url   { font-size: 7px; color: #aaa; text-align: center; word-break: break-all; max-width: ${tamanho}cm; }
+    .label { font-size: 8px; color: #555; text-align: center; }
+    .url   { font-size: 6px; color: #aaa; text-align: center; word-break: break-all; max-width: ${tamanho}cm; }
     @media print {
       @page { size: ${p.pageSize} portrait; margin: 1cm; }
       body  { padding: 0; }
@@ -855,8 +857,8 @@ function ModalQRCode({ url, onClose }) {
 
           {/* Preview */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: 20, background: 'var(--bg-hover)', borderRadius: 14, border: '1px solid var(--border)' }}>
-            <canvas ref={canvasRef} style={{ width: 180, height: 180, borderRadius: 8, imageRendering: 'pixelated' }} />
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', wordBreak: 'break-all', maxWidth: 280 }}>{url}</p>
+            <canvas ref={canvasRef} style={{ width: 160, height: 160, maxWidth: '100%', borderRadius: 8, imageRendering: 'pixelated', display: 'block' }} />
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', wordBreak: 'break-all', maxWidth: 260 }}>{url}</p>
           </div>
 
           {/* Tamanho */}
@@ -928,7 +930,6 @@ function ModalQRCode({ url, onClose }) {
             onClick={modo === 'unitario' ? imprimirUnitario : imprimirVarios}
             disabled={gerando || !dataUrl}
           >
-            <QrCode size={15} />
             {gerando
               ? 'Abrindo impressão...'
               : modo === 'unitario'

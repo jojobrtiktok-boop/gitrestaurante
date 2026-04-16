@@ -69,9 +69,8 @@ export default function ResetPassword() {
 
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{ fontSize: 32, marginBottom: 6 }}>🍽️</div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: c.text, margin: 0 }}>Cheffya</h1>
-          <p style={{ fontSize: 13, color: c.muted, margin: '4px 0 0' }}>Redefinir senha</p>
+          <img src="/logo-light.png" alt="Cheffya" style={{ height: 38, objectFit: 'contain', display: 'block', margin: '0 auto 8px' }} />
+          <p style={{ fontSize: 13, color: c.muted, margin: 0 }}>Redefinir senha</p>
         </div>
 
         {sucesso ? (

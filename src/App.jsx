@@ -24,6 +24,7 @@ import Displays from './pages/Displays.jsx'
 import AdminPanel from './pages/AdminPanel.jsx'
 import Despesas from './pages/Despesas.jsx'
 import ResetPassword from './pages/ResetPassword.jsx'
+import EmailConfirmado from './pages/EmailConfirmado.jsx'
 import NotificationManager from './components/NotificationManager.jsx'
 import { useApp } from './context/AppContext.jsx'
 
@@ -43,6 +44,7 @@ export default function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/email-confirmado" element={<EmailConfirmado />} />
       <Route path="/menu/:slug" element={<MenuPublico />} />
       <Route path="/delivery/:slug" element={<DeliveryPublico />} />
       <Route path="/comanda/:token" element={<ComandaDigital />} />

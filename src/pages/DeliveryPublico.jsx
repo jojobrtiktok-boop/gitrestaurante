@@ -483,7 +483,11 @@ export default function DeliveryPublico() {
       const precoTotal = (i.preco + adExtra) * i.qtd
       let linha = `• ${i.qtd}x ${i.nome} — ${formatarMoeda(precoTotal)}`
       if (i.adicionaisEscolhidos && i.adicionaisEscolhidos.length > 0) {
-        const ads = i.adicionaisEscolhidos.map(a => `  + ${a.nome}${a.qtd > 1 ? ` x${a.qtd}` : ''}`).join('\n')
+        const ads = i.adicionaisEscolhidos.map(a => {
+          let txt = `  + ${a.nome}${a.qtd > 1 ? ` x${a.qtd}` : ''}`
+          if (a.precoExtra > 0) txt += ` (+${formatarMoeda(a.precoExtra * a.qtd)})`
+          return txt
+        }).join('\n')
         linha += '\n' + ads
       }
       return linha

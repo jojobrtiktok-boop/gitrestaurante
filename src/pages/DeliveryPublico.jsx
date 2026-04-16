@@ -403,32 +403,16 @@ export default function DeliveryPublico() {
 
     const adicionaisEscolhidos = []
     for (const g of (pratoDetalhe.grupos || [])) {
-      if (g.categoria === 'adicional') {
-        for (const item of (g.itens || [])) {
-          const qty = modalAdicionais[item.id] || 0
-          if (qty > 0) {
-            adicionaisEscolhidos.push({
-              id: item.id,
-              nome: item.nome,
-              grupoNome: g.nome,
-              precoExtra: item.precoExtra || 0,
-              qtd: qty,
-            })
-          }
-        }
-      } else {
-        const itemId = modalComplementos[g.id]
-        if (itemId) {
-          const item = (g.itens || []).find(it => it.id === itemId)
-          if (item) {
-            adicionaisEscolhidos.push({
-              id: item.id,
-              nome: `${g.nome}: ${item.nome}`,
-              grupoNome: g.nome,
-              precoExtra: 0,
-              qtd: 1,
-            })
-          }
+      for (const item of (g.itens || [])) {
+        const qty = modalAdicionais[item.id] || 0
+        if (qty > 0) {
+          adicionaisEscolhidos.push({
+            id: item.id,
+            nome: item.nome,
+            grupoNome: g.nome,
+            precoExtra: g.categoria === 'adicional' ? (item.precoExtra || 0) : 0,
+            qtd: qty,
+          })
         }
       }
     }
@@ -1008,28 +992,39 @@ export default function DeliveryPublico() {
               </div>
             )}
 
-            {/* Grupos de complemento — seleção obrigatória (radio) */}
+            {/* Grupos de complemento — com +/- igual adicionais */}
             {gruposComplemento.length > 0 && (
               <div style={{ marginBottom: 20 }}>
                 {gruposComplemento.map(grupo => (
-                  <div key={grupo.id} style={{ marginBottom: 16 }}>
+                  <div key={grupo.id} style={{ marginBottom: 20 }}>
                     <p style={{ fontSize: 13, fontWeight: 700, color: corTextoBase, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>{grupo.nome}</p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {(grupo.itens || []).map(item => {
-                        const selecionado = modalComplementos[grupo.id] === item.id
+                        const qty = modalAdicionais[item.id] || 0
                         return (
-                          <button key={item.id} onClick={() => setModalComplementos(prev => ({ ...prev, [grupo.id]: selecionado ? null : item.id }))}
-                            style={{
-                              padding: '10px 12px', borderRadius: 10, textAlign: 'left', cursor: 'pointer',
-                              background: selecionado ? (modoClaro ? 'rgba(253,75,1,0.08)' : 'rgba(253,75,1,0.15)') : (modoClaro ? '#f8f8f8' : 'rgba(255,255,255,0.06)'),
-                              border: '1.5px solid ' + (selecionado ? destaque : bordaCard),
-                              fontSize: 14, fontWeight: selecionado ? 700 : 500,
-                              color: selecionado ? destaque : corTextoBase,
-                              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            }}>
-                            <span>{item.nome}</span>
-                            {selecionado && <span style={{ fontSize: 16 }}>✓</span>}
-                          </button>
+                          <div key={item.id} style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '10px 12px', borderRadius: 12,
+                            background: modoClaro ? '#f8f8f8' : 'rgba(255,255,255,0.06)',
+                            border: '1px solid ' + (qty > 0 ? destaque : bordaCard),
+                          }}>
+                            <span style={{ fontSize: 14, fontWeight: 600, color: corTextoBase }}>{item.nome}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              {qty > 0 && (
+                                <>
+                                  <button onClick={() => setModalAdicionais(prev => ({ ...prev, [item.id]: Math.max(0, (prev[item.id] || 0) - 1) }))}
+                                    style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid ' + destaque, background: 'transparent', color: destaque, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <IcoMinus />
+                                  </button>
+                                  <span style={{ fontWeight: 700, minWidth: 18, textAlign: 'center', color: corTextoBase, fontSize: 14 }}>{qty}</span>
+                                </>
+                              )}
+                              <button onClick={() => setModalAdicionais(prev => ({ ...prev, [item.id]: (prev[item.id] || 0) + 1 }))}
+                                style={{ width: 28, height: 28, borderRadius: '50%', border: 'none', background: destaque, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <IcoPlus />
+                              </button>
+                            </div>
+                          </div>
                         )
                       })}
                     </div>

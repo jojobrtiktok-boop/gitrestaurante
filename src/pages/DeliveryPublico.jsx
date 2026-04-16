@@ -237,13 +237,20 @@ export default function DeliveryPublico() {
   }
   // Se pagamentosConfig ainda não carregou (vazio), cai no fallback antigo
   const temNovoPagamento = Object.keys(pagamentosConfig).length > 0
-  const formasAtivas = temNovoPagamento
+  const formasAtivasRaw = temNovoPagamento
     ? FORMAS_DEF.filter(f => isFormaAtiva(f.key))
     : (configDelivery.formasPagamento || ['dinheiro', 'pix', 'cartao']).map(k => ({
         key: k,
         label: { dinheiro: 'Dinheiro', pix: 'PIX', cartao: 'Cartão' }[k] || k,
         icone: { dinheiro: <IcoBanknote />, pix: <IcoQr />, cartao: <IcoCard /> }[k] || null,
       }))
+  // Agrupa cartaoCredito + cartaoDebito em um único botão "Cartão"
+  const temCredito = formasAtivasRaw.some(f => f.key === 'cartaoCredito')
+  const temDebito  = formasAtivasRaw.some(f => f.key === 'cartaoDebito')
+  const formasAtivas = [
+    ...formasAtivasRaw.filter(f => f.key !== 'cartaoCredito' && f.key !== 'cartaoDebito'),
+    ...(temCredito || temDebito ? [{ key: 'cartao', label: 'Cartão', icone: <IcoCard /> }] : []),
+  ]
 
   // frete mínimo dos bairros ativos
   const bairrosParaFrete = (configDelivery.bairros || []).filter(b => b.ativo)
@@ -1378,19 +1385,45 @@ export default function DeliveryPublico() {
                 {/* Formas de pagamento */}
                 <p style={{ fontSize: 13, fontWeight: 700, color: corTextoSec, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 10px' }}>Forma de pagamento</p>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                  {formasAtivas.map(({ key, label, icone }) => (
-                    <button key={key} onClick={() => { setPagamento(key); setBandeira('') }} style={{
-                      flex: 1, minWidth: 90, padding: '11px 8px', borderRadius: 12, fontSize: 13, fontWeight: 700,
-                      border: '2px solid ' + (pagamento === key ? destaque : bordaCard),
-                      background: pagamento === key ? (modoClaro ? `${destaque}14` : `${destaque}28`) : (modoClaro ? '#f8f8f8' : 'rgba(255,255,255,0.05)'),
-                      color: pagamento === key ? destaque : corTextoSec, cursor: 'pointer',
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-                    }}>
-                      {icone}
-                      {label}
-                    </button>
-                  ))}
+                  {formasAtivas.map(({ key, label, icone }) => {
+                    const selecionado = key === 'cartao'
+                      ? (pagamento === 'cartaoCredito' || pagamento === 'cartaoDebito')
+                      : pagamento === key
+                    return (
+                      <button key={key} onClick={() => { setPagamento(key); setBandeira('') }} style={{
+                        flex: 1, minWidth: 90, padding: '11px 8px', borderRadius: 12, fontSize: 13, fontWeight: 700,
+                        border: '2px solid ' + (selecionado ? destaque : bordaCard),
+                        background: selecionado ? (modoClaro ? `${destaque}14` : `${destaque}28`) : (modoClaro ? '#f8f8f8' : 'rgba(255,255,255,0.05)'),
+                        color: selecionado ? destaque : corTextoSec, cursor: 'pointer',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                      }}>
+                        {icone}
+                        {label}
+                      </button>
+                    )
+                  })}
                 </div>
+
+                {/* Sub-seleção Crédito / Débito */}
+                {pagamento === 'cartao' && (
+                  <div style={{ marginBottom: 12 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: corTextoSec, margin: '0 0 8px' }}>Crédito ou Débito?</p>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {[
+                        ...(temCredito ? [{ key: 'cartaoCredito', label: 'Crédito' }] : []),
+                        ...(temDebito  ? [{ key: 'cartaoDebito',  label: 'Débito'  }] : []),
+                      ].map(({ key, label }) => (
+                        <button key={key} onClick={() => setPagamento(key)} style={{
+                          flex: 1, padding: '10px 8px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                          border: '2px solid ' + (pagamento === key ? destaque : bordaCard),
+                          background: pagamento === key ? (modoClaro ? `${destaque}14` : `${destaque}28`) : (modoClaro ? '#f8f8f8' : 'rgba(255,255,255,0.05)'),
+                          color: pagamento === key ? destaque : corTextoSec,
+                        }}>{label}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {erros.pagamento && <p style={{ color: '#ef4444', fontSize: 12, margin: '0 0 12px' }}>{erros.pagamento}</p>}
 
                 {/* Bandeira do cartão */}

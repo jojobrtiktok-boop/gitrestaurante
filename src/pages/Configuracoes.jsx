@@ -4,7 +4,7 @@ import {
   Lock, CheckCircle, AlertCircle,
   BellOff, BellRing, Chrome, Camera, Pencil,
   Wallet, Banknote, QrCode, CreditCard, ExternalLink,
-  Headphones, MessageCircle, Mail, Clock, Store,
+  Headphones, MessageCircle, Mail, Clock, Store, LogOut,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import { uploadImagem } from '../utils/storage.js'
@@ -90,7 +90,7 @@ function StepCard({ num, title, desc }) {
 
 /* Aba Conta */
 function AbaConta() {
-  const { auth, alterarSenha, perfil, atualizarPerfil, cardapioConfig, atualizarCardapioConfig } = useApp()
+  const { auth, alterarSenha, logout, perfil, atualizarPerfil, cardapioConfig, atualizarCardapioConfig } = useApp()
 
   // Perfil
   const [nomeLocal,  setNomeLocal]  = useState(perfil?.nomeExibicao || '')
@@ -379,6 +379,21 @@ function AbaConta() {
             <Lock size={13} /> Salvar nova senha
           </button>
         </div>
+      </div>
+
+      {/* Botão sair — só mobile */}
+      <div className="md:hidden">
+        <button
+          onClick={logout}
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: 10, padding: '14px 20px', borderRadius: 14, border: '1.5px solid rgba(239,68,68,0.35)',
+            background: 'rgba(239,68,68,0.06)', color: '#ef4444',
+            fontSize: 15, fontWeight: 700, cursor: 'pointer',
+          }}
+        >
+          <LogOut size={18} /> Sair da conta
+        </button>
       </div>
     </div>
   )

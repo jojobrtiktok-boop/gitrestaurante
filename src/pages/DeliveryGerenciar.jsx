@@ -137,12 +137,33 @@ function TabMotoboys() {
           )}
         </div>
         <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}`}</style>
-        <div ref={mapRef} style={{ height: 320, width: '100%', background: 'var(--bg-hover)' }} />
+        <div ref={mapRef} style={{ height: 'clamp(260px, 45vw, 380px)', width: '100%', background: 'var(--bg-hover)' }} />
         {motoboys.filter(m => m.online && m.lat).length === 0 && (
           <div style={{ position: 'relative', marginTop: -320, height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
             <p style={{ fontSize: 13, color: 'var(--text-muted)', background: 'rgba(0,0,0,0.4)', padding: '8px 16px', borderRadius: 20 }}>
               Nenhum motoboy online no momento
             </p>
+          </div>
+        )}
+        {/* Cards de motoboys online */}
+        {motoboys.filter(m => m.online).length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '10px 14px', borderTop: '1px solid var(--border)' }}>
+            {motoboys.filter(m => m.online).map(m => {
+              const cor = m.cor || '#f04000'
+              return (
+                <div key={m.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '7px 12px', borderRadius: 30,
+                  background: `${cor}18`,
+                  border: `1.5px solid ${cor}55`,
+                  fontSize: 13, fontWeight: 700, color: cor,
+                }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: cor, display: 'inline-block', animation: 'pulse 2s infinite' }} />
+                  {m.nome}
+                  {m.lat ? '' : ' · sem GPS'}
+                </div>
+              )
+            })}
           </div>
         )}
       </div>

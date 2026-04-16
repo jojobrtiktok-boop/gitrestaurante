@@ -265,6 +265,7 @@ export default function DeliveryPublico() {
   const [pratoDetalhe, setPratoDetalhe] = useState(null)
   const [modalVariacao, setModalVariacao] = useState(null)   // variacao selecionada
   const [modalAdicionais, setModalAdicionais] = useState({}) // { itemId: qty }
+  const [modalComplementos, setModalComplementos] = useState({}) // { groupId: itemId }
   const [modalQtd, setModalQtd] = useState(1)
 
   // ── carrinho ───────────────────────────────────────────────────────────────
@@ -364,6 +365,7 @@ export default function DeliveryPublico() {
     setPratoDetalhe(prato)
     setModalVariacao(null)
     setModalAdicionais({})
+    setModalComplementos({})
     setModalQtd(1)
   }
 
@@ -401,17 +403,32 @@ export default function DeliveryPublico() {
 
     const adicionaisEscolhidos = []
     for (const g of (pratoDetalhe.grupos || [])) {
-      if (g.categoria !== 'adicional') continue
-      for (const item of (g.itens || [])) {
-        const qty = modalAdicionais[item.id] || 0
-        if (qty > 0) {
-          adicionaisEscolhidos.push({
-            id: item.id,
-            nome: item.nome,
-            grupoNome: g.nome,
-            precoExtra: item.precoExtra || 0,
-            qtd: qty,
-          })
+      if (g.categoria === 'adicional') {
+        for (const item of (g.itens || [])) {
+          const qty = modalAdicionais[item.id] || 0
+          if (qty > 0) {
+            adicionaisEscolhidos.push({
+              id: item.id,
+              nome: item.nome,
+              grupoNome: g.nome,
+              precoExtra: item.precoExtra || 0,
+              qtd: qty,
+            })
+          }
+        }
+      } else {
+        const itemId = modalComplementos[g.id]
+        if (itemId) {
+          const item = (g.itens || []).find(it => it.id === itemId)
+          if (item) {
+            adicionaisEscolhidos.push({
+              id: item.id,
+              nome: `${g.nome}: ${item.nome}`,
+              grupoNome: g.nome,
+              precoExtra: 0,
+              qtd: 1,
+            })
+          }
         }
       }
     }
@@ -991,21 +1008,30 @@ export default function DeliveryPublico() {
               </div>
             )}
 
-            {/* Grupos informativos (não adicionais) */}
+            {/* Grupos de complemento — seleção obrigatória (radio) */}
             {gruposComplemento.length > 0 && (
               <div style={{ marginBottom: 20 }}>
                 {gruposComplemento.map(grupo => (
                   <div key={grupo.id} style={{ marginBottom: 16 }}>
                     <p style={{ fontSize: 13, fontWeight: 700, color: corTextoBase, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>{grupo.nome}</p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {(grupo.itens || []).map(item => (
-                        <div key={item.id} style={{
-                          padding: '8px 12px', borderRadius: 10,
-                          background: modoClaro ? '#f8f8f8' : 'rgba(255,255,255,0.06)',
-                          border: '1px solid ' + bordaCard,
-                          fontSize: 14, color: corTextoBase,
-                        }}>{item.nome}</div>
-                      ))}
+                      {(grupo.itens || []).map(item => {
+                        const selecionado = modalComplementos[grupo.id] === item.id
+                        return (
+                          <button key={item.id} onClick={() => setModalComplementos(prev => ({ ...prev, [grupo.id]: selecionado ? null : item.id }))}
+                            style={{
+                              padding: '10px 12px', borderRadius: 10, textAlign: 'left', cursor: 'pointer',
+                              background: selecionado ? (modoClaro ? 'rgba(253,75,1,0.08)' : 'rgba(253,75,1,0.15)') : (modoClaro ? '#f8f8f8' : 'rgba(255,255,255,0.06)'),
+                              border: '1.5px solid ' + (selecionado ? destaque : bordaCard),
+                              fontSize: 14, fontWeight: selecionado ? 700 : 500,
+                              color: selecionado ? destaque : corTextoBase,
+                              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            }}>
+                            <span>{item.nome}</span>
+                            {selecionado && <span style={{ fontSize: 16 }}>✓</span>}
+                          </button>
+                        )
+                      })}
                     </div>
                   </div>
                 ))}
@@ -1159,18 +1185,14 @@ export default function DeliveryPublico() {
                         )}
                         <p style={{ fontSize: 13, fontWeight: 700, color: corPreco, margin: 0 }}>{formatarMoeda(subtotalItem)}</p>
                       </div>
-                      {/* Controles qty */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: modoClaro ? '#f0f0f0' : 'rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden', flexShrink: 0 }}>
-                        <button
-                          onClick={() => alterarQtdCarrinho(item.chave, -1)}
-                          style={{ width: 34, height: 34, border: 'none', background: 'transparent', color: item.qtd === 1 ? '#ef4444' : destaque, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>
-                          {item.qtd === 1 ? '🗑' : <IcoMinus />}
-                        </button>
-                        <span style={{ minWidth: 24, textAlign: 'center', fontWeight: 800, fontSize: 14, color: corTextoBase }}>{item.qtd}</span>
-                        <button
-                          onClick={() => alterarQtdCarrinho(item.chave, 1)}
-                          style={{ width: 34, height: 34, border: 'none', background: 'transparent', color: destaque, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <IcoPlus />
+                      {/* Qtd + lixeira */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        {item.qtd > 1 && (
+                          <span style={{ fontSize: 12, fontWeight: 700, color: corTextoSec, background: modoClaro ? '#f0f0f0' : 'rgba(255,255,255,0.1)', borderRadius: 6, padding: '2px 7px' }}>{item.qtd}x</span>
+                        )}
+                        <button onClick={() => alterarQtdCarrinho(item.chave, -item.qtd)}
+                          style={{ width: 30, height: 30, border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>
+                          🗑
                         </button>
                       </div>
                     </div>

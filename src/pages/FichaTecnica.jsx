@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { Plus, Pencil, Trash2, BookOpen, X, Calculator, ListChecks, ChevronDown } from 'lucide-react'
+import { useState, useMemo, useRef } from 'react'
+import { Plus, Pencil, Trash2, BookOpen, X, Calculator, ListChecks, ChevronDown, GripVertical } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import Modal from '../components/ui/Modal.jsx'
 import ConfirmDialog from '../components/ui/ConfirmDialog.jsx'
@@ -30,6 +30,7 @@ export default function Receitas() {
   const [metaValor, setMetaValor] = useState('65')
   const [adicionandoCategoria, setAdicionandoCategoria] = useState(false)
   const [novaCategoriaNome, setNovaCategoriaNome] = useState('')
+  const dragRef = useRef({ gi: null, ii: null })
 
   const todasCategorias = [...new Set(pratos.map(p => p.categoria).filter(Boolean))]
 
@@ -425,11 +426,11 @@ export default function Receitas() {
               <div className="flex gap-1.5">
                 <button className="btn btn-secondary py-1 px-2 text-xs" style={{ color: 'var(--accent)' }}
                   onClick={() => setForm(f => ({ ...f, grupos: [...f.grupos, novoGrupo('complemento')] }))}>
-                  <Plus size={11} /> 🎁 Complemento
+                  <Plus size={11} /> Complemento
                 </button>
                 <button className="btn btn-secondary py-1 px-2 text-xs" style={{ color: '#16a34a' }}
                   onClick={() => setForm(f => ({ ...f, grupos: [...f.grupos, novoGrupo('adicional')] }))}>
-                  <Plus size={11} /> 💰 Adicional
+                  <Plus size={11} /> Adicional
                 </button>
               </div>
             </div>
@@ -457,7 +458,7 @@ export default function Receitas() {
                     <div className="flex gap-2 items-center">
                       <span className="text-xs font-bold px-2 py-0.5 rounded-full shrink-0"
                         style={{ background: isAdicional ? 'rgba(22,163,74,0.12)' : 'var(--accent-bg)', color: isAdicional ? '#16a34a' : 'var(--accent)' }}>
-                        {isAdicional ? '💰 Adicional' : '🎁 Complemento'}
+                        {isAdicional ? 'Adicional' : 'Complemento'}
                       </span>
                       <input className="input flex-1 text-sm" placeholder="Nome do grupo (ex: Frutas, Granola, Queijo extra...)"
                         value={grupo.nome} onChange={e => setGrupo(g => ({ ...g, nome: e.target.value }))} />
@@ -495,8 +496,26 @@ export default function Receitas() {
                         const ingVinc = ingredientes.find(i => i.id === item.ingredienteId)
                         return (
                           <div key={item.id} className="rounded-lg p-2 flex flex-col gap-1.5"
-                            style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                            draggable
+                            onDragStart={() => { dragRef.current = { gi, ii } }}
+                            onDragOver={e => { e.preventDefault() }}
+                            onDrop={() => {
+                              const { gi: sgi, ii: sii } = dragRef.current
+                              if (sgi !== gi || sii === ii) return
+                              setForm(f => {
+                                const grupos = f.grupos.map((g, gIdx) => {
+                                  if (gIdx !== gi) return g
+                                  const itens = [...g.itens]
+                                  const [moved] = itens.splice(sii, 1)
+                                  itens.splice(ii, 0, moved)
+                                  return { ...g, itens }
+                                })
+                                return { ...f, grupos }
+                              })
+                            }}
+                            style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', cursor: 'grab' }}>
                             <div className="flex gap-2 items-center">
+                              <GripVertical size={14} style={{ color: 'var(--text-muted)', flexShrink: 0, cursor: 'grab' }} />
                               <input className="input flex-1 text-sm" placeholder={isAdicional ? 'Ex: Granola Extra, Leite Ninho...' : 'Ex: Morango, Banana, Kiwi...'}
                                 value={item.nome} onChange={e => setItem(ii, it => ({ ...it, nome: e.target.value }))} />
                               {isAdicional && (

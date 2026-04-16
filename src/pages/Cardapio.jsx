@@ -857,7 +857,7 @@ function ModalQRCode({ url, onClose }) {
 
           {/* Preview */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: 20, background: 'var(--bg-hover)', borderRadius: 14, border: '1px solid var(--border)' }}>
-            <canvas ref={canvasRef} style={{ width: 160, height: 160, maxWidth: '100%', borderRadius: 8, imageRendering: 'pixelated', display: 'block' }} />
+            <canvas ref={canvasRef} style={{ width: 160, height: 160, minWidth: 160, flexShrink: 0, borderRadius: 8, imageRendering: 'pixelated', display: 'block' }} />
             <p style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', wordBreak: 'break-all', maxWidth: 260 }}>{url}</p>
           </div>
 
@@ -926,7 +926,7 @@ function ModalQRCode({ url, onClose }) {
           {/* Botão imprimir */}
           <button
             className="btn btn-primary"
-            style={{ gap: 8, fontSize: 14, padding: '12px 0' }}
+            style={{ gap: 8, fontSize: 14, padding: '12px 20px', justifyContent: 'center' }}
             onClick={modo === 'unitario' ? imprimirUnitario : imprimirVarios}
             disabled={gerando || !dataUrl}
           >

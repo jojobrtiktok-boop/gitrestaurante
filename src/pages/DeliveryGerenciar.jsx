@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { MapPin, ToggleLeft, ToggleRight, Plus, Trash2, Check, Copy, Link2, Banknote, QrCode, CreditCard, ExternalLink, ChevronDown, Navigation, Wifi, WifiOff, UserRound, SlidersHorizontal, Truck, RefreshCw } from 'lucide-react'
+import { MapPin, ToggleLeft, ToggleRight, Plus, Trash2, Check, Copy, Link2, Banknote, QrCode, CreditCard, ExternalLink, ChevronDown, Navigation, Wifi, WifiOff, UserRound, SlidersHorizontal, Truck, RefreshCw, Pencil } from 'lucide-react'
 
 function IconMoto({ size = 24, color = 'currentColor' }) {
   return (
@@ -263,6 +263,10 @@ function TabConfiguracoes() {
   const [novoBairroNome, setNovoBairroNome] = useState('')
   const [novoBairroFrete, setNovoBairroFrete] = useState('')
   const [bairroNaoListadoAberto, setBairroNaoListadoAberto] = useState(false)
+  const [importarAberto, setImportarAberto] = useState(false)
+  const [importarTexto, setImportarTexto] = useState('')
+  const [editandoBairroId, setEditandoBairroId] = useState(null)
+  const [editandoBairroNome, setEditandoBairroNome] = useState('')
 
   const [estados, setEstados] = useState([])
   const [cidades, setCidades] = useState([])
@@ -330,6 +334,15 @@ function TabConfiguracoes() {
     if (!novoBairroNome.trim()) return
     adicionarBairro({ nome: novoBairroNome.trim(), frete: Number(novoBairroFrete) || 0 })
     setNovoBairroNome(''); setNovoBairroFrete('')
+  }
+
+  function handleImportarBairros() {
+    const existentes = (cfg.bairros || []).map(b => b.nome.toLowerCase())
+    const linhas = importarTexto.split(/[\n,;]/).map(l => l.trim()).filter(l => l.length > 0)
+    const novos = linhas.filter(nome => !existentes.includes(nome.toLowerCase()))
+    novos.forEach(nome => adicionarBairro({ nome, frete: 0 }))
+    setImportarTexto('')
+    setImportarAberto(false)
   }
 
   const pgtoOpcoes = [
@@ -529,7 +542,7 @@ function TabConfiguracoes() {
           <MapPin size={15} style={{ color: 'var(--accent)' }} />
           <h2 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Bairros de entrega</h2>
           <span className="ml-auto text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--bg-hover)', color: 'var(--text-muted)' }}>
-            {(cfg.bairros || []).filter(b => b.ativo).length} ativos
+            {(cfg.bairros || []).length} bairros
           </span>
         </div>
 
@@ -588,20 +601,40 @@ function TabConfiguracoes() {
             )}
             {(cfg.bairros || []).map(b => (
               <div key={b.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
-                <button onClick={() => editarBairro(b.id, { ativo: !b.ativo })}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: b.ativo ? 'var(--accent)' : 'var(--text-muted)', display: 'flex', flexShrink: 0 }}>
-                  {b.ativo ? <ToggleRight size={22} /> : <ToggleLeft size={22} />}
-                </button>
-                <span className="flex-1 text-sm font-medium" style={{ color: b.ativo ? 'var(--text-primary)' : 'var(--text-muted)' }}>{b.nome}</span>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>R$</span>
-                  <input type="number" min="0" value={b.frete}
-                    onChange={e => editarBairro(b.id, { frete: Number(e.target.value) })}
-                    style={{ width: 64, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: 13, textAlign: 'right' }} />
-                </div>
-                <button onClick={() => removerBairro(b.id)} className="btn btn-ghost p-1" style={{ color: '#ef4444', flexShrink: 0 }}>
-                  <Trash2 size={13} />
-                </button>
+                {editandoBairroId === b.id ? (
+                  <>
+                    <input
+                      className="input flex-1 text-sm"
+                      value={editandoBairroNome}
+                      onChange={e => setEditandoBairroNome(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') { editarBairro(b.id, { nome: editandoBairroNome.trim() }); setEditandoBairroId(null) }
+                        if (e.key === 'Escape') setEditandoBairroId(null)
+                      }}
+                      autoFocus
+                      style={{ padding: '4px 8px' }}
+                    />
+                    <button className="btn btn-primary p-1.5" onClick={() => { editarBairro(b.id, { nome: editandoBairroNome.trim() }); setEditandoBairroId(null) }}>
+                      <Check size={13} />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{b.nome}</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>R$</span>
+                      <input type="number" min="0" value={b.frete}
+                        onChange={e => editarBairro(b.id, { frete: Number(e.target.value) })}
+                        style={{ width: 64, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: 13, textAlign: 'right' }} />
+                    </div>
+                    <button className="btn btn-ghost p-1" onClick={() => { setEditandoBairroId(b.id); setEditandoBairroNome(b.nome) }}>
+                      <Pencil size={13} />
+                    </button>
+                    <button onClick={() => removerBairro(b.id)} className="btn btn-ghost p-1" style={{ color: '#ef4444', flexShrink: 0 }}>
+                      <Trash2 size={13} />
+                    </button>
+                  </>
+                )}
               </div>
             ))}
           </div>
@@ -622,6 +655,34 @@ function TabConfiguracoes() {
             <button className="btn btn-primary shrink-0" onClick={handleAdicionarBairro}>
               <Plus size={14} />
             </button>
+          </div>
+        )}
+        {cfg.cidade && (
+          <div className="mt-2">
+            <button className="btn btn-ghost text-xs py-1 px-2" onClick={() => setImportarAberto(v => !v)}>
+              ↓ Importar lista de bairros
+            </button>
+            {importarAberto && (
+              <div className="flex flex-col gap-2 mt-2 p-3 rounded-xl" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Cole os bairros separados por vírgula, ponto-e-vírgula ou um por linha. Bairros já cadastrados serão ignorados.</p>
+                <textarea
+                  className="input text-xs"
+                  rows={5}
+                  placeholder={"Centro\nBairro Novo\nSão João, Industrial, Esperança"}
+                  value={importarTexto}
+                  onChange={e => setImportarTexto(e.target.value)}
+                  style={{ resize: 'vertical', fontFamily: 'inherit' }}
+                />
+                <div className="flex gap-2">
+                  <button className="btn btn-primary text-xs py-1.5" onClick={handleImportarBairros} disabled={!importarTexto.trim()}>
+                    Importar
+                  </button>
+                  <button className="btn btn-ghost text-xs py-1.5" onClick={() => { setImportarAberto(false); setImportarTexto('') }}>
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
         <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>Frete 0 = entrega grátis nesse bairro.</p>

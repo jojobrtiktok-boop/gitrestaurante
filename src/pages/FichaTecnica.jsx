@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from 'react'
-import { Plus, Pencil, Trash2, BookOpen, X, Calculator, ListChecks, ChevronDown, GripVertical } from 'lucide-react'
+import { Plus, Pencil, Trash2, BookOpen, X, Calculator, ListChecks, ChevronDown, GripVertical, Copy } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import Modal from '../components/ui/Modal.jsx'
 import ConfirmDialog from '../components/ui/ConfirmDialog.jsx'
@@ -40,6 +40,18 @@ export default function Receitas() {
   function abrirNovo() {
     setForm({ ...FORM_VAZIO, ingredientes: [{ ingredienteId: '', quantidade: '' }] })
     setEditandoId(null); setErro(''); setModal(true)
+  }
+
+  function duplicarPrato(prato) {
+    const copia = {
+      nome: prato.nome + ' (cópia)',
+      descricao: prato.descricao,
+      precoVenda: prato.precoVenda,
+      categoria: prato.categoria,
+      ingredientes: prato.ingredientes.map(l => ({ ...l })),
+      grupos: (prato.grupos || []).map(g => ({ ...g, itens: g.itens.map(i => ({ ...i })) })),
+    }
+    adicionarPrato(copia)
   }
 
   function abrirEditar(prato) {
@@ -224,6 +236,7 @@ export default function Receitas() {
                       <td><Badge cor={margemCor(margem)}>{formatarPorcentagem(margem)}</Badge></td>
                       <td>
                         <div className="flex gap-1 justify-end">
+                          <button className="btn btn-ghost p-1.5" title="Duplicar" onClick={() => duplicarPrato(prato)}><Copy size={13} /></button>
                           <button className="btn btn-ghost p-1.5" onClick={() => abrirEditar(prato)}><Pencil size={13} /></button>
                           <button className="btn btn-ghost p-1.5" style={{ color: '#ef4444' }} onClick={() => setConfirmar(prato.id)}><Trash2 size={13} /></button>
                         </div>

@@ -63,7 +63,6 @@ function AbaInsumos({ onRegisterOpen }) {
 
   function salvar() {
     if (!form.nome.trim()) return setErro('Nome é obrigatório.')
-    if (form.quantidadeEstoque === '' || isNaN(+form.quantidadeEstoque)) return setErro('Estoque inválido.')
     const perda = parseFloat(form.percentualPerda)
     if (isNaN(perda) || perda < 0 || perda > 100) return setErro('% de perda deve ser entre 0 e 100.')
 
@@ -71,7 +70,7 @@ function AbaInsumos({ onRegisterOpen }) {
       nome: form.nome.trim(),
       preco: +form.preco || 0,
       unidade: form.unidade,
-      quantidadeEstoque: +form.quantidadeEstoque,
+      quantidadeEstoque: editandoId ? +form.quantidadeEstoque : 0,
       estoqueMinimo: form.estoqueMinimo !== '' ? +form.estoqueMinimo : null,
       fatorCorrecao: 1,
       perecivel: form.perecivel,
@@ -225,10 +224,12 @@ function AbaInsumos({ onRegisterOpen }) {
                 {UNIDADES.map(u => <option key={u} value={u}>{UNIDADE_LABELS[u]}</option>)}
               </select>
             </div>
-            <div>
-              <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Estoque ({form.unidade})</label>
-              <input className="input" type="number" min="0" step="any" placeholder="0" value={form.quantidadeEstoque} onChange={e => setForm(f => ({ ...f, quantidadeEstoque: e.target.value }))} />
-            </div>
+            {editandoId && (
+              <div>
+                <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Estoque ({form.unidade})</label>
+                <input className="input" type="number" min="0" step="any" placeholder="0" value={form.quantidadeEstoque} onChange={e => setForm(f => ({ ...f, quantidadeEstoque: e.target.value }))} />
+              </div>
+            )}
           </div>
 
           <div>

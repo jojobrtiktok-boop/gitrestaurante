@@ -99,8 +99,10 @@ function ingToRow(ing, uid) {
     unidade: ing.unidade || 'kg',
     preco: ing.preco || 0,
     quantidade_estoque: ing.quantidadeEstoque || 0,
-    estoque_minimo: ing.estoqueMinimo || 0,
+    estoque_minimo: ing.estoqueMinimo ?? null,
     fator_correcao: ing.fatorCorrecao || 1,
+    perecivel: !!ing.perecivel,
+    percentual_perda: ing.percentualPerda ?? 0,
     criado_em: ing.criadoEm || new Date().toISOString(),
   }
 }
@@ -111,8 +113,10 @@ function rowToIng(row) {
     unidade: row.unidade,
     preco: Number(row.preco || 0),
     quantidadeEstoque: Number(row.quantidade_estoque || 0),
-    estoqueMinimo: Number(row.estoque_minimo || 0),
+    estoqueMinimo: row.estoque_minimo !== null && row.estoque_minimo !== undefined ? Number(row.estoque_minimo) : null,
     fatorCorrecao: Number(row.fator_correcao || 1),
+    perecivel: !!row.perecivel,
+    percentualPerda: Number(row.percentual_perda || 0),
     criadoEm: row.criado_em,
   }
 }

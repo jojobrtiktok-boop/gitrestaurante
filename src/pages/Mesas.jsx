@@ -178,6 +178,7 @@ export default function Mesas() {
   const [qtdRapida, setQtdRapida] = useState('')
   const [prefixo, setPrefixo] = useState('Mesa')
   const [capacidadeRapida, setCapacidadeRapida] = useState(4)
+  const [filtroStatus, setFiltroStatus] = useState('todos')
   const [relDataInicio, setRelDataInicio] = useState(hoje())
   const [relDataFim, setRelDataFim] = useState(hoje())
 
@@ -303,6 +304,33 @@ export default function Mesas() {
             </button>
           </div>
 
+          {/* Filtro de status */}
+          {mesas.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
+              {[
+                { id: 'todos',     label: 'Todos',      count: mesas.length },
+                { id: 'livre',     label: 'Livres',     count: livres },
+                { id: 'reservada', label: 'Reservadas', count: reservadas },
+                { id: 'ocupada',   label: 'Ocupadas',   count: ocupadas },
+              ].map(f => {
+                const ativo = filtroStatus === f.id
+                const cor = f.id === 'livre' ? '#22c55e' : f.id === 'reservada' ? '#f59e0b' : f.id === 'ocupada' ? '#ef4444' : 'var(--accent)'
+                return (
+                  <button key={f.id} onClick={() => setFiltroStatus(f.id)} style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '7px 14px', borderRadius: 30, border: `1.5px solid ${ativo ? cor : 'var(--border)'}`,
+                    background: ativo ? `${cor}18` : 'transparent',
+                    color: ativo ? cor : 'var(--text-muted)',
+                    fontSize: 13, fontWeight: ativo ? 700 : 500, cursor: 'pointer',
+                  }}>
+                    {f.label}
+                    <span style={{ fontSize: 11, fontWeight: 700, background: ativo ? cor : 'var(--bg-hover)', color: ativo ? '#fff' : 'var(--text-muted)', borderRadius: 10, padding: '1px 7px' }}>{f.count}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
           {/* Grid de mesas — quadradinhos */}
           {mesas.length === 0 ? (
             <div className="card text-center" style={{ padding: '48px 24px' }}>
@@ -312,7 +340,7 @@ export default function Mesas() {
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(185px, 1fr))', gap: 12 }}>
-              {mesas.map(mesa => {
+              {mesas.filter(mesa => filtroStatus === 'todos' || mesa.status === filtroStatus).map(mesa => {
                 const livre    = mesa.status === 'livre'
                 const reservada = mesa.status === 'reservada'
                 const ocupada  = mesa.status === 'ocupada'

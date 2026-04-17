@@ -46,7 +46,7 @@ const KANBAN_CONFIG_PADRAO = {
   labelPreparando: 'Preparando',
   labelCompleto: 'Completo',
   filtroPadrao: 'hoje',
-  caixaColunasVisiveis: ['novo', 'preparando', 'completo'],
+  caixaColunasVisiveis: ['novo', 'preparando', 'pronto', 'completo'],
   caixaMostrarPrecos: true,
   caixaPodeAvancar: false,
   pdvAtivo: false,
@@ -454,6 +454,14 @@ function migrateKanbanConfig(cfg) {
       ...cfg.etapas.slice(0, idx),
       { id: 'pronto', label: 'Pronto para Entrega', cor: '#22c55e' },
       ...cfg.etapas.slice(idx),
+    ]}
+  }
+  if (cfg.caixaColunasVisiveis && !cfg.caixaColunasVisiveis.includes('pronto')) {
+    const idx = cfg.caixaColunasVisiveis.indexOf('completo')
+    if (idx >= 0) cfg = { ...cfg, caixaColunasVisiveis: [
+      ...cfg.caixaColunasVisiveis.slice(0, idx),
+      'pronto',
+      ...cfg.caixaColunasVisiveis.slice(idx),
     ]}
   }
   return cfg
@@ -1764,11 +1772,11 @@ export function AppProvider({ children }) {
     }
   }
 
-  function marcarPedidoPago(id) {
+  function marcarPedidoPago(id, formaPagamento) {
     setPedidos(prev => prev.map(p => {
       if (p.id !== id) return p
-      const updated = { ...p, pago: true }
-      if (auth.userId) sbWrite(supabase.from('pedidos').update({ pago: true }).eq('id', id))
+      const updated = { ...p, pago: true, formaPagamento: formaPagamento || null }
+      if (auth.userId) sbWrite(supabase.from('pedidos').update({ pago: true, forma_pagamento: formaPagamento || null }).eq('id', id))
       return updated
     }))
     const pedido = pedidos.find(p => p.id === id)

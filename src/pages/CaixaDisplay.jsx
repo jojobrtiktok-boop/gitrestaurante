@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { ShoppingBag, Check, Clock, AlertTriangle, ChefHat, Plus, LayoutGrid, X, UserPlus } from 'lucide-react'
+import { ShoppingBag, Check, Clock, AlertTriangle, ChefHat, Plus, LayoutGrid, X, UserPlus, CreditCard, Banknote, QrCode } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import PDVPage from './PDV.jsx'
 import { hoje } from '../utils/formatacao.js'
@@ -42,7 +42,7 @@ function CardCaixa({ pedido, coluna, pratos, garcons, mesas, onAvancar, onPagar,
   const total = pedido.itens?.reduce((s, i) => {
     const p = pratos.find(x => x.id === i.pratoId)
     if (!p) return s
-    const extras = (i.opcoes || []).reduce((ss, o) => ss + o.precoExtra, 0)
+    const extras = (i.opcoes || []).reduce((ss, o) => ss + (Number(o.precoExtra) || 0), 0)
     return s + (p.precoVenda + extras) * i.quantidade
   }, 0) || 0
 
@@ -152,7 +152,7 @@ function valorPedidoCalc(pedido, pratos) {
   return (pedido.itens || []).reduce((s, i) => {
     const p = pratos.find(x => x.id === i.pratoId)
     if (!p) return s
-    const extras = (i.opcoes || []).reduce((e, o) => e + o.precoExtra, 0)
+    const extras = (i.opcoes || []).reduce((e, o) => e + (Number(o.precoExtra) || 0), 0)
     return s + (p.precoVenda + extras) * i.quantidade
   }, 0)
 }
@@ -397,15 +397,91 @@ function MesasBoard({ mesas, pedidos, pratos, hj, cfg, adicionarMesa, setStatusM
 }
 
 // ── Página principal ──────────────────────────────────────────────────────────
+// ── Modal Forma de Pagamento ──────────────────────────────────────────────────
+const FORMAS_LABEL = {
+  dinheiro: { label: 'Dinheiro', icon: '💵' },
+  pix: { label: 'Pix', icon: '📱' },
+  cartao_credito: { label: 'Crédito', icon: '💳' },
+  cartao_debito: { label: 'Débito', icon: '💳' },
+}
+function ModalPagamento({ total, cfg, pagamentosConfig, onConfirmar, onFechar }) {
+  const formas = [
+    pagamentosConfig?.dinheiro !== false && 'dinheiro',
+    pagamentosConfig?.pix !== false && 'pix',
+    pagamentosConfig?.cartaoCredito !== false && 'cartao_credito',
+    pagamentosConfig?.cartaoDebito !== false && 'cartao_debito',
+  ].filter(Boolean)
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      onClick={onFechar}>
+      <div style={{ background: 'var(--bg-card)', borderRadius: 18, padding: '24px 20px', maxWidth: 320, width: '90%', display: 'flex', flexDirection: 'column', gap: 16 }}
+        onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--text-primary)' }}>Forma de Pagamento</span>
+          <button onClick={onFechar} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={18} /></button>
+        </div>
+        {cfg.caixaMostrarPrecos && (
+          <div style={{ textAlign: 'center', fontSize: 26, fontWeight: 800, color: '#16a34a' }}>
+            {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          </div>
+        )}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          {formas.map(f => (
+            <button key={f} onClick={() => onConfirmar(f)}
+              style={{ padding: '14px 8px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-hover)', color: 'var(--text-primary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, transition: 'all .1s' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#16a34a'; e.currentTarget.style.background = 'rgba(22,163,74,0.1)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg-hover)' }}>
+              <span style={{ fontSize: 22 }}>{FORMAS_LABEL[f]?.icon}</span>
+              <span>{FORMAS_LABEL[f]?.label}</span>
+            </button>
+          ))}
+        </div>
+        <button onClick={() => onConfirmar(null)}
+          style={{ padding: '8px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }}>
+          Registrar sem forma de pagamento
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function CaixaDisplay() {
   const { token } = useParams()
-  const { pedidos, pratos, garcons, mesas, clientes, kanbanConfig, atualizarStatusPedido, marcarPedidoPago, pagarMesa, cancelarPedido, adicionarMesa, setStatusMesa, adicionarCliente, authLoading, displayReady } = useApp()
+  const { pedidos, pratos, garcons, mesas, clientes, kanbanConfig, pagamentosConfig, atualizarStatusPedido, marcarPedidoPago, pagarMesa, cancelarPedido, adicionarMesa, setStatusMesa, adicionarCliente, authLoading, displayReady } = useApp()
   const cfg = kanbanConfig
 
   const [abaAtiva, setAbaAtiva] = useState('pedidos') // 'pedidos' | 'novo-pedido'
   const [expandidosPedido, setExpandidosPedido] = useState({})
   const [mesaAberSoPedidos, setMesaAberSoPedidos] = useState(null)
   const [pagarMesaConfirm, setPagarMesaConfirm] = useState(null) // { pedidoId, mesaId }
+  const [modalPagamento, setModalPagamento] = useState(null) // { pedidoId, mesaId?, total }
+
+  function calcTotal(pedido) {
+    return (pedido.itens || []).reduce((s, i) => {
+      const pr = pratos.find(x => x.id === i.pratoId)
+      if (!pr) return s
+      const extras = (i.opcoes || []).reduce((ss, o) => ss + (Number(o.precoExtra) || 0), 0)
+      return s + (pr.precoVenda + extras) * i.quantidade
+    }, 0)
+  }
+
+  function abrirPagamento(pedidoId, mesaId) {
+    const pedido = pedidos.find(p => p.id === pedidoId)
+    const total = pedido ? calcTotal(pedido) : 0
+    setModalPagamento({ pedidoId, mesaId: mesaId || null, total })
+  }
+
+  function confirmarPagamento(formaPagamento) {
+    if (!modalPagamento) return
+    const { pedidoId, mesaId } = modalPagamento
+    if (mesaId) {
+      pagarMesa(mesaId, formaPagamento)
+      setPagarMesaConfirm({ pedidoId, mesaId })
+    } else {
+      marcarPedidoPago(pedidoId, formaPagamento)
+    }
+    setModalPagamento(null)
+  }
 
   function imprimirPedido(pedido) {
     const mesa = mesas.find(m => m.id === pedido.mesaId)
@@ -491,12 +567,21 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
   const totalHoje = pedidosHoje.reduce((s, p) => s + (p.itens || []).reduce((ss, i) => {
     const pr = pratos.find(x => x.id === i.pratoId)
     if (!pr) return ss
-    const extras = (i.opcoes || []).reduce((e, o) => e + o.precoExtra, 0)
+    const extras = (i.opcoes || []).reduce((e, o) => e + (Number(o.precoExtra) || 0), 0)
     return ss + (pr.precoVenda + extras) * i.quantidade
   }, 0), 0)
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-page)', color: 'var(--text-primary)', fontFamily: "'Inter', system-ui, sans-serif" }}>
+      {modalPagamento && (
+        <ModalPagamento
+          total={modalPagamento.total}
+          cfg={cfg}
+          pagamentosConfig={pagamentosConfig}
+          onConfirmar={confirmarPagamento}
+          onFechar={() => setModalPagamento(null)}
+        />
+      )}
       {/* Header */}
       <div style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -564,17 +649,15 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
         </div>
       ) : abaAtiva === 'mesas' ? (
         <MesasBoard mesas={mesas} pedidos={pedidos} pratos={pratos} hj={h} cfg={cfg} adicionarMesa={adicionarMesa} setStatusMesa={setStatusMesa} pagarMesa={pagarMesa} adicionarCliente={adicionarCliente} clientes={clientes} />
-      ) : abaAtiva === 'so-pedidos' ? (
-        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <div>
-            <p style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', marginBottom: 10 }}>
-              Pedidos de hoje <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-muted)' }}>({pedidosHoje.length})</span>
-            </p>
-            {pedidosHoje.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 13 }}>Nenhum pedido hoje</div>
-            ) : (
+      ) : abaAtiva === 'so-pedidos' ? (() => {
+        const pedidosLocal    = pedidosHoje.filter(p => p.canal !== 'delivery')
+        const pedidosDelivery = pedidosHoje.filter(p => p.canal === 'delivery')
+        function ListaPedidos({ lista }) {
+          return lista.length === 0
+            ? <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-muted)', fontSize: 13 }}>Nenhum pedido</div>
+            : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {[...pedidosHoje].sort((a, b) => b.hora.localeCompare(a.hora)).map(pedido => {
+                {[...lista].sort((a, b) => b.hora.localeCompare(a.hora)).map(pedido => {
                   const mesa   = mesas.find(m => m.id === pedido.mesaId)
                   const garcon = garcons.find(g => g.id === pedido.garconId)
                   const total  = valorPedidoCalc(pedido, pratos)
@@ -600,12 +683,7 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
                           {!pedido.pago && !pedido.cancelado && (
                             <button onClick={e => {
                               e.stopPropagation()
-                              if (pedido.mesaId) {
-                                pagarMesa(pedido.mesaId)
-                                setPagarMesaConfirm({ pedidoId: pedido.id, mesaId: pedido.mesaId })
-                              } else {
-                                marcarPedidoPago(pedido.id)
-                              }
+                              abrirPagamento(pedido.id, pedido.mesaId || null)
                             }} style={{ padding: '3px 10px', borderRadius: 7, border: 'none', background: '#16a34a', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}>
                               <Check size={10} /> {pedido.mesaId ? 'Pagar Mesa' : 'Pago'}
                             </button>
@@ -618,7 +696,7 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
                           {pedido.itens?.map(item => {
                             const p = pratos.find(x => x.id === item.pratoId)
                             if (!p) return null
-                            const extras = (item.opcoes || []).reduce((s, o) => s + o.precoExtra, 0)
+                            const extras = (item.opcoes || []).reduce((s, o) => s + (Number(o.precoExtra) || 0), 0)
                             return (
                               <div key={item.uid || item.pratoId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div>
@@ -646,7 +724,7 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
                                 </button>
                               )}
                               {!pedido.pago && pedido.status === lastStageId && (
-                                <button onClick={e => { e.stopPropagation(); marcarPedidoPago(pedido.id) }}
+                                <button onClick={e => { e.stopPropagation(); abrirPagamento(pedido.id, null) }}
                                   style={{ padding: '4px 12px', borderRadius: 7, border: 'none', background: '#16a34a', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                                   <Check size={11} style={{ display: 'inline', marginRight: 3 }} />Pago
                                 </button>
@@ -682,8 +760,26 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
                   )
                 })}
               </div>
+            )
+        }
+        return (
+          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {/* Local */}
+            <div>
+              <p style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', marginBottom: 10 }}>
+                Local <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-muted)' }}>({pedidosLocal.length})</span>
+              </p>
+              <ListaPedidos lista={pedidosLocal} />
+            </div>
+            {/* Delivery */}
+            {pedidosDelivery.length > 0 && (
+              <div>
+                <p style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', marginBottom: 10 }}>
+                  🛵 Delivery <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-muted)' }}>({pedidosDelivery.length})</span>
+                </p>
+                <ListaPedidos lista={pedidosDelivery} />
+              </div>
             )}
-          </div>
           {(pedidosHoje.some(p => !p.mesaId) || mesas.length > 0) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
@@ -732,7 +828,7 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
                                         style={{ padding: '2px 8px', borderRadius: 5, border: '1px solid #ef4444', background: 'transparent', color: '#ef4444', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
                                         Cancelar
                                       </button>
-                                      <button onClick={() => marcarPedidoPago(pedido.id)}
+                                      <button onClick={() => abrirPagamento(pedido.id, null)}
                                         style={{ padding: '2px 8px', borderRadius: 5, border: 'none', background: '#16a34a', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
                                         Pago
                                       </button>
@@ -833,8 +929,9 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
               )}
             </div>
           )}
-        </div>
-      ) : (
+          </div>
+        )
+      })() : (
         /* Board de pedidos */
         <div style={{
           display: 'grid',
@@ -879,7 +976,7 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
                         garcons={garcons}
                         mesas={mesas}
                         onAvancar={atualizarStatusPedido}
-                        onPagar={marcarPedidoPago}
+                        onPagar={(id) => abrirPagamento(id, null)}
                         cfg={cfg}
                         isNovo={col.id === etapas[0]?.id && (Date.now() - new Date(pedido.timestamps?.novo).getTime()) < 300000}
                       />

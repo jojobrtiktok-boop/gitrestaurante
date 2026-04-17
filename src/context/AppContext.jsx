@@ -602,6 +602,54 @@ export function AppProvider({ children }) {
   useEffect(() => { pedidosRef.current = pedidos }, [pedidos])
   useEffect(() => { configuracaoGeralRef.current = configuracaoGeral }, [configuracaoGeral])
 
+  // ── Display sem auth: carrega dados pelo token da URL ─────────────────
+  useEffect(() => {
+    const path = window.location.pathname
+    const match = path.match(/^\/(cozinha|caixa|telao|pedidos-display)\/(.+)$/)
+    if (!match) return
+    const [, tipo, token] = match
+    const campoToken = { cozinha: 'cozinhaToken', caixa: 'caixaToken', telao: 'telaoToken', 'pedidos-display': 'pedidosDisplayToken' }[tipo]
+    if (!campoToken) return
+
+    async function carregarPorToken() {
+      setAuthLoading(false)
+      const { data: kbcRow } = await supabase
+        .from('kanban_config')
+        .select('user_id, config')
+        .eq(`config->>${campoToken}`, token)
+        .maybeSingle()
+      if (!kbcRow) { setDisplayReady(true); return }
+      const uid = kbcRow.user_id
+      const [{ data: prtsRaw }, { data: garsRaw }, { data: mssRaw }, { data: pdsRaw }, { data: ccsRaw }] = await Promise.all([
+        supabase.from('pratos').select('*').eq('user_id', uid),
+        supabase.from('garcons').select('*').eq('user_id', uid),
+        supabase.from('mesas').select('*').eq('user_id', uid),
+        supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', new Date(Date.now() - 86400000).toISOString().slice(0, 10)),
+        supabase.from('cardapio_config').select('*').eq('user_id', uid).maybeSingle(),
+      ])
+      setKanbanConfig(migrateKanbanConfig({ ...KANBAN_CONFIG_PADRAO, ...(kbcRow.config || {}) }))
+      setPratos((prtsRaw || []).map(rowToPrato))
+      setGarcons((garsRaw || []).map(rowToGarcon))
+      setMesas((mssRaw || []).map(rowToMesa))
+      setPedidos((pdsRaw || []).map(rowToPedido))
+      setCardapioConfig(rowToCardapioConfig(ccsRaw))
+      setDisplayReady(true)
+
+      // Realtime para pedidos e mesas
+      supabase.channel(`display-${token}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos', filter: `user_id=eq.${uid}` }, () => {
+          supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', new Date(Date.now() - 86400000).toISOString().slice(0, 10))
+            .then(({ data }) => data && setPedidos(data.map(rowToPedido)))
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas', filter: `user_id=eq.${uid}` }, () => {
+          supabase.from('mesas').select('*').eq('user_id', uid)
+            .then(({ data }) => data && setMesas(data.map(rowToMesa)))
+        })
+        .subscribe()
+    }
+    carregarPorToken()
+  }, [])
+
   // ── Supabase Auth ─────────────────────────────────────────────────────
   useEffect(() => {
     // onAuthStateChange dispara imediatamente com INITIAL_SESSION (sem rede)

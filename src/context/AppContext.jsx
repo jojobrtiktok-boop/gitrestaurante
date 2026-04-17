@@ -868,17 +868,17 @@ export function AppProvider({ children }) {
     const uid = auth.userId
     const channel = supabase
       .channel(`rt-${uid}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos', filter: `user_id=eq.${uid}` }, () => {
         supabase.from('pedidos').select('*').eq('user_id', uid).then(({ data }) => {
           if (data) setPedidos(data.map(rowToPedido))
         })
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas', filter: `user_id=eq.${uid}` }, () => {
         supabase.from('mesas').select('*').eq('user_id', uid).then(({ data }) => {
           if (data) setMesas(data.map(rowToMesa))
         })
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'entradas_vendas' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'entradas_vendas', filter: `user_id=eq.${uid}` }, () => {
         supabase.from('entradas_vendas').select('*').eq('user_id', uid).then(({ data }) => {
           if (data) setEntradasVendas(data.map(rowToEntradaVenda))
         })

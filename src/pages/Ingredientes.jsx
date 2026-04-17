@@ -70,7 +70,7 @@ function AbaInsumos({ onRegisterOpen }) {
       nome: form.nome.trim(),
       preco: +form.preco || 0,
       unidade: form.unidade,
-      quantidadeEstoque: editandoId ? +form.quantidadeEstoque : 0,
+      quantidadeEstoque: +form.quantidadeEstoque || 0,
       estoqueMinimo: form.estoqueMinimo !== '' ? +form.estoqueMinimo : null,
       fatorCorrecao: 1,
       perecivel: form.perecivel,
@@ -224,12 +224,15 @@ function AbaInsumos({ onRegisterOpen }) {
                 {UNIDADES.map(u => <option key={u} value={u}>{UNIDADE_LABELS[u]}</option>)}
               </select>
             </div>
-            {editandoId && (
-              <div>
-                <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Estoque ({form.unidade})</label>
-                <input className="input" type="number" min="0" step="any" placeholder="0" value={form.quantidadeEstoque} onChange={e => setForm(f => ({ ...f, quantidadeEstoque: e.target.value }))} />
-              </div>
-            )}
+            <div>
+              <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Estoque ({form.unidade})</label>
+              <input className="input" type="number" min="0" step="any" placeholder="0" value={form.quantidadeEstoque} onChange={e => setForm(f => ({ ...f, quantidadeEstoque: e.target.value }))} />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Preço por {form.unidade} (R$)</label>
+            <input className="input" type="number" min="0" step="0.01" placeholder="0,00" value={form.preco} onChange={e => setForm(f => ({ ...f, preco: e.target.value }))} />
           </div>
 
           <div>

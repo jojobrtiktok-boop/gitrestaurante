@@ -24,7 +24,7 @@ const CATEGORIAS = [
 ]
 
 /* ─── Modal genérico ────────────────────────────── */
-function ModalBase({ titulo, onFechar, children, acaoPrincipal, labelAcao, corAcao, desabilitado }) {
+function ModalBase({ titulo, onFechar, children, acaoPrincipal, labelAcao, corAcao, desabilitado, acaoSecundaria, labelSecundaria }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
       onClick={e => e.target === e.currentTarget && onFechar()}>
@@ -36,6 +36,9 @@ function ModalBase({ titulo, onFechar, children, acaoPrincipal, labelAcao, corAc
         <div className="flex flex-col gap-3">{children}</div>
         <div className="flex gap-2 justify-end mt-4">
           <button className="btn btn-ghost" onClick={onFechar}>Cancelar</button>
+          {acaoSecundaria && (
+            <button className="btn btn-secondary" onClick={acaoSecundaria} disabled={desabilitado} style={{ opacity: desabilitado ? 0.5 : 1 }}>{labelSecundaria}</button>
+          )}
           <button className="btn" style={{ background: corAcao || 'var(--accent)', color: '#fff', border: 'none', opacity: desabilitado ? 0.5 : 1 }}
             onClick={acaoPrincipal} disabled={desabilitado}>{labelAcao}</button>
         </div>
@@ -61,6 +64,8 @@ function ConfirmDelete({ texto, onConfirm, onFechar }) {
 }
 
 /* ─── Modal lançamento (despesa avulsa ou de fixas) ─ */
+const FORM_DESPESA_VAZIO = (data) => ({ descricao: '', categoria: 'funcionarios', valor: '', data: data || hoje() })
+
 function ModalDespesa({ despesa, onSalvar, onFechar }) {
   const [form, setForm] = useState({
     descricao: despesa?.descricao || '',
@@ -70,10 +75,18 @@ function ModalDespesa({ despesa, onSalvar, onFechar }) {
   })
   const cat = CATEGORIAS.find(c => c.id === form.categoria)
   const ok = form.descricao.trim() && form.valor && !isNaN(parseFloat(form.valor))
+
+  function salvar() { if (ok) onSalvar({ ...form, valor: parseFloat(form.valor) }) }
+  function salvarEContinuar() {
+    if (!ok) return
+    onSalvar({ ...form, valor: parseFloat(form.valor) }, true)
+    setForm(FORM_DESPESA_VAZIO(form.data))
+  }
+
   return (
     <ModalBase titulo={despesa ? 'Editar Despesa' : 'Nova Despesa'} onFechar={onFechar}
-      acaoPrincipal={() => ok && onSalvar({ ...form, valor: parseFloat(form.valor) })}
-      labelAcao="Salvar" corAcao={cat?.cor} desabilitado={!ok}>
+      acaoPrincipal={salvar} labelAcao="Salvar" corAcao={cat?.cor} desabilitado={!ok}
+      acaoSecundaria={!despesa ? salvarEContinuar : undefined} labelSecundaria="Salvar e continuar">
       <div>
         <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Data</label>
         <input className="input" type="date" value={form.data} onChange={e => setForm(p => ({ ...p, data: e.target.value }))} />
@@ -123,10 +136,10 @@ function AbaLancamentos() {
     return t
   }, [periodoFiltrado])
 
-  function salvarModal(dados) {
+  function salvarModal(dados, continuar = false) {
     if (modal?.id) editarDespesa(modal.id, dados)
     else adicionarDespesa(dados)
-    setModal(null)
+    if (!continuar) setModal(null)
   }
 
   return (

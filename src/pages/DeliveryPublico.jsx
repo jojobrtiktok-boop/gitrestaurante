@@ -553,13 +553,14 @@ export default function DeliveryPublico() {
           precoUnit: i.preco,
           opcoes: (i.adicionaisEscolhidos || []).map(a => ({ nome: a.nome, preco: a.precoExtra, qtd: a.qtd })),
         }))
+        const statusInicial = ['dinheiro', 'cartao', 'maquininha'].includes(pagamento) ? 'novo' : 'pendente'
         await supabase.from('pedidos').insert({
           user_id: userId,
           data: dataHoje,
           hora: horaAgora,
           itens: itensPedido,
           obs: obs || null,
-          status: 'pendente',
+          status: statusInicial,
           pago: false,
           cancelado: false,
           canal: 'delivery',
@@ -567,7 +568,7 @@ export default function DeliveryPublico() {
           cliente_nome: nome,
           cliente_telefone: telefone,
           endereco_entrega: enderecoEntrega,
-          timestamps: { pendente: agora },
+          timestamps: { [statusInicial]: agora },
         })
       } catch (e) {
         console.error('[DeliveryPublico] erro ao registrar pedido:', e)

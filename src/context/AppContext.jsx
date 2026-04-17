@@ -449,7 +449,17 @@ function rowToCardapioConfig(row) {
 
 function rowToKanbanConfig(row) {
   if (!row) return KANBAN_CONFIG_PADRAO
-  return { ...KANBAN_CONFIG_PADRAO, ...(row.config || {}) }
+  const cfg = { ...KANBAN_CONFIG_PADRAO, ...(row.config || {}) }
+  // Migração: inserir 'Pronto para Entrega' se não existir nas etapas
+  if (cfg.etapas && !cfg.etapas.find(e => e.id === 'pronto')) {
+    const idx = cfg.etapas.findIndex(e => e.id === 'completo')
+    if (idx >= 0) cfg.etapas = [
+      ...cfg.etapas.slice(0, idx),
+      { id: 'pronto', label: 'Pronto para Entrega', cor: '#22c55e' },
+      ...cfg.etapas.slice(idx),
+    ]
+  }
+  return cfg
 }
 
 function rowToDeliveryConfig(row) {

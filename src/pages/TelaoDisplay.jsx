@@ -67,9 +67,10 @@ export default function TelaoDisplay() {
 
   const getStatusLabel = (pedido) => {
     const etapas = cfg.etapas && cfg.etapas.length >= 2 ? cfg.etapas : [
-      { id: 'novo', label: 'Aguardando' },
+      { id: 'novo',       label: 'Aguardando' },
       { id: 'preparando', label: 'Preparando' },
-      { id: 'completo', label: 'Pronto' },
+      { id: 'pronto',     label: 'Pronto para Entrega' },
+      { id: 'completo',   label: 'Entregue' },
     ]
     const etapa = etapas.find(e => e.id === pedido.status)
     return etapa ? etapa.label : pedido.status
@@ -77,9 +78,10 @@ export default function TelaoDisplay() {
 
   const getStatusCor = (pedido) => {
     const etapas = cfg.etapas && cfg.etapas.length >= 2 ? cfg.etapas : [
-      { id: 'novo', cor: '#3b82f6' },
+      { id: 'novo',       cor: '#3b82f6' },
       { id: 'preparando', cor: '#f59e0b' },
-      { id: 'completo', cor: '#16a34a' },
+      { id: 'pronto',     cor: '#22c55e' },
+      { id: 'completo',   cor: '#16a34a' },
     ]
     const etapa = etapas.find(e => e.id === pedido.status)
     return etapa?.cor || '#94a3b8'

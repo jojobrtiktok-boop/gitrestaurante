@@ -227,9 +227,10 @@ function CardPedido({ pedido, coluna, pratos, garcons, mesas, onAvancar, cfg }) 
 
 // ── Default etapas ──────────────────────────────────────────────────────────
 const DEFAULT_ETAPAS = [
-  { id: 'novo',       label: 'Aguardando', cor: '#3b82f6' },
-  { id: 'preparando', label: 'Preparando', cor: '#f59e0b' },
-  { id: 'completo',   label: 'Entregue',   cor: '#16a34a' },
+  { id: 'novo',       label: 'Aguardando',         cor: '#3b82f6' },
+  { id: 'preparando', label: 'Preparando',          cor: '#f59e0b' },
+  { id: 'pronto',     label: 'Pronto para Entrega', cor: '#22c55e' },
+  { id: 'completo',   label: 'Entregue',            cor: '#16a34a' },
 ]
 
 // ── Colunas fixas do fluxo delivery ─────────────────────────────────────────

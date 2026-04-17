@@ -202,9 +202,10 @@ export default function CozinhaDisplay() {
   }
 
   const etapas = cfg.etapas && cfg.etapas.length >= 2 ? cfg.etapas : [
-    { id: 'novo',       label: 'Aguardando', cor: '#3b82f6' },
-    { id: 'preparando', label: 'Preparando', cor: '#f59e0b' },
-    { id: 'completo',   label: 'Entregue',   cor: '#16a34a' },
+    { id: 'novo',       label: 'Aguardando',         cor: '#3b82f6' },
+    { id: 'preparando', label: 'Preparando',          cor: '#f59e0b' },
+    { id: 'pronto',     label: 'Pronto para Entrega', cor: '#22c55e' },
+    { id: 'completo',   label: 'Entregue',            cor: '#16a34a' },
   ]
   const colunasDef = etapas.map((e, i, arr) => ({
     id: e.id, label: e.label, cor: e.cor,

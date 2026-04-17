@@ -471,9 +471,10 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
   }
 
   const etapas = cfg.etapas && cfg.etapas.length >= 2 ? cfg.etapas : [
-    { id: 'novo',       label: 'Aguardando', cor: '#3b82f6' },
-    { id: 'preparando', label: 'Preparando', cor: '#f59e0b' },
-    { id: 'completo',   label: 'Entregue',   cor: '#16a34a' },
+    { id: 'novo',       label: 'Aguardando',         cor: '#3b82f6' },
+    { id: 'preparando', label: 'Preparando',          cor: '#f59e0b' },
+    { id: 'pronto',     label: 'Pronto para Entrega', cor: '#22c55e' },
+    { id: 'completo',   label: 'Entregue',            cor: '#16a34a' },
   ]
   const lastStageId = etapas[etapas.length - 1]?.id || 'completo'
   const colunasDef = etapas.map((e, i, arr) => ({

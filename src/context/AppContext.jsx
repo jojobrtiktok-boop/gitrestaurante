@@ -741,7 +741,7 @@ export function AppProvider({ children }) {
       const raw = localStorage.getItem(_cacheKey(uid))
       if (!raw) return null
       const { t, d } = JSON.parse(raw)
-      if (Date.now() - t > 15 * 60 * 1000) return null // 15 min TTL
+      if (Date.now() - t > 5 * 60 * 1000) return null // 5 min TTL (pedidos incluídos)
       return d
     } catch { return null }
   }
@@ -759,6 +759,7 @@ export function AppProvider({ children }) {
       if (cached.mss) setMesas(cached.mss)
       if (cached.clis) setClientes(cached.clis)
       if (cached.ccs) setCardapioConfig(cached.ccs)
+      if (cached.pds) setPedidos(cached.pds)
       setDisplayReady(true)
     }
 
@@ -793,15 +794,16 @@ export function AppProvider({ children }) {
       const clis = (clisRaw || []).map(rowToCliente)
       const ccs  = rowToCardapioConfig(ccsRaw)
 
+      const pds = (pdsRaw || []).map(rowToPedido)
       setKanbanConfig(kbc)
-      setPedidos((pdsRaw || []).map(rowToPedido))
+      setPedidos(pds)
       setPratos(prts)
       setGarcons(gars)
       setMesas(mss)
       setClientes(clis)
       setCardapioConfig(ccs)
       setDisplayReady(true)
-      _saveCache(uid, { kbc, prts, gars, mss, clis, ccs })
+      _saveCache(uid, { kbc, prts, gars, mss, clis, ccs, pds })
 
       // ── Estágio 2: dados de fundo (parallel) ─────────────────────────
       const [
@@ -866,11 +868,24 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (!auth.userId) return
     const uid = auth.userId
+    const dataLimiteRt = new Date(); dataLimiteRt.setDate(dataLimiteRt.getDate() - 60)
+    const dataLimiteRtStr = dataLimiteRt.toISOString().slice(0, 10)
     const channel = supabase
       .channel(`rt-${uid}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos', filter: `user_id=eq.${uid}` }, () => {
-        supabase.from('pedidos').select('*').eq('user_id', uid).then(({ data }) => {
-          if (data) setPedidos(data.map(rowToPedido))
+        supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', dataLimiteRtStr).then(({ data }) => {
+          if (data) {
+            const pds = data.map(rowToPedido)
+            setPedidos(pds)
+            // Atualiza cache de pedidos para próximo reload
+            try {
+              const raw = localStorage.getItem(_cacheKey(uid))
+              if (raw) {
+                const { t, d } = JSON.parse(raw)
+                localStorage.setItem(_cacheKey(uid), JSON.stringify({ t, d: { ...d, pds } }))
+              }
+            } catch {}
+          }
         })
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas', filter: `user_id=eq.${uid}` }, () => {

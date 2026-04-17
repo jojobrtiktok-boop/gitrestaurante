@@ -647,16 +647,19 @@ export function AppProvider({ children }) {
       setDisplayReady(true)
 
       // Realtime para pedidos e mesas
+      const fetchDisplay = () => {
+        const desde = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+        supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', desde)
+          .then(({ data }) => data && setPedidos(data.map(rowToPedido)))
+        supabase.from('mesas').select('*').eq('user_id', uid)
+          .then(({ data }) => data && setMesas(data.map(rowToMesa)))
+      }
       supabase.channel(`display-${token}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos', filter: `user_id=eq.${uid}` }, () => {
-          supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', new Date(Date.now() - 86400000).toISOString().slice(0, 10))
-            .then(({ data }) => data && setPedidos(data.map(rowToPedido)))
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas', filter: `user_id=eq.${uid}` }, () => {
-          supabase.from('mesas').select('*').eq('user_id', uid)
-            .then(({ data }) => data && setMesas(data.map(rowToMesa)))
-        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos', filter: `user_id=eq.${uid}` }, fetchDisplay)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas', filter: `user_id=eq.${uid}` }, fetchDisplay)
         .subscribe()
+      // Polling fallback a cada 15s caso realtime não funcione
+      setInterval(fetchDisplay, 15000)
     }
     carregarPorToken()
   }, [])
@@ -918,7 +921,28 @@ export function AppProvider({ children }) {
         })
       })
       .subscribe()
-    return () => supabase.removeChannel(channel)
+
+    // Polling fallback: busca pedidos e mesas a cada 20s caso realtime falhe
+    const hojeStr = new Date().toISOString().slice(0, 10)
+    const pollId = setInterval(() => {
+      supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', hojeStr)
+        .then(({ data }) => {
+          if (data) {
+            const pds = data.map(rowToPedido)
+            setPedidos(prev => {
+              // Só atualiza se houver diferença para evitar re-renders desnecessários
+              if (prev.length !== pds.length) return pds
+              const prevIds = prev.map(p => `${p.id}${p.status}${p.pago}`).join()
+              const newIds  = pds.map(p => `${p.id}${p.status}${p.pago}`).join()
+              return prevIds === newIds ? prev : pds
+            })
+          }
+        })
+      supabase.from('mesas').select('*').eq('user_id', uid)
+        .then(({ data }) => { if (data) setMesas(data.map(rowToMesa)) })
+    }, 20000)
+
+    return () => { supabase.removeChannel(channel); clearInterval(pollId) }
   }, [auth.userId])
 
   // ── Carregar período histórico sob demanda ────────────────────────────

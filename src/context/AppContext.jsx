@@ -741,7 +741,7 @@ export function AppProvider({ children }) {
       const raw = localStorage.getItem(_cacheKey(uid))
       if (!raw) return null
       const { t, d } = JSON.parse(raw)
-      if (Date.now() - t > 5 * 60 * 1000) return null // 5 min TTL (pedidos incluídos)
+      if (Date.now() - t > 15 * 60 * 1000) return null // 15 min TTL
       return d
     } catch { return null }
   }
@@ -803,7 +803,10 @@ export function AppProvider({ children }) {
       setClientes(clis)
       setCardapioConfig(ccs)
       setDisplayReady(true)
-      _saveCache(uid, { kbc, prts, gars, mss, clis, ccs, pds })
+      // Cache só pedidos de hoje (evita estourar 5MB do localStorage)
+      const hojeStr = new Date().toISOString().slice(0, 10)
+      const pdsHoje = pds.filter(p => p.data >= hojeStr)
+      _saveCache(uid, { kbc, prts, gars, mss, clis, ccs, pds: pdsHoje })
 
       // ── Estágio 2: dados de fundo (parallel) ─────────────────────────
       const [
@@ -877,12 +880,14 @@ export function AppProvider({ children }) {
           if (data) {
             const pds = data.map(rowToPedido)
             setPedidos(pds)
-            // Atualiza cache de pedidos para próximo reload
+            // Atualiza cache com apenas pedidos de hoje
             try {
               const raw = localStorage.getItem(_cacheKey(uid))
               if (raw) {
                 const { t, d } = JSON.parse(raw)
-                localStorage.setItem(_cacheKey(uid), JSON.stringify({ t, d: { ...d, pds } }))
+                const hojeStr = new Date().toISOString().slice(0, 10)
+                const pdsHoje = pds.filter(p => p.data >= hojeStr)
+                localStorage.setItem(_cacheKey(uid), JSON.stringify({ t, d: { ...d, pds: pdsHoje } }))
               }
             } catch {}
           }

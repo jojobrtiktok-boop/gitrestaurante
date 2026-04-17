@@ -447,19 +447,21 @@ function rowToCardapioConfig(row) {
   return { ...CONFIG_PADRAO, ...(row.config || {}) }
 }
 
-function rowToKanbanConfig(row) {
-  if (!row) return KANBAN_CONFIG_PADRAO
-  const cfg = { ...KANBAN_CONFIG_PADRAO, ...(row.config || {}) }
-  // Migração: inserir 'Pronto para Entrega' se não existir nas etapas
+function migrateKanbanConfig(cfg) {
   if (cfg.etapas && !cfg.etapas.find(e => e.id === 'pronto')) {
     const idx = cfg.etapas.findIndex(e => e.id === 'completo')
-    if (idx >= 0) cfg.etapas = [
+    if (idx >= 0) cfg = { ...cfg, etapas: [
       ...cfg.etapas.slice(0, idx),
       { id: 'pronto', label: 'Pronto para Entrega', cor: '#22c55e' },
       ...cfg.etapas.slice(idx),
-    ]
+    ]}
   }
   return cfg
+}
+
+function rowToKanbanConfig(row) {
+  if (!row) return KANBAN_CONFIG_PADRAO
+  return migrateKanbanConfig({ ...KANBAN_CONFIG_PADRAO, ...(row.config || {}) })
 }
 
 function rowToDeliveryConfig(row) {
@@ -699,7 +701,7 @@ export function AppProvider({ children }) {
     // ── Cache: mostra dados instantaneamente enquanto busca do Supabase ──
     const cached = _loadCache(uid)
     if (cached) {
-      if (cached.kbc) setKanbanConfig(cached.kbc)
+      if (cached.kbc) setKanbanConfig(migrateKanbanConfig(cached.kbc))
       if (cached.prts) setPratos(cached.prts)
       if (cached.gars) setGarcons(cached.gars)
       if (cached.mss) setMesas(cached.mss)

@@ -267,9 +267,14 @@ function RelatorioTempo({ pedidos, pratos, dataInicio, dataFim }) {
 }
 
 export default function Vendas() {
-  const { entradasVendas, removerEntradaVenda, pratos, ingredientes, garcons, pedidos, mesas, clientes, sessoesMesas, kanbanConfig, marcarPedidoPago, cardapioConfig, marcarEntregue } = useApp()
+  const { entradasVendas, removerEntradaVenda, pratos, ingredientes, garcons, pedidos, mesas, clientes, sessoesMesas, kanbanConfig, marcarPedidoPago, cardapioConfig, marcarEntregue, carregarPeriodo } = useApp()
   const h = hoje()
   const [periodo, setPeriodo] = useState({ dataInicio: h, dataFim: h })
+
+  function handlePeriodo(p) {
+    setPeriodo(p)
+    carregarPeriodo(p.dataInicio)
+  }
   const [entradaDetalhe, setEntradaDetalhe] = useState(null)
   const [aba, setAba] = useState('lancamentos')
   const [extratoInicio, setExtratoInicio] = useState(h)
@@ -653,7 +658,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
           <h1 className="page-title">Vendas</h1>
           <p className="page-subtitle">Histórico de lançamentos com horário</p>
         </div>
-        <FiltroPeriodo onChange={setPeriodo} />
+        <FiltroPeriodo onChange={handlePeriodo} />
       </div>
 
       {entradasDia.length > 0 && (

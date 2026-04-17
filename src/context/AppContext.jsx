@@ -591,6 +591,7 @@ export function AppProvider({ children }) {
   const [perfil, setPerfil] = useState({ foto: null, nomeExibicao: '' })
   const [motoboys, setMotoboys] = useState([])
   const [movimentosCaixa, setMovimentosCaixa] = useState([])
+  const [periodoCarregado, setPeriodoCarregado] = useState(null) // dataInicio mais antiga carregada
 
   const userIdRef = useRef(null)
   const notifConfigRef = useRef(notifConfig)
@@ -763,9 +764,8 @@ export function AppProvider({ children }) {
       setDisplayReady(true)
     }
 
-    // Data limite: últimos 60 dias
-    const d = new Date(); d.setDate(d.getDate() - 60)
-    const dataLimite = d.toISOString().slice(0, 10)
+    // Carrega apenas hoje — histórico é buscado sob demanda via carregarPeriodo()
+    const dataLimite = new Date().toISOString().slice(0, 10)
 
     try {
       // ── Estágio 1: dados críticos para exibição (parallel) ───────────
@@ -850,6 +850,7 @@ export function AppProvider({ children }) {
       if (cisRaw)  setCaixaInicialState(cisRaw.map(rowToCaixaInicial))
       if (smsRaw)  setSessoesMesas(smsRaw.map(rowToSessaoMesa))
       if (mvsRaw)  setMovimentosCaixa(mvsRaw.map(rowToMovimentoCaixa))
+      setPeriodoCarregado(dataLimite) // marca que temos dados a partir de hoje
       setConfiguracaoGeral(cgRaw ? { estoqueMinimoPadrao: Number(cgRaw.estoque_minimo_padrao || 0) } : { estoqueMinimoPadrao: 0 })
       setConfiguracaoDelivery(rowToDeliveryConfig(cdRaw))
       if (lcsRaw)  setListaCompras(lcsRaw.map(rowToListaCompra))
@@ -911,6 +912,23 @@ export function AppProvider({ children }) {
       .subscribe()
     return () => supabase.removeChannel(channel)
   }, [auth.userId])
+
+  // ── Carregar período histórico sob demanda ────────────────────────────
+  async function carregarPeriodo(dataInicio) {
+    if (!auth.userId) return
+    // Só busca se a data pedida for anterior ao que já temos
+    if (periodoCarregado && dataInicio >= periodoCarregado) return
+    const uid = auth.userId
+    const [{ data: pdsRaw }, { data: evsRaw }, { data: mvsRaw }] = await Promise.all([
+      supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', dataInicio),
+      supabase.from('entradas_vendas').select('*').eq('user_id', uid).gte('data', dataInicio),
+      supabase.from('movimentos_caixa').select('*').eq('user_id', uid).gte('data', dataInicio).then(r => r, () => ({ data: [] })),
+    ])
+    if (pdsRaw) setPedidos(pdsRaw.map(rowToPedido))
+    if (evsRaw) setEntradasVendas(evsRaw.map(rowToEntradaVenda))
+    if (mvsRaw) setMovimentosCaixa(mvsRaw.map(rowToMovimentoCaixa))
+    setPeriodoCarregado(dataInicio)
+  }
 
   // ── Motoboys: carregar inicial ────────────────────────────────────────
   useEffect(() => {
@@ -1897,6 +1915,7 @@ export function AppProvider({ children }) {
     alterarSenha,
     motoboys, adicionarMotoboy, editarMotoboy, removerMotoboy,
     notifConfigRef, cardapioConfigRef, ingredientesRef, pedidosRef, configuracaoGeralRef,
+    periodoCarregado, carregarPeriodo,
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

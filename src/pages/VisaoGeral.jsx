@@ -519,9 +519,14 @@ function ResultadoGeral() {
 }
 
 export default function VisaoGeral() {
-  const { pratos, ingredientes, registrosVendas, entradasVendas, pedidos, tema, registrarCaixaInicial, getCaixaInicial, getCaixaInicialPeriodo, movimentosCaixa, adicionarMovimentoCaixa, removerMovimentoCaixa, getMovimentosCaixaDia } = useApp()
+  const { pratos, ingredientes, registrosVendas, entradasVendas, pedidos, tema, registrarCaixaInicial, getCaixaInicial, getCaixaInicialPeriodo, movimentosCaixa, adicionarMovimentoCaixa, removerMovimentoCaixa, getMovimentosCaixaDia, carregarPeriodo } = useApp()
   const h = hoje()
   const [periodo, setPeriodo] = useState({ dataInicio: h, dataFim: h })
+
+  function handlePeriodo(p) {
+    setPeriodo(p)
+    carregarPeriodo(p.dataInicio)
+  }
   const [modalCaixa, setModalCaixa] = useState(false)
   const [modalFechamento, setModalFechamento] = useState(false)
   const [aba, setAba] = useState('resumo')
@@ -685,7 +690,7 @@ export default function VisaoGeral() {
                 ))}
               </div>
 
-              <FiltroPeriodo onChange={setPeriodo} />
+              <FiltroPeriodo onChange={handlePeriodo} />
             </div>
           </div>
 

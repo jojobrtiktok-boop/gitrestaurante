@@ -1008,7 +1008,7 @@ function CardapioDigitalConfig() {
     e.target.value = ''
     setUploadandoLogo(true)
     try {
-      const url = await uploadImagem(file, 'cardapio', `logo-${auth.userId}`)
+      const url = await uploadImagem(file, 'cardapio', `logo-${auth.userId}`, { maxW: 400, maxH: 400, quality: 0.9 })
       atualizarCardapioConfig({ logo: url })
     } catch { alert('Erro ao enviar logo. Tente novamente.') }
     finally { setUploadandoLogo(false) }
@@ -1021,7 +1021,7 @@ function CardapioDigitalConfig() {
     e.target.value = ''
     setUploadandoBanner(true)
     try {
-      const url = await uploadImagem(file, 'cardapio', `banner-${auth.userId}`)
+      const url = await uploadImagem(file, 'cardapio', `banner-${auth.userId}`, { maxW: 1400, maxH: 600, quality: 0.85 })
       const img = new Image()
       img.onload = () => {
         setBannerInfo({ w: img.naturalWidth, h: img.naturalHeight })

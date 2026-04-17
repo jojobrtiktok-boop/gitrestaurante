@@ -1,26 +1,45 @@
 import { supabase } from '../lib/supabase.js'
 
-/**
- * Faz upload de um arquivo para o Supabase Storage (bucket 'imagens')
- * e retorna a URL pública.
- *
- * @param {File} file - arquivo de imagem
- * @param {string} pasta - subpasta no bucket: 'pratos' | 'logos' | 'perfil'
- * @param {string} [nomeFixo] - se informado, usa esse nome (ex: logo-{userId}) e faz upsert
- * @returns {Promise<string>} URL pública permanente
- */
-export async function uploadImagem(file, pasta = 'geral', nomeFixo = null) {
-  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+// Comprime e redimensiona imagem via canvas antes do upload
+// maxW/maxH: dimensão máxima em pixels | quality: 0-1
+async function comprimirImagem(file, maxW = 1200, maxH = 1200, quality = 0.85) {
+  return new Promise((resolve) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      let { width, height } = img
+      if (width <= maxW && height <= maxH) {
+        // Imagem já pequena — só converte para webp
+        if (file.type === 'image/webp') return resolve(file)
+      }
+      const ratio = Math.min(maxW / width, maxH / height, 1)
+      width = Math.round(width * ratio)
+      height = Math.round(height * ratio)
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+      canvas.toBlob(blob => resolve(blob || file), 'image/webp', quality)
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file) }
+    img.src = url
+  })
+}
+
+export async function uploadImagem(file, pasta = 'geral', nomeFixo = null, opcoes = {}) {
+  const { maxW = 1200, maxH = 1200, quality = 0.85 } = opcoes
+  const compressed = await comprimirImagem(file, maxW, maxH, quality)
   const nome = nomeFixo
-    ? `${pasta}/${nomeFixo}.${ext}`
-    : `${pasta}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    ? `${pasta}/${nomeFixo}.webp`
+    : `${pasta}/${Date.now()}-${Math.random().toString(36).slice(2)}.webp`
 
   const { data, error } = await supabase.storage
     .from('imagens')
-    .upload(nome, file, {
+    .upload(nome, compressed, {
       upsert: true,
-      contentType: file.type || 'image/jpeg',
-      cacheControl: '31536000', // 1 ano de cache no browser
+      contentType: 'image/webp',
+      cacheControl: '31536000',
     })
 
   if (error) throw new Error(`Upload falhou: ${error.message}`)

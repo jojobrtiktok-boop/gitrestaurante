@@ -529,8 +529,9 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
 
 /* ─── Painel KDS (Display da Cozinha) ────────────── */
 function KDSConfig() {
-  const { kanbanConfig, atualizarKanbanConfig, gerarTokenCozinha } = useApp()
+  const { kanbanConfig, atualizarKanbanConfig, gerarTokenCozinha, auth } = useApp()
   const [copiado, setCopiado] = useState(false)
+  const [uploadandoLogo, setUploadandoLogo] = useState(false)
   const logoRef = useRef(null)
 
   const base = window.location.origin
@@ -541,12 +542,16 @@ function KDSConfig() {
     setTimeout(() => setCopiado(false), 2000)
   }
 
-  function handleLogo(e) {
+  async function handleLogo(e) {
     const file = e.target.files?.[0]; if (!file) return
-    if (file.size > 2 * 1024 * 1024) { alert('Máx 2 MB.'); return }
-    const reader = new FileReader()
-    reader.onload = ev => atualizarKanbanConfig({ cozinhaLogo: ev.target.result })
-    reader.readAsDataURL(file); e.target.value = ''
+    if (file.size > 5 * 1024 * 1024) { alert('Máx 5 MB.'); return }
+    e.target.value = ''
+    setUploadandoLogo(true)
+    try {
+      const url = await uploadImagem(file, 'kds', `logo-${auth.userId}`)
+      atualizarKanbanConfig({ cozinhaLogo: url })
+    } catch { alert('Erro ao enviar logo. Tente novamente.') }
+    finally { setUploadandoLogo(false) }
   }
 
   return (
@@ -570,8 +575,8 @@ function KDSConfig() {
               }
             </div>
             <div className="flex flex-col gap-1.5">
-              <button className="btn btn-secondary text-xs py-1.5" onClick={() => logoRef.current?.click()}>
-                <Camera size={12} /> {kanbanConfig.cozinhaLogo ? 'Alterar logo' : 'Enviar logo'}
+              <button className="btn btn-secondary text-xs py-1.5" onClick={() => logoRef.current?.click()} disabled={uploadandoLogo}>
+                <Camera size={12} /> {uploadandoLogo ? 'Enviando…' : kanbanConfig.cozinhaLogo ? 'Alterar logo' : 'Enviar logo'}
               </button>
               {kanbanConfig.cozinhaLogo && (
                 <button className="btn btn-ghost text-xs py-1 px-2" style={{ color: '#ef4444' }} onClick={() => atualizarKanbanConfig({ cozinhaLogo: null })}>
@@ -946,9 +951,11 @@ function ModalQRCode({ url, onClose }) {
 
 /* ─── Aba: Cardápio Digital Config ───────────────── */
 function CardapioDigitalConfig() {
-  const { cardapioConfig, atualizarCardapioConfig, definirSlugCardapio, garcons, adicionarGarcon, removerGarcon, pratos } = useApp()
+  const { cardapioConfig, atualizarCardapioConfig, definirSlugCardapio, garcons, adicionarGarcon, removerGarcon, pratos, auth } = useApp()
   const [novoGarcon, setNovoGarcon] = useState('')
   const [copiado, setCopiado] = useState(null)
+  const [uploadandoLogo, setUploadandoLogo] = useState(false)
+  const [uploadandoBanner, setUploadandoBanner] = useState(false)
   const logoRef = useRef(null)
   const bannerRef = useRef(null)
   const bannerDragRef = useRef(null)
@@ -994,33 +1001,37 @@ function CardapioDigitalConfig() {
     setNovoGarcon('')
   }
 
-  function handleLogo(e) {
+  async function handleLogo(e) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.size > 2 * 1024 * 1024) { alert('Máx 2 MB.'); return }
-    const reader = new FileReader()
-    reader.onload = ev => atualizarCardapioConfig({ logo: ev.target.result })
-    reader.readAsDataURL(file)
+    if (file.size > 5 * 1024 * 1024) { alert('Máx 5 MB.'); return }
     e.target.value = ''
+    setUploadandoLogo(true)
+    try {
+      const url = await uploadImagem(file, 'cardapio', `logo-${auth.userId}`)
+      atualizarCardapioConfig({ logo: url })
+    } catch { alert('Erro ao enviar logo. Tente novamente.') }
+    finally { setUploadandoLogo(false) }
   }
 
-  function handleBanner(e) {
+  async function handleBanner(e) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.size > 4 * 1024 * 1024) { alert('Máx 4 MB para o banner.'); return }
-    const reader = new FileReader()
-    reader.onload = ev => {
+    if (file.size > 8 * 1024 * 1024) { alert('Máx 8 MB para o banner.'); return }
+    e.target.value = ''
+    setUploadandoBanner(true)
+    try {
+      const url = await uploadImagem(file, 'cardapio', `banner-${auth.userId}`)
       const img = new Image()
       img.onload = () => {
         setBannerInfo({ w: img.naturalWidth, h: img.naturalHeight })
         setOffsetY(50)
         setDragMode(true)
       }
-      img.src = ev.target.result
-      atualizarCardapioConfig({ banner: ev.target.result, bannerPos: '50% 50%', bannerAltura: cardapioConfig.bannerAltura || 180 })
-    }
-    reader.readAsDataURL(file)
-    e.target.value = ''
+      img.src = url
+      atualizarCardapioConfig({ banner: url, bannerPos: '50% 50%', bannerAltura: cardapioConfig.bannerAltura || 180 })
+    } catch { alert('Erro ao enviar banner. Tente novamente.') }
+    finally { setUploadandoBanner(false) }
   }
 
   // Carrega dimensões do banner existente no mount
@@ -1198,15 +1209,15 @@ function CardapioDigitalConfig() {
                 }
               </div>
               <div className="flex flex-col gap-1.5">
-                <button className="btn btn-secondary text-xs py-1.5" onClick={() => logoRef.current?.click()}>
-                  <Camera size={12} /> {cardapioConfig.logo ? 'Alterar logo' : 'Enviar logo'}
+                <button className="btn btn-secondary text-xs py-1.5" onClick={() => logoRef.current?.click()} disabled={uploadandoLogo}>
+                  <Camera size={12} /> {uploadandoLogo ? 'Enviando…' : cardapioConfig.logo ? 'Alterar logo' : 'Enviar logo'}
                 </button>
                 {cardapioConfig.logo && (
                   <button className="btn btn-ghost text-xs py-1 px-2" style={{ color: '#ef4444' }} onClick={() => atualizarCardapioConfig({ logo: null })}>
                     <X size={11} /> Remover
                   </button>
                 )}
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>PNG, JPG — máx 2 MB</span>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>PNG, JPG — máx 5 MB</span>
               </div>
             </div>
             <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={handleLogo} />
@@ -1269,8 +1280,8 @@ function CardapioDigitalConfig() {
                 </div>
               ) : (
                 <div className="flex gap-2 items-center flex-wrap">
-                  <button className="btn btn-secondary text-xs py-1.5" onClick={() => bannerRef.current?.click()}>
-                    <Camera size={12} /> {cardapioConfig.banner ? 'Alterar' : 'Enviar banner'}
+                  <button className="btn btn-secondary text-xs py-1.5" onClick={() => bannerRef.current?.click()} disabled={uploadandoBanner}>
+                    <Camera size={12} /> {uploadandoBanner ? 'Enviando…' : cardapioConfig.banner ? 'Alterar' : 'Enviar banner'}
                   </button>
                   {cardapioConfig.banner && (
                     <button className="btn btn-ghost text-xs py-1 px-2" style={{ color: '#ef4444' }}

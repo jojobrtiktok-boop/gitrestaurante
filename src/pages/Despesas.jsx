@@ -172,8 +172,8 @@ function AbaLancamentos() {
         ))}
       </div>
 
-      {/* Filtro categoria */}
-      <div className="flex gap-1 mb-3 flex-wrap">
+      {/* Filtro categoria + botão adicionar */}
+      <div className="flex gap-1 mb-3 flex-wrap items-center">
         {[{ id: 'todas', label: 'Todas' }, ...CATEGORIAS].map(cat => (
           <button key={cat.id} onClick={() => setFiltroCategoria(cat.id)}
             style={{ padding: '5px 14px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: 'none',
@@ -182,6 +182,9 @@ function AbaLancamentos() {
             {cat.label}
           </button>
         ))}
+        <button className="btn btn-primary text-xs ml-auto" style={{ gap: 5 }} onClick={() => setModal('nova')}>
+          <Plus size={13} /> Nova despesa
+        </button>
       </div>
 
       {/* Tabela */}

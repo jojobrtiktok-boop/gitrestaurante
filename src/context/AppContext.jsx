@@ -481,6 +481,7 @@ function rowToDeliveryConfig(row) {
     mensagemIntro: row.mensagem_intro || 'Olá! Gostaria de fazer um pedido:',
     modoIfood: row.modo_ifood || false,
     corDestaqueIfood: row.cor_destaque_ifood || '#ea1d2c',
+    cupons: row.cupons || [],
   }
 }
 
@@ -501,6 +502,7 @@ function deliveryConfigToRow(cfg, uid) {
     mensagem_intro: cfg.mensagemIntro || '',
     modo_ifood: cfg.modoIfood || false,
     cor_destaque_ifood: cfg.corDestaqueIfood || '#ea1d2c',
+    cupons: cfg.cupons || [],
   }
 }
 
@@ -667,7 +669,9 @@ export function AppProvider({ children }) {
         _aplicarSessao(session)
       } else {
         setAuth({ logado: false, usuario: '', isAdmin: false, userId: null })
-        _limparDados()
+        // Não limpa dados em páginas de display (carregadas por token, sem auth)
+        const isDisplayPath = /^\/(cozinha|caixa|telao|pedidos-display)\//.test(window.location.pathname)
+        if (!isDisplayPath) _limparDados()
         setAuthLoading(false)
       }
     })

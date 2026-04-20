@@ -1,14 +1,42 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
-import { Search, Plus, Minus, ShoppingBag, X, Check, Clock } from 'lucide-react'
+import { Search, Plus, Minus, ShoppingBag, X, Check, Clock, Bell } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import ModalOpcoes from '../components/ui/ModalOpcoes.jsx'
 import SeletorCliente from '../components/ui/SeletorCliente.jsx'
 import { hoje } from '../utils/formatacao.js'
 
+function tocarBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    ;[0, 0.18, 0.36].forEach(delay => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain); gain.connect(ctx.destination)
+      osc.frequency.value = 880
+      gain.gain.setValueAtTime(0.4, ctx.currentTime + delay)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.15)
+      osc.start(ctx.currentTime + delay)
+      osc.stop(ctx.currentTime + delay + 0.15)
+    })
+  } catch {}
+}
+
+function pedirNotificacao() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission()
+  }
+}
+
+function dispararNotificacao(msg) {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification('🍽️ Pedido Pronto!', { body: msg, icon: '/favicon.ico' })
+  }
+}
+
 export default function ComandaDigital() {
   const { token } = useParams()
-  const { garcons, pratos, cardapioConfig, adicionarPedido, pedidos, mesas, authLoading, displayReady } = useApp()
+  const { garcons, pratos, cardapioConfig, adicionarPedido, atualizarStatusPedido, pedidos, mesas, authLoading, displayReady } = useApp()
 
   const garcon = garcons.find(g => g.token === token)
 
@@ -21,6 +49,31 @@ export default function ComandaDigital() {
   const [pratoOpcoes, setPratoOpcoes] = useState(null)
   const [mesaId, setMesaId] = useState(null)
   const [clienteId, setClienteId] = useState(null)
+  const prontoIdsRef = useRef(new Set())
+
+  const pedidosHoje = pedidos.filter(p => p.garconId === garcon?.id && p.data === hoje())
+    .sort((a, b) => b.hora.localeCompare(a.hora))
+  const prontos = pedidosHoje.filter(p => p.status === 'pronto' && !p.pago && !p.cancelado)
+
+  // Detecta novos prontos → som + notificação
+  useEffect(() => {
+    pedirNotificacao()
+  }, [])
+  useEffect(() => {
+    if (!garcon) return
+    prontos.forEach(p => {
+      if (!prontoIdsRef.current.has(p.id)) {
+        prontoIdsRef.current.add(p.id)
+        tocarBeep()
+        const mesa = mesas.find(m => m.id === p.mesaId)
+        dispararNotificacao(mesa ? `Mesa ${mesa.nome} — pronto para entregar!` : 'Pedido pronto para entregar!')
+      }
+    })
+    // Remove ids que saíram de pronto (foram entregues)
+    prontoIdsRef.current.forEach(id => {
+      if (!prontos.find(p => p.id === id)) prontoIdsRef.current.delete(id)
+    })
+  }, [prontos.map(p => p.id).join(',')])
 
   if (authLoading || !displayReady) {
     return (
@@ -30,7 +83,7 @@ export default function ComandaDigital() {
     )
   }
 
-  if (!garcon) {
+  if (!garcon && !authLoading && displayReady) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: '#fff', gap: 12 }}>
         <span style={{ fontSize: 48 }}>❌</span>
@@ -39,6 +92,8 @@ export default function ComandaDigital() {
       </div>
     )
   }
+
+  if (!garcon) return null
 
   const config = cardapioConfig
   const destaque = config.corDestaque || '#16a34a'
@@ -122,9 +177,6 @@ export default function ComandaDigital() {
     setTimeout(() => setPedidoEnviado(false), 3000)
   }
 
-  const pedidosHoje = pedidos.filter(p => p.garconId === garcon.id && p.data === hoje())
-    .sort((a, b) => b.hora.localeCompare(a.hora))
-
   return (
     <div style={{ minHeight: '100vh', background: fundo, fontFamily: 'system-ui, sans-serif', paddingBottom: 80 }}>
       {/* Minimal sticky bar */}
@@ -176,6 +228,64 @@ export default function ComandaDigital() {
           <div style={{ background: '#16a34a', borderRadius: 12, padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
             <Check size={16} color="#fff" />
             <span style={{ color: '#fff', fontWeight: 600, fontSize: 14 }}>Pedido enviado com sucesso!</span>
+          </div>
+        )}
+
+        {/* ── Prontos para Entregar ── */}
+        {prontos.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
+              <Bell size={15} color="#16a34a" />
+              <span style={{ fontWeight: 800, fontSize: 14, color: '#16a34a' }}>
+                Pronto para Entregar ({prontos.length})
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {prontos.map(ped => {
+                const mesa = mesas.find(m => m.id === ped.mesaId)
+                return (
+                  <div key={ped.id} style={{
+                    background: 'rgba(22,163,74,0.08)',
+                    border: '2px solid #16a34a',
+                    borderRadius: 14,
+                    padding: '12px 14px',
+                    animation: 'pulsarPronto 2s ease-in-out infinite',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 13, fontWeight: 800, color: '#16a34a' }}>✅ Pronto!</span>
+                        {mesa && (
+                          <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 9px', borderRadius: 20, background: '#16a34a22', color: '#16a34a' }}>
+                            🪑 {mesa.nome}
+                          </span>
+                        )}
+                        <span style={{ fontSize: 11, color: textoSecundario }}>{ped.hora}</span>
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: 10 }}>
+                      {ped.itens.map(item => {
+                        const p = pratos.find(x => x.id === item.pratoId)
+                        return p ? (
+                          <p key={item.uid || item.pratoId} style={{ fontSize: 13, color: textoPrimario, margin: '2px 0', fontWeight: 500 }}>
+                            • {p.nome} ×{item.quantidade}
+                          </p>
+                        ) : null
+                      })}
+                      {ped.obs && <p style={{ fontSize: 11, color: textoSecundario, fontStyle: 'italic', marginTop: 4 }}>"{ped.obs}"</p>}
+                    </div>
+                    <button
+                      onClick={() => atualizarStatusPedido(ped.id, 'completo')}
+                      style={{
+                        width: '100%', padding: '10px', borderRadius: 10, border: 'none',
+                        background: '#16a34a', color: '#fff', fontSize: 14, fontWeight: 800,
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      }}>
+                      <Check size={15} /> Entreguei
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
 
@@ -241,30 +351,38 @@ export default function ComandaDigital() {
         {/* Pedidos do dia */}
         {pedidosHoje.length > 0 && (
           <div>
+            <style>{`@keyframes pulsarPronto { 0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,0.4)} 50%{box-shadow:0 0 0 8px rgba(22,163,74,0)} }`}</style>
             <p style={{ fontWeight: 700, fontSize: 13, color: textoSecundario, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>Pedidos de hoje</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {pedidosHoje.map(ped => (
-                <div key={ped.id} style={{ background: bgCard, border: `1px solid ${border}`, borderRadius: 12, padding: '10px 14px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Clock size={12} style={{ color: textoSecundario }} />
-                      <span style={{ fontSize: 13, fontWeight: 700, color: destaque }}>{ped.hora}</span>
+              {pedidosHoje.filter(p => p.status !== 'pronto').map(ped => {
+                const mesa = mesas.find(m => m.id === ped.mesaId)
+                const statusMap = {
+                  novo:       { label: '🆕 Novo',        bg: '#3b82f622', cor: '#3b82f6' },
+                  preparando: { label: '⏳ Preparando',  bg: '#f59e0b22', cor: '#d97706' },
+                  completo:   { label: '✓ Entregue',     bg: '#16a34a22', cor: '#16a34a' },
+                  cancelado:  { label: '✕ Cancelado',    bg: '#ef444422', cor: '#ef4444' },
+                }
+                const s = ped.cancelado ? statusMap.cancelado : (statusMap[ped.status] || { label: ped.status, bg: '#3b82f622', cor: '#3b82f6' })
+                return (
+                  <div key={ped.id} style={{ background: bgCard, border: `1px solid ${border}`, borderRadius: 12, padding: '10px 14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Clock size={12} style={{ color: textoSecundario }} />
+                        <span style={{ fontSize: 13, fontWeight: 700, color: destaque }}>{ped.hora}</span>
+                        {mesa && <span style={{ fontSize: 11, fontWeight: 700, color: destaque }}>· {mesa.nome}</span>}
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: s.bg, color: s.cor }}>
+                        {s.label}
+                      </span>
                     </div>
-                    <span style={{
-                      fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
-                      background: ped.status === 'entregue' ? '#16a34a22' : ped.status === 'preparo' ? '#f59e0b22' : '#3b82f622',
-                      color: ped.status === 'entregue' ? '#16a34a' : ped.status === 'preparo' ? '#d97706' : '#3b82f6',
-                    }}>
-                      {ped.status === 'entregue' ? '✓ Entregue' : ped.status === 'preparo' ? '⏳ Em preparo' : '🆕 Novo'}
-                    </span>
+                    {ped.itens.map(item => {
+                      const p = pratos.find(x => x.id === item.pratoId)
+                      return p ? <p key={item.uid || item.pratoId} style={{ fontSize: 13, color: textoSecundario }}>• {p.nome} ×{item.quantidade}</p> : null
+                    })}
+                    {ped.obs && <p style={{ fontSize: 12, color: textoSecundario, fontStyle: 'italic', marginTop: 4 }}>"{ped.obs}"</p>}
                   </div>
-                  {ped.itens.map(item => {
-                    const p = pratos.find(x => x.id === item.pratoId)
-                    return p ? <p key={item.pratoId} style={{ fontSize: 13, color: textoSecundario }}>• {p.nome} ×{item.quantidade}</p> : null
-                  })}
-                  {ped.obs && <p style={{ fontSize: 12, color: textoSecundario, fontStyle: 'italic', marginTop: 4 }}>"{ped.obs}"</p>}
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}

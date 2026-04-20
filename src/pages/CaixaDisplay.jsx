@@ -62,12 +62,23 @@ function CardCaixa({ pedido, coluna, pratos, garcons, mesas, onAvancar, onPagar,
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 13, fontWeight: 800, color: coluna.cor }}>{pedido.hora}</span>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 7px', borderRadius: 20 }}>
-            {garcon ? garcon.nome : 'Caixa'}
-          </span>
+          {pedido.canal === 'delivery' ? (
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#f04000', background: 'rgba(240,64,0,0.12)', padding: '1px 7px', borderRadius: 20, border: '1px solid rgba(240,64,0,0.3)' }}>
+              🛵 Delivery
+            </span>
+          ) : (
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 7px', borderRadius: 20 }}>
+              {garcon ? garcon.nome : 'Caixa'}
+            </span>
+          )}
           {mesa && (
             <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', background: 'var(--accent-bg)', padding: '1px 7px', borderRadius: 20, border: '1px solid var(--border-active)' }}>
               {mesa.nome}
+            </span>
+          )}
+          {pedido.clienteNome && (
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', padding: '1px 5px' }}>
+              👤 {pedido.clienteNome}
             </span>
           )}
         </div>
@@ -111,6 +122,21 @@ function CardCaixa({ pedido, coluna, pratos, garcons, mesas, onAvancar, onPagar,
 
       {pedido.obs && (
         <p style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>"{pedido.obs}"</p>
+      )}
+
+      {/* Endereço + WhatsApp (delivery) */}
+      {pedido.canal === 'delivery' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {pedido.enderecoEntrega && (
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>📍 {pedido.enderecoEntrega}</p>
+          )}
+          {pedido.clienteTelefone && (
+            <a href={`https://wa.me/55${pedido.clienteTelefone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#16a34a', background: 'rgba(22,163,74,0.1)', padding: '3px 9px', borderRadius: 8, border: '1px solid rgba(22,163,74,0.25)', textDecoration: 'none', width: 'fit-content' }}>
+              📲 WhatsApp
+            </a>
+          )}
+        </div>
       )}
 
       {/* Rodapé */}
@@ -1008,7 +1034,9 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
           if (temSaindo) return base
           const lastIdx = base.length - 1
           const saindo = { id: 'saindo', label: 'Saindo para Entregar', cor: '#8b5cf6', bgCor: '#8b5cf61a', proximoStatus: base[lastIdx]?.id || null, proximoLabel: base[lastIdx] ? `→ ${base[lastIdx].label}` : null }
-          return [...base.slice(0, lastIdx), saindo, base[lastIdx]]
+          const result = [...base.slice(0, lastIdx), saindo, base[lastIdx]]
+          // Fix: atualiza a coluna anterior ao saindo (ex: 'pronto') para apontar para 'saindo'
+          return result.map((c, i) => i === lastIdx - 1 ? { ...c, proximoStatus: 'saindo', proximoLabel: '→ Saindo para Entregar' } : c)
         })()
 
         function BoardColunas({ lista, titulo, icone, colunas, isDelivery }) {

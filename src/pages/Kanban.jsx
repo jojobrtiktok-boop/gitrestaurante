@@ -237,9 +237,9 @@ const DEFAULT_ETAPAS = [
 const DELIVERY_COLUNAS = [
   { id: 'novo',       label: 'Aguardando',          cor: '#3b82f6', bgCor: '#3b82f61a', proximoStatus: 'preparando', proximoLabel: '→ Preparando' },
   { id: 'preparando', label: 'Preparando',           cor: '#f59e0b', bgCor: '#f59e0b1a', proximoStatus: 'pronto',     proximoLabel: '→ Pronto' },
-  { id: 'pronto',     label: 'Pronto',               cor: '#22c55e', bgCor: '#22c55e1a', proximoStatus: 'saindo',     proximoLabel: '→ Saindo' },
-  { id: 'saindo',     label: 'Saindo para entregar', cor: '#f97316', bgCor: '#f973161a', proximoStatus: 'entregue',   proximoLabel: '→ Entregue' },
-  { id: 'entregue',   label: 'Entregue',             cor: '#16a34a', bgCor: '#16a34a1a', proximoStatus: null,         proximoLabel: null },
+  { id: 'pronto',     label: 'Pronto p/ Entregar',   cor: '#22c55e', bgCor: '#22c55e1a', proximoStatus: 'saindo',     proximoLabel: '→ Saindo' },
+  { id: 'saindo',     label: 'Saindo para Entregar', cor: '#8b5cf6', bgCor: '#8b5cf61a', proximoStatus: 'completo',   proximoLabel: '→ Entregue' },
+  { id: 'completo',   label: 'Entregue',             cor: '#16a34a', bgCor: '#16a34a1a', proximoStatus: null,         proximoLabel: null },
 ]
 
 function tocarBeepPreview() {
@@ -493,10 +493,16 @@ export default function Kanban() {
           </div>
           <div style={{ overflowX: 'auto' }}>
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(${DELIVERY_COLUNAS.length}, minmax(200px, 1fr))`, gap: 12, minWidth: `${DELIVERY_COLUNAS.length * 210}px` }}>
-            {DELIVERY_COLUNAS.map(col => {
+            {DELIVERY_COLUNAS.map((col, colIdx) => {
+              const isPrimeiro = colIdx === 0
               const cards = pedidosFiltrados
-                .filter(p => p.canal === 'delivery' && p.status === col.id && p.status !== 'pendente')
-                .sort((a, b) => (a.timestamps?.[col.id] || '').localeCompare(b.timestamps?.[col.id] || ''))
+                .filter(p => {
+                  if (p.canal !== 'delivery') return false
+                  // primeira coluna: aceita 'novo' e 'pendente'
+                  if (isPrimeiro) return p.status === col.id || p.status === 'pendente'
+                  return p.status === col.id
+                })
+                .sort((a, b) => (a.timestamps?.[col.id] || a.timestamps?.novo || '').localeCompare(b.timestamps?.[col.id] || b.timestamps?.novo || ''))
               return (
                 <div key={col.id} style={{ display: 'flex', flexDirection: 'column' }}>
                   <div style={{

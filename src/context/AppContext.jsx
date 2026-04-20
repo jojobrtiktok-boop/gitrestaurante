@@ -651,20 +651,31 @@ export function AppProvider({ children }) {
       setClientes((clisRaw || []).map(rowToCliente))
       setDisplayReady(true)
 
-      // Realtime para pedidos e mesas
+      // Realtime + polling para pedidos e mesas
+      const desde = () => new Date(Date.now() - 86400000).toISOString().slice(0, 10)
       const fetchDisplay = () => {
-        const desde = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-        supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', desde)
+        supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', desde())
           .then(({ data }) => data && setPedidos(data.map(rowToPedido)))
         supabase.from('mesas').select('*').eq('user_id', uid)
           .then(({ data }) => data && setMesas(data.map(rowToMesa)))
       }
-      supabase.channel(`display-${token}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos', filter: `user_id=eq.${uid}` }, fetchDisplay)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas', filter: `user_id=eq.${uid}` }, fetchDisplay)
-        .subscribe()
-      // Polling fallback a cada 3s caso realtime não funcione
-      setInterval(fetchDisplay, 3000)
+      // Sem filter no channel — anon+RLS não suporta filter no realtime
+      const ch = supabase.channel(`display-${token}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, payload => {
+          if (payload.new?.user_id === uid || payload.old?.user_id === uid) fetchDisplay()
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas' }, payload => {
+          if (payload.new?.user_id === uid || payload.old?.user_id === uid) fetchDisplay()
+        })
+        .subscribe(status => {
+          if (status === 'CHANNEL_ERROR') {
+            setTimeout(() => ch.subscribe(), 3000)
+          }
+        })
+      // Polling fallback a cada 3s
+      const dpollId = setInterval(fetchDisplay, 3000)
+      // Cleanup ao desmontar (se algum dia o componente desmontar)
+      window._displayCleanup = () => { supabase.removeChannel(ch); clearInterval(dpollId) }
     }
     carregarPorToken()
   }, [])
@@ -925,7 +936,11 @@ export function AppProvider({ children }) {
           if (data) setMotoboys(data.map(rowToMotoboy))
         })
       })
-      .subscribe()
+      .subscribe(status => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          setTimeout(() => supabase.removeChannel(channel), 1000)
+        }
+      })
 
     // Polling fallback: busca pedidos e mesas a cada 3s caso realtime falhe
     const hojeStr = new Date().toISOString().slice(0, 10)
@@ -935,10 +950,10 @@ export function AppProvider({ children }) {
           if (data) {
             const pds = data.map(rowToPedido)
             setPedidos(prev => {
-              // Só atualiza se houver diferença para evitar re-renders desnecessários
               if (prev.length !== pds.length) return pds
-              const prevIds = prev.map(p => `${p.id}${p.status}${p.pago}`).join()
-              const newIds  = pds.map(p => `${p.id}${p.status}${p.pago}`).join()
+              const key = p => `${p.id}${p.status}${p.pago}${p.cancelado}`
+              const prevIds = prev.map(key).join()
+              const newIds  = pds.map(key).join()
               return prevIds === newIds ? prev : pds
             })
           }

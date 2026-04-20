@@ -155,21 +155,9 @@ function RelatorioTempo({ pedidos, pratos, dataInicio, dataFim }) {
 
   const maxTotal = ranking[0]?.mediaTotal || 1
 
-  if (pedidosFiltrados.length === 0) {
-    return (
-      <div className="card flex flex-col items-center justify-center py-16 gap-3">
-        <Timer size={32} style={{ color: 'var(--text-muted)', opacity: 0.4 }} />
-        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
-          Nenhum pedido {canal === 'delivery' ? 'delivery' : 'do restaurante'} concluído no período
-        </p>
-        <p style={{ color: 'var(--text-muted)', fontSize: 12 }}>Os dados aparecem quando pedidos passam por todo o fluxo do Kanban</p>
-      </div>
-    )
-  }
-
   return (
     <div className="flex flex-col gap-4">
-      {/* Canal toggle */}
+      {/* Canal toggle — sempre visível */}
       <div className="flex items-center gap-3 flex-wrap">
         <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }}>
           {[{ id: 'restaurante', label: 'Restaurante' }, { id: 'delivery', label: 'Delivery' }].map(op => (
@@ -183,8 +171,18 @@ function RelatorioTempo({ pedidos, pratos, dataInicio, dataFim }) {
         <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{pedidosFiltrados.length} pedidos analisados · {ranking.length} pratos</span>
       </div>
 
+      {pedidosFiltrados.length === 0 && (
+        <div className="card flex flex-col items-center justify-center py-16 gap-3">
+          <Timer size={32} style={{ color: 'var(--text-muted)', opacity: 0.4 }} />
+          <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
+            Nenhum pedido {canal === 'delivery' ? 'delivery' : 'do restaurante'} concluído no período
+          </p>
+          <p style={{ color: 'var(--text-muted)', fontSize: 12 }}>Os dados aparecem quando pedidos passam por todo o fluxo do Kanban</p>
+        </div>
+      )}
+
       {/* Legenda etapas */}
-      <div className="card p-3" style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+      {pedidosFiltrados.length > 0 && <div className="card p-3" style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
         {[
           { cor: '#3b82f6', label: 'Espera (aguardando preparo)' },
           { cor: '#f59e0b', label: canal === 'delivery' ? 'Preparo + entrega' : 'Preparo (na cozinha)' },
@@ -195,7 +193,7 @@ function RelatorioTempo({ pedidos, pratos, dataInicio, dataFim }) {
             <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{label}</span>
           </div>
         ))}
-      </div>
+      </div>}
 
       {/* Ranking */}
       {ranking.map(({ prato, mediaEspera, mediaPreparo, mediaTotal, amostras, pedidos: peds }) => {
@@ -600,6 +598,16 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
       if (prato) l.totalGasto += receitaDaEntrada(entrada, prato)
       if (ped?.id) l.pedidos.add(ped.id)
       l.pratosCount[entrada.pratoId] = (l.pratosCount[entrada.pratoId] || 0) + entrada.quantidade
+    })
+    // Complementar localMap com pedidos locais que tenham clienteId mas não entradasVendas
+    pedidos.filter(p => p.canal !== 'delivery' && !p.cancelado && p.clienteId).forEach(p => {
+      if (!localMap[p.clienteId]) localMap[p.clienteId] = { totalGasto: 0, pedidos: new Set(), pratosCount: {} }
+      const l = localMap[p.clienteId]
+      if (!l.pedidos.has(p.id)) {
+        l.pedidos.add(p.id)
+        l.totalGasto += calcTotalPedido(p)
+        ;(p.itens || []).forEach(item => { l.pratosCount[item.pratoId] = (l.pratosCount[item.pratoId] || 0) + item.quantidade })
+      }
     })
 
     clientes.forEach(c => {
@@ -1311,7 +1319,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
         const todosDelivery = pedidos.filter(p => p.canal === 'delivery' && p.data >= dataInicio && p.data <= dataFim)
         const pedidosDelivery = todosDelivery.filter(p => !p.cancelado).sort((a, b) => b.data.localeCompare(a.data) || b.hora.localeCompare(a.hora))
         const cancelados = todosDelivery.filter(p => p.cancelado)
-        const entregues  = pedidosDelivery.filter(p => p.status === 'entregue')
+        const entregues  = pedidosDelivery.filter(p => p.status === 'entregue' || p.status === 'completo')
         const retiradas  = pedidosDelivery.filter(p => p.enderecoEntrega === 'Retirada no local')
 
         function totalPedido(p) {
@@ -1371,13 +1379,13 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
             <hr/><table>${itensHtml}</table><hr/>
             ${p.obs ? `<p><i>Obs: ${p.obs}</i></p><hr/>` : ''}
             <p class="total">Total: ${total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-            <p style="text-align:center;font-size:11px">Status: ${p.status === 'entregue' ? 'Entregue ✓' : p.status === 'saindo' ? 'Saindo' : p.status === 'pronto' ? 'Pronto' : p.status}</p>
+            <p style="text-align:center;font-size:11px">Status: ${(p.status === 'entregue' || p.status === 'completo') ? 'Entregue ✓' : p.status === 'saindo' ? 'Saindo' : p.status === 'pronto' ? 'Pronto' : p.status}</p>
             <script>window.addEventListener('load',()=>{window.print()})<\/script></body></html>`)
           win.document.close()
         }
 
-        const statusLabel = { pendente: 'Pendente', novo: 'Aguardando', preparando: 'Preparando', pronto: 'Pronto', saindo: 'Saindo', entregue: 'Entregue' }
-        const statusCor   = { pendente: '#a1a1aa', novo: '#3b82f6', preparando: '#f59e0b', pronto: '#22c55e', saindo: '#f97316', entregue: '#16a34a' }
+        const statusLabel = { pendente: 'Pendente', novo: 'Aguardando', preparando: 'Preparando', pronto: 'Pronto', saindo: 'Saindo', entregue: 'Entregue', completo: 'Entregue' }
+        const statusCor   = { pendente: '#a1a1aa', novo: '#3b82f6', preparando: '#f59e0b', pronto: '#22c55e', saindo: '#f97316', entregue: '#16a34a', completo: '#16a34a' }
 
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>

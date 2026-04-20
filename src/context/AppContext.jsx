@@ -1712,10 +1712,11 @@ export function AppProvider({ children }) {
   }
 
   function atualizarStatusPedido(id, status) {
+    const uid = auth.userId || displayUserId
     setPedidos(prev => prev.map(p => {
       if (p.id !== id) return p
       const updated = { ...p, status, timestamps: { ...p.timestamps, [status]: agoraBrasiliaISO() } }
-      if (auth.userId) sbWrite(supabase.from('pedidos').update({ status: updated.status, timestamps: updated.timestamps }).eq('id', id))
+      if (uid) sbWrite(supabase.from('pedidos').update({ status: updated.status, timestamps: updated.timestamps }).eq('id', id))
       return updated
     }))
   }
@@ -1731,10 +1732,11 @@ export function AppProvider({ children }) {
   }
 
   function marcarEntregue(pedidoId) {
+    const uid = auth.userId || displayUserId
     setPedidos(prev => prev.map(p => {
       if (p.id !== pedidoId) return p
-      const updated = { ...p, status: 'entregue', pago: true, timestamps: { ...p.timestamps, entregue: agoraBrasiliaISO() } }
-      if (auth.userId) sbWrite(supabase.from('pedidos').update({ status: 'entregue', pago: true, timestamps: updated.timestamps }).eq('id', pedidoId))
+      const updated = { ...p, status: 'completo', pago: true, timestamps: { ...p.timestamps, completo: agoraBrasiliaISO() } }
+      if (uid) sbWrite(supabase.from('pedidos').update({ status: 'completo', pago: true, timestamps: updated.timestamps }).eq('id', pedidoId))
       return updated
     }))
   }

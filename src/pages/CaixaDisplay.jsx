@@ -34,7 +34,7 @@ function TimerVivo({ isoInicio, limiteAmarelo, limiteVermelho }) {
 }
 
 // ── Card do caixa ─────────────────────────────────────────────────────────────
-function CardCaixa({ pedido, coluna, pratos, garcons, mesas, onAvancar, onPagar, cfg, isNovo = false }) {
+function CardCaixa({ pedido, coluna, pratos, garcons, mesas, onAvancar, onPagar, onAceitar, onCancelar, cfg, isNovo = false }) {
   const garcon = garcons.find(g => g.id === pedido.garconId)
   const mesa = mesas?.find(m => m.id === pedido.mesaId)
   const inicioEstagio = pedido.timestamps?.[coluna.id]
@@ -121,7 +121,19 @@ function CardCaixa({ pedido, coluna, pratos, garcons, mesas, onAvancar, onPagar,
             </span>
           : <span />
         }
-        {!coluna.proximoStatus ? (
+        {/* Pedido pendente: Aceitar / Cancelar */}
+        {pedido.status === 'pendente' ? (
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={() => onCancelar && onCancelar(pedido.id)}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 11px', borderRadius: 8, border: '1.5px solid #ef4444', background: 'transparent', color: '#ef4444', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+              <X size={12} /> Cancelar
+            </button>
+            <button onClick={() => onAceitar && onAceitar(pedido.id)}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 11px', borderRadius: 8, border: 'none', background: '#16a34a', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+              <Check size={12} /> Aceitar
+            </button>
+          </div>
+        ) : !coluna.proximoStatus ? (
           <button onClick={() => onPagar && onPagar(pedido.id)}
             style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 14px', borderRadius: 8, border: 'none', background: '#16a34a', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
             <Check size={12} /> Pago
@@ -941,8 +953,18 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
         const pedidosLocal    = pedidosHoje.filter(p => p.canal !== 'delivery')
         const pedidosDelivery = pedidosHoje.filter(p => p.canal === 'delivery')
 
-        function BoardColunas({ lista, titulo, icone }) {
-          const temPedidos = lista.some(p => !p.cancelado)
+        // Colunas de delivery: injeta "Saindo para Entregar" antes do último estágio
+        const colunasDelivery = (() => {
+          const base = [...colunasDef]
+          const temSaindo = base.some(c => c.id === 'saindo')
+          if (temSaindo) return base
+          const lastIdx = base.length - 1
+          const saindo = { id: 'saindo', label: 'Saindo para Entregar', cor: '#8b5cf6', bgCor: '#8b5cf61a', proximoStatus: base[lastIdx]?.id || null, proximoLabel: base[lastIdx] ? `→ ${base[lastIdx].label}` : null }
+          return [...base.slice(0, lastIdx), saindo, base[lastIdx]]
+        })()
+
+        function BoardColunas({ lista, titulo, icone, colunas }) {
+          const cols = colunas || colunasDef
           return (
             <div style={{ marginBottom: 24 }}>
               {titulo && (
@@ -953,18 +975,19 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
               )}
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: `repeat(${colunasDef.length}, 1fr)`,
+                gridTemplateColumns: `repeat(${cols.length}, 1fr)`,
                 gap: 12,
                 padding: '0 16px',
               }}>
-                {colunasDef.map(col => {
-                  const isPrimeiro = col.id === etapas[0]?.id
+                {cols.map(col => {
+                  const isPrimeiro = col.id === cols[0]?.id
+                  const isUltimo = col.id === cols[cols.length - 1]?.id
                   const cards = lista
                     .filter(p => {
                       const statusMatch = isPrimeiro
                         ? (p.status === col.id || p.status === 'pendente')
                         : p.status === col.id
-                      return statusMatch && (col.id !== lastStageId || !p.pago)
+                      return statusMatch && (!isUltimo || !p.pago)
                     })
                     .sort((a, b) => (a.timestamps?.[col.id] || a.timestamps?.novo || '').localeCompare(b.timestamps?.[col.id] || b.timestamps?.novo || ''))
                   return (
@@ -999,8 +1022,10 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
                               mesas={mesas}
                               onAvancar={atualizarStatusPedido}
                               onPagar={(id) => abrirPagamento(id, null)}
+                              onAceitar={(id) => atualizarStatusPedido(id, 'preparando')}
+                              onCancelar={(id) => cancelarPedido(id)}
                               cfg={cfg}
-                              isNovo={col.id === etapas[0]?.id && (Date.now() - new Date(pedido.timestamps?.novo).getTime()) < 300000}
+                              isNovo={isPrimeiro && (Date.now() - new Date(pedido.timestamps?.novo || pedido.timestamps?.pendente).getTime()) < 300000}
                             />
                           ))
                         }
@@ -1020,7 +1045,7 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
             {pedidosDelivery.length > 0 && (
               <>
                 <div style={{ height: 1, background: 'var(--border)', margin: '0 16px 20px' }} />
-                <BoardColunas lista={pedidosDelivery} titulo="Delivery" icone="🛵" />
+                <BoardColunas lista={pedidosDelivery} titulo="Delivery" icone="🛵" colunas={colunasDelivery} />
               </>
             )}
           </div>

@@ -558,7 +558,12 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
     bgCor: `${e.cor}1a`,
     proximoStatus: arr[i + 1]?.id || null,
     proximoLabel: arr[i + 1] ? `→ ${arr[i + 1].label}` : null,
-  })).filter(c => (cfg.caixaColunasVisiveis || etapas.map(x => x.id)).includes(c.id))
+  })).filter(c => {
+    const visiveis = cfg.caixaColunasVisiveis || etapas.map(x => x.id)
+    // garante que 'pronto' sempre aparece se existir nas etapas
+    if (c.id === 'pronto') return true
+    return visiveis.includes(c.id)
+  })
 
   const h = hoje()
   const pedidosHoje = pedidos.filter(p => p.data === h)
@@ -931,63 +936,90 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
           )}
           </div>
         )
-      })() : (
-        /* Board de pedidos */
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: `repeat(${colunasDef.length}, 1fr)`,
-          gap: 12,
-          padding: 16,
-        }}>
-          <style>{`@keyframes pulseNovo { 0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,0.5)} 50%{box-shadow:0 0 0 8px rgba(22,163,74,0)} }`}</style>
-          {colunasDef.map(col => {
-            const cards = pedidosHoje
-              .filter(p => p.status === col.id && (col.id !== lastStageId || !p.pago))
-              .sort((a, b) => (a.timestamps?.[col.id] || '').localeCompare(b.timestamps?.[col.id] || ''))
+      })() : (() => {
+        /* Board de pedidos — Local + Delivery separados */
+        const pedidosLocal    = pedidosHoje.filter(p => p.canal !== 'delivery')
+        const pedidosDelivery = pedidosHoje.filter(p => p.canal === 'delivery')
 
-            return (
-              <div key={col.id} style={{ display: 'flex', flexDirection: 'column' }}>
-                <div style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '9px 13px', borderRadius: '11px 11px 0 0',
-                  background: col.bgCor, border: `1px solid ${col.cor}33`, borderBottom: 'none',
-                }}>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: col.cor }}>{col.label}</span>
-                  <span style={{ minWidth: 24, height: 24, borderRadius: 20, background: col.cor, color: '#fff', fontWeight: 800, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 7px' }}>
-                    {cards.length}
-                  </span>
+        function BoardColunas({ lista, titulo, icone }) {
+          const temPedidos = lista.some(p => !p.cancelado)
+          return (
+            <div style={{ marginBottom: 24 }}>
+              {titulo && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px 10px' }}>
+                  <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>{icone} {titulo}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>({lista.filter(p => !p.cancelado).length})</span>
                 </div>
-                <div style={{
-                  minHeight: 200, padding: 10,
-                  background: 'var(--bg-hover)',
-                  border: `1px solid ${col.cor}22`, borderTop: 'none',
-                  borderRadius: '0 0 11px 11px',
-                  display: 'flex', flexDirection: 'column', gap: 8,
-                  maxHeight: 'calc(100vh - 160px)', overflowY: 'auto',
-                }}>
-                  {cards.length === 0
-                    ? <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 13 }}>Nenhum pedido</div>
-                    : cards.map(pedido => (
-                      <CardCaixa
-                        key={pedido.id}
-                        pedido={pedido}
-                        coluna={col}
-                        pratos={pratos}
-                        garcons={garcons}
-                        mesas={mesas}
-                        onAvancar={atualizarStatusPedido}
-                        onPagar={(id) => abrirPagamento(id, null)}
-                        cfg={cfg}
-                        isNovo={col.id === etapas[0]?.id && (Date.now() - new Date(pedido.timestamps?.novo).getTime()) < 300000}
-                      />
-                    ))
-                  }
-                </div>
+              )}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${colunasDef.length}, 1fr)`,
+                gap: 12,
+                padding: '0 16px',
+              }}>
+                {colunasDef.map(col => {
+                  const cards = lista
+                    .filter(p => p.status === col.id && (col.id !== lastStageId || !p.pago))
+                    .sort((a, b) => (a.timestamps?.[col.id] || '').localeCompare(b.timestamps?.[col.id] || ''))
+                  return (
+                    <div key={col.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '9px 13px', borderRadius: '11px 11px 0 0',
+                        background: col.bgCor, border: `1px solid ${col.cor}33`, borderBottom: 'none',
+                      }}>
+                        <span style={{ fontWeight: 700, fontSize: 14, color: col.cor }}>{col.label}</span>
+                        <span style={{ minWidth: 24, height: 24, borderRadius: 20, background: col.cor, color: '#fff', fontWeight: 800, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 7px' }}>
+                          {cards.length}
+                        </span>
+                      </div>
+                      <div style={{
+                        minHeight: 120, padding: 10,
+                        background: 'var(--bg-hover)',
+                        border: `1px solid ${col.cor}22`, borderTop: 'none',
+                        borderRadius: '0 0 11px 11px',
+                        display: 'flex', flexDirection: 'column', gap: 8,
+                        maxHeight: 'calc(100vh - 220px)', overflowY: 'auto',
+                      }}>
+                        {cards.length === 0
+                          ? <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text-muted)', fontSize: 13 }}>—</div>
+                          : cards.map(pedido => (
+                            <CardCaixa
+                              key={pedido.id}
+                              pedido={pedido}
+                              coluna={col}
+                              pratos={pratos}
+                              garcons={garcons}
+                              mesas={mesas}
+                              onAvancar={atualizarStatusPedido}
+                              onPagar={(id) => abrirPagamento(id, null)}
+                              cfg={cfg}
+                              isNovo={col.id === etapas[0]?.id && (Date.now() - new Date(pedido.timestamps?.novo).getTime()) < 300000}
+                            />
+                          ))
+                        }
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
-            )
-          })}
-        </div>
-      )}
+            </div>
+          )
+        }
+
+        return (
+          <div style={{ paddingTop: 16 }}>
+            <style>{`@keyframes pulseNovo { 0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,0.5)} 50%{box-shadow:0 0 0 8px rgba(22,163,74,0)} }`}</style>
+            <BoardColunas lista={pedidosLocal} titulo={pedidosDelivery.length > 0 ? 'Local' : null} icone="🍽️" />
+            {pedidosDelivery.length > 0 && (
+              <>
+                <div style={{ height: 1, background: 'var(--border)', margin: '0 16px 20px' }} />
+                <BoardColunas lista={pedidosDelivery} titulo="Delivery" icone="🛵" />
+              </>
+            )}
+          </div>
+        )
+      })()}
     </div>
   )
 }

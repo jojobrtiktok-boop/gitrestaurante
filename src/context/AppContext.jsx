@@ -574,6 +574,8 @@ export function AppProvider({ children }) {
   const [authLoading, setAuthLoading] = useState(true)
   const [loading, setLoading] = useState(false)
   const [displayReady, setDisplayReady] = useState(false)
+  // userId para páginas de display (token-based, sem auth normal)
+  const [displayUserId, setDisplayUserId] = useState(null)
 
   const [ingredientes, setIngredientes] = useState([])
   const [pratos, setPratos] = useState([])
@@ -631,12 +633,14 @@ export function AppProvider({ children }) {
         .maybeSingle()
       if (!kbcRow) { setDisplayReady(true); return }
       const uid = kbcRow.user_id
-      const [{ data: prtsRaw }, { data: garsRaw }, { data: mssRaw }, { data: pdsRaw }, { data: ccsRaw }] = await Promise.all([
+      setDisplayUserId(uid)
+      const [{ data: prtsRaw }, { data: garsRaw }, { data: mssRaw }, { data: pdsRaw }, { data: ccsRaw }, { data: clisRaw }] = await Promise.all([
         supabase.from('pratos').select('*').eq('user_id', uid),
         supabase.from('garcons').select('*').eq('user_id', uid),
         supabase.from('mesas').select('*').eq('user_id', uid),
         supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', new Date(Date.now() - 86400000).toISOString().slice(0, 10)),
         supabase.from('cardapio_config').select('*').eq('user_id', uid).maybeSingle(),
+        supabase.from('clientes').select('*').eq('user_id', uid),
       ])
       setKanbanConfig(migrateKanbanConfig({ ...KANBAN_CONFIG_PADRAO, ...(kbcRow.config || {}) }))
       setPratos((prtsRaw || []).map(rowToPrato))
@@ -644,6 +648,7 @@ export function AppProvider({ children }) {
       setMesas((mssRaw || []).map(rowToMesa))
       setPedidos((pdsRaw || []).map(rowToPedido))
       setCardapioConfig(rowToCardapioConfig(ccsRaw))
+      setClientes((clisRaw || []).map(rowToCliente))
       setDisplayReady(true)
 
       // Realtime para pedidos e mesas
@@ -658,8 +663,8 @@ export function AppProvider({ children }) {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos', filter: `user_id=eq.${uid}` }, fetchDisplay)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas', filter: `user_id=eq.${uid}` }, fetchDisplay)
         .subscribe()
-      // Polling fallback a cada 15s caso realtime não funcione
-      setInterval(fetchDisplay, 15000)
+      // Polling fallback a cada 3s caso realtime não funcione
+      setInterval(fetchDisplay, 3000)
     }
     carregarPorToken()
   }, [])
@@ -922,7 +927,7 @@ export function AppProvider({ children }) {
       })
       .subscribe()
 
-    // Polling fallback: busca pedidos e mesas a cada 20s caso realtime falhe
+    // Polling fallback: busca pedidos e mesas a cada 3s caso realtime falhe
     const hojeStr = new Date().toISOString().slice(0, 10)
     const pollId = setInterval(() => {
       supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', hojeStr)
@@ -940,7 +945,7 @@ export function AppProvider({ children }) {
         })
       supabase.from('mesas').select('*').eq('user_id', uid)
         .then(({ data }) => { if (data) setMesas(data.map(rowToMesa)) })
-    }, 20000)
+    }, 3000)
 
     return () => { supabase.removeChannel(channel); clearInterval(pollId) }
   }, [auth.userId])
@@ -1492,24 +1497,27 @@ export function AppProvider({ children }) {
   function adicionarCliente({ nome, telefone, aniversario } = {}) {
     // aceita também string legada: adicionarCliente('Nome')
     if (typeof arguments[0] === 'string') return adicionarCliente({ nome: arguments[0] })
+    const uid = auth.userId || displayUserId
     const novo = { id: crypto.randomUUID(), nome: (nome || '').trim(), telefone: telefone?.trim() || null, aniversario: aniversario || null, criadoEm: agoraBrasiliaISO() }
     setClientes(prev => [...prev, novo])
-    if (auth.userId) sbWrite(supabase.from('clientes').insert(clienteToRow(novo, auth.userId)))
+    if (uid) sbWrite(supabase.from('clientes').insert(clienteToRow(novo, uid)))
     return novo
   }
 
   function editarCliente(id, updates) {
+    const uid = auth.userId || displayUserId
     setClientes(prev => prev.map(c => {
       if (c.id !== id) return c
       const updated = { ...c, ...updates }
-      if (auth.userId) sbWrite(supabase.from('clientes').update(clienteToRow(updated, auth.userId)).eq('id', id))
+      if (uid) sbWrite(supabase.from('clientes').update(clienteToRow(updated, uid)).eq('id', id))
       return updated
     }))
   }
 
   function removerCliente(id) {
+    const uid = auth.userId || displayUserId
     setClientes(prev => prev.filter(c => c.id !== id))
-    if (auth.userId) sbWrite(supabase.from('clientes').delete().eq('id', id).eq('user_id', auth.userId))
+    if (uid) sbWrite(supabase.from('clientes').delete().eq('id', id).eq('user_id', uid))
   }
 
   // ── Caixa Inicial ─────────────────────────────────────────────────────
@@ -1554,6 +1562,7 @@ export function AppProvider({ children }) {
 
   // ── Pedidos ───────────────────────────────────────────────────────────
   function adicionarPedido(garconId, itens, obs, mesaId = null, clienteId = null) {
+    const uid = auth.userId || displayUserId
     const dataAtual = hojeBrasilia()
     const hora = horaAtual()
     const agora = agoraBrasiliaISO()
@@ -1582,12 +1591,12 @@ export function AppProvider({ children }) {
       setMesas(prev => prev.map(m => {
         if (m.id !== mesaId) return m
         const updated = { ...m, status: 'ocupada', inicioSessao: m.inicioSessao || agoraBrasiliaISO() }
-        if (auth.userId) sbWrite(supabase.from('mesas').update(mesaToRow(updated, auth.userId)).eq('id', m.id))
+        if (uid) sbWrite(supabase.from('mesas').update(mesaToRow(updated, uid)).eq('id', m.id))
         return updated
       }))
     }
     setPedidos(prev => [...prev, pedido])
-    if (auth.userId) sbWrite(supabase.from('pedidos').insert(pedidoToRow(pedido, auth.userId)))
+    if (uid) sbWrite(supabase.from('pedidos').insert(pedidoToRow(pedido, uid)))
 
     itensComCusto.forEach(({ pratoId, quantidade, opcoes }) => {
       const extrasUnit = (opcoes || []).reduce((s, o) => s + (o.precoExtra || 0), 0)

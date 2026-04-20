@@ -634,13 +634,14 @@ export function AppProvider({ children }) {
       if (!kbcRow) { setDisplayReady(true); return }
       const uid = kbcRow.user_id
       setDisplayUserId(uid)
-      const [{ data: prtsRaw }, { data: garsRaw }, { data: mssRaw }, { data: pdsRaw }, { data: ccsRaw }, { data: clisRaw }] = await Promise.all([
+      const [{ data: prtsRaw }, { data: garsRaw }, { data: mssRaw }, { data: pdsRaw }, { data: ccsRaw }, { data: clisRaw }, { data: motoboysRaw }] = await Promise.all([
         supabase.from('pratos').select('*').eq('user_id', uid),
         supabase.from('garcons').select('*').eq('user_id', uid),
         supabase.from('mesas').select('*').eq('user_id', uid),
         supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', new Date(Date.now() - 86400000).toISOString().slice(0, 10)),
         supabase.from('cardapio_config').select('*').eq('user_id', uid).maybeSingle(),
         supabase.from('clientes').select('*').eq('user_id', uid),
+        supabase.from('motoboys').select('*').eq('user_id', uid),
       ])
       setKanbanConfig(migrateKanbanConfig({ ...KANBAN_CONFIG_PADRAO, ...(kbcRow.config || {}) }))
       setPratos((prtsRaw || []).map(rowToPrato))
@@ -649,6 +650,7 @@ export function AppProvider({ children }) {
       setPedidos((pdsRaw || []).map(rowToPedido))
       setCardapioConfig(rowToCardapioConfig(ccsRaw))
       setClientes((clisRaw || []).map(rowToCliente))
+      setMotoboys((motoboysRaw || []).map(rowToMotoboy))
       setDisplayReady(true)
 
       // Realtime + polling para pedidos e mesas
@@ -1719,10 +1721,11 @@ export function AppProvider({ children }) {
   }
 
   function atribuirMotoboy(pedidoId, motoboyId) {
+    const uid = auth.userId || displayUserId
     setPedidos(prev => prev.map(p => {
       if (p.id !== pedidoId) return p
       const updated = { ...p, motoboyId, status: 'saindo', timestamps: { ...p.timestamps, saindo: agoraBrasiliaISO() } }
-      if (auth.userId) sbWrite(supabase.from('pedidos').update({ motoboy_id: motoboyId, status: 'saindo', timestamps: updated.timestamps }).eq('id', pedidoId))
+      if (uid) sbWrite(supabase.from('pedidos').update({ motoboy_id: motoboyId, status: 'saindo', timestamps: updated.timestamps }).eq('id', pedidoId))
       return updated
     }))
   }
@@ -1842,7 +1845,7 @@ export function AppProvider({ children }) {
       if (auth.userId) sbWrite(supabase.from('pedidos').update({ pago: true, forma_pagamento: formaPagamento || null }).eq('id', p.id))
       return updated
     }))
-    setStatusMesa(mesaId, 'livre')
+    // NÃO libera a mesa aqui — o display decide com "Deixar Livre" / "Manter Ocupada"
   }
 
   // ── Despesas ──────────────────────────────────────────────────────────

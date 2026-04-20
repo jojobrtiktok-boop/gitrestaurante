@@ -459,7 +459,7 @@ function ModalPagamento({ total, cfg, pagamentosConfig, onConfirmar, onFechar })
 
 export default function CaixaDisplay() {
   const { token } = useParams()
-  const { pedidos, pratos, garcons, mesas, clientes, kanbanConfig, pagamentosConfig, atualizarStatusPedido, marcarPedidoPago, pagarMesa, cancelarPedido, adicionarMesa, setStatusMesa, adicionarCliente, authLoading, displayReady } = useApp()
+  const { pedidos, pratos, garcons, mesas, clientes, kanbanConfig, pagamentosConfig, atualizarStatusPedido, atribuirMotoboy, marcarPedidoPago, pagarMesa, cancelarPedido, adicionarMesa, setStatusMesa, adicionarCliente, authLoading, displayReady, motoboys } = useApp()
   const cfg = kanbanConfig
 
   const [abaAtiva, setAbaAtiva] = useState('pedidos') // 'pedidos' | 'novo-pedido'
@@ -467,6 +467,7 @@ export default function CaixaDisplay() {
   const [mesaAberSoPedidos, setMesaAberSoPedidos] = useState(null)
   const [pagarMesaConfirm, setPagarMesaConfirm] = useState(null) // { pedidoId, mesaId }
   const [modalPagamento, setModalPagamento] = useState(null) // { pedidoId, mesaId?, total }
+  const [modalMotoboy, setModalMotoboy] = useState(null) // { pedidoId } — seletor de motoboy para delivery saindo
 
   function calcTotal(pedido) {
     return (pedido.itens || []).reduce((s, i) => {
@@ -588,8 +589,55 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
     return ss + (pr.precoVenda + extras) * i.quantidade
   }, 0), 0)
 
+  // Intercepta avanço de delivery pronto→saindo para mostrar seletor de motoboy
+  function handleAvancarDelivery(pedidoId, novoStatus) {
+    const pedido = pedidos.find(p => p.id === pedidoId)
+    if (pedido?.canal === 'delivery' && pedido?.status === 'pronto' && novoStatus === 'saindo') {
+      setModalMotoboy({ pedidoId })
+    } else {
+      atualizarStatusPedido(pedidoId, novoStatus)
+    }
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-page)', color: 'var(--text-primary)', fontFamily: "'Inter', system-ui, sans-serif" }}>
+      {/* Modal seletor de motoboy */}
+      {modalMotoboy && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setModalMotoboy(null)}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 18, padding: '24px 20px', maxWidth: 340, width: '90%', display: 'flex', flexDirection: 'column', gap: 14 }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--text-primary)' }}>🛵 Selecionar Entregador</span>
+              <button onClick={() => setModalMotoboy(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={18} /></button>
+            </div>
+            {motoboys.length === 0 ? (
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', margin: 0 }}>Nenhum entregador cadastrado</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {motoboys.map(m => (
+                  <button key={m.id} onClick={() => { atribuirMotoboy(modalMotoboy.pedidoId, m.id); setModalMotoboy(null) }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--border)', background: 'var(--bg-hover)', cursor: 'pointer', textAlign: 'left', transition: 'all .1s' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = m.cor || '#8b5cf6'; e.currentTarget.style.background = `${m.cor || '#8b5cf6'}18` }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg-hover)' }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: m.cor || '#8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 14, flexShrink: 0 }}>
+                      {m.nome.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{m.nome}</div>
+                      {m.telefone && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{m.telefone}</div>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+            <button onClick={() => { atualizarStatusPedido(modalMotoboy.pedidoId, 'saindo'); setModalMotoboy(null) }}
+              style={{ padding: '8px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }}>
+              Prosseguir sem entregador
+            </button>
+          </div>
+        </div>
+      )}
       {modalPagamento && (
         <ModalPagamento
           total={modalPagamento.total}
@@ -963,7 +1011,7 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
           return [...base.slice(0, lastIdx), saindo, base[lastIdx]]
         })()
 
-        function BoardColunas({ lista, titulo, icone, colunas }) {
+        function BoardColunas({ lista, titulo, icone, colunas, isDelivery }) {
           const cols = colunas || colunasDef
           return (
             <div style={{ marginBottom: 24 }}>
@@ -1012,22 +1060,35 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
                       }}>
                         {cards.length === 0
                           ? <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text-muted)', fontSize: 13 }}>—</div>
-                          : cards.map(pedido => (
-                            <CardCaixa
-                              key={pedido.id}
-                              pedido={pedido}
-                              coluna={col}
-                              pratos={pratos}
-                              garcons={garcons}
-                              mesas={mesas}
-                              onAvancar={atualizarStatusPedido}
-                              onPagar={(id) => abrirPagamento(id, null)}
-                              onAceitar={(id) => atualizarStatusPedido(id, 'preparando')}
-                              onCancelar={(id) => cancelarPedido(id)}
-                              cfg={cfg}
-                              isNovo={isPrimeiro && (Date.now() - new Date(pedido.timestamps?.novo || pedido.timestamps?.pendente).getTime()) < 300000}
-                            />
-                          ))
+                          : cards.map(pedido => {
+                            const motoboy = motoboys?.find(m => m.id === pedido.motoboyId)
+                            return (
+                              <div key={pedido.id}>
+                                <CardCaixa
+                                  pedido={pedido}
+                                  coluna={col}
+                                  pratos={pratos}
+                                  garcons={garcons}
+                                  mesas={mesas}
+                                  onAvancar={isDelivery ? handleAvancarDelivery : atualizarStatusPedido}
+                                  onPagar={(id) => abrirPagamento(id, null)}
+                                  onAceitar={(id) => atualizarStatusPedido(id, 'preparando')}
+                                  onCancelar={(id) => cancelarPedido(id)}
+                                  cfg={cfg}
+                                  isNovo={isPrimeiro && (Date.now() - new Date(pedido.timestamps?.novo || pedido.timestamps?.pendente).getTime()) < 300000}
+                                />
+                                {/* Entregador na coluna saindo */}
+                                {col.id === 'saindo' && motoboy && (
+                                  <div style={{ marginTop: -4, padding: '4px 10px', borderRadius: '0 0 10px 10px', background: `${motoboy.cor || '#8b5cf6'}18`, border: `1px solid ${motoboy.cor || '#8b5cf6'}33`, borderTop: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <div style={{ width: 18, height: 18, borderRadius: '50%', background: motoboy.cor || '#8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 9, flexShrink: 0 }}>
+                                      {motoboy.nome.charAt(0).toUpperCase()}
+                                    </div>
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: motoboy.cor || '#8b5cf6' }}>🛵 {motoboy.nome}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })
                         }
                       </div>
                     </div>
@@ -1045,7 +1106,7 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
             {pedidosDelivery.length > 0 && (
               <>
                 <div style={{ height: 1, background: 'var(--border)', margin: '0 16px 20px' }} />
-                <BoardColunas lista={pedidosDelivery} titulo="Delivery" icone="🛵" colunas={colunasDelivery} />
+                <BoardColunas lista={pedidosDelivery} titulo="Delivery" icone="🛵" colunas={colunasDelivery} isDelivery />
               </>
             )}
           </div>

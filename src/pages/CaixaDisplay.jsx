@@ -958,9 +958,15 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
                 padding: '0 16px',
               }}>
                 {colunasDef.map(col => {
+                  const isPrimeiro = col.id === etapas[0]?.id
                   const cards = lista
-                    .filter(p => p.status === col.id && (col.id !== lastStageId || !p.pago))
-                    .sort((a, b) => (a.timestamps?.[col.id] || '').localeCompare(b.timestamps?.[col.id] || ''))
+                    .filter(p => {
+                      const statusMatch = isPrimeiro
+                        ? (p.status === col.id || p.status === 'pendente')
+                        : p.status === col.id
+                      return statusMatch && (col.id !== lastStageId || !p.pago)
+                    })
+                    .sort((a, b) => (a.timestamps?.[col.id] || a.timestamps?.novo || '').localeCompare(b.timestamps?.[col.id] || b.timestamps?.novo || ''))
                   return (
                     <div key={col.id} style={{ display: 'flex', flexDirection: 'column' }}>
                       <div style={{

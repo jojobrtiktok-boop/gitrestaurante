@@ -605,7 +605,8 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
   })
 
   const h = hoje()
-  const pedidosHoje = pedidos.filter(p => p.data === h)
+  const hUtc = new Date().toISOString().slice(0, 10)
+  const pedidosHoje = pedidos.filter(p => p.data === h || p.data === hUtc)
 
   const stats = etapas.reduce((acc, e) => ({ ...acc, [e.id]: pedidosHoje.filter(p => p.status === e.id).length }), {})
   const totalHoje = pedidosHoje.reduce((s, p) => s + (p.itens || []).reduce((ss, i) => {

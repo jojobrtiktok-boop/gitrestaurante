@@ -115,6 +115,15 @@ CREATE TABLE IF NOT EXISTS pedidos (
 );
 ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS cancelado BOOLEAN DEFAULT FALSE;
 ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS timestamps JSONB DEFAULT '{}';
+-- Colunas delivery (adicionadas na v2)
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS canal TEXT DEFAULT 'local';
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS motoboy_id UUID;
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS cliente_nome TEXT;
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS cliente_telefone TEXT;
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS endereco_entrega TEXT;
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS forma_pagamento TEXT;
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS ifood_order_id TEXT;
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS ifood_short_id TEXT;
 
 -- cardapio_config (armazena config completa como JSONB)
 CREATE TABLE IF NOT EXISTS cardapio_config (

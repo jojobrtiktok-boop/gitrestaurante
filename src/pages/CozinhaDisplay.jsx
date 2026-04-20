@@ -130,8 +130,8 @@ function CardCozinha({ pedido, coluna, pratos, garcons, mesas, onAvancar, cfg })
         </div>
       )}
 
-      {/* Botão avançar */}
-      {coluna.proximoStatus && !pedido.cancelado && (
+      {/* Botão avançar — delivery em "pronto" fica aguardando o balcão/motoboy */}
+      {coluna.proximoStatus && !pedido.cancelado && !(pedido.canal === 'delivery' && coluna.id === 'pronto') && (
         <button onClick={() => onAvancar(pedido.id, coluna.proximoStatus)}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -142,6 +142,11 @@ function CardCozinha({ pedido, coluna, pratos, garcons, mesas, onAvancar, cfg })
           {coluna.proximoStatus === 'preparando' ? <ChefHat size={16} /> : <Check size={16} />}
           {coluna.proximoLabel}
         </button>
+      )}
+      {pedido.canal === 'delivery' && coluna.id === 'pronto' && !pedido.cancelado && (
+        <div style={{ padding: '7px 12px', borderRadius: 10, background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.25)', marginTop: 4, textAlign: 'center' }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#8b5cf6' }}>🛵 Aguardando entregador</span>
+        </div>
       )}
     </div>
   )
@@ -215,7 +220,8 @@ export default function CozinhaDisplay() {
   })).filter(c => (cfg.colunasVisivelCozinha || etapas.slice(0, -1).map(x => x.id)).includes(c.id))
 
   const h = hoje()
-  const pedidosHoje = pedidos.filter(p => p.data === h)
+  const hUtc = new Date().toISOString().slice(0, 10)
+  const pedidosHoje = pedidos.filter(p => p.data === h || p.data === hUtc)
 
   const totalNovos = pedidosHoje.filter(p => p.status === 'novo').length
   const totalPrep  = pedidosHoje.filter(p => p.status === 'preparando').length

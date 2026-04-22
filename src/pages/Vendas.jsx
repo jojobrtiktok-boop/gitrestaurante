@@ -1081,7 +1081,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
             )}
           </div>
         </div>
-      ) : (
+      ) : aba === 'lancamentos' ? (
       <>
       <div className="card p-0 overflow-hidden">
         {entradasDia.length === 0 ? (
@@ -1303,7 +1303,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
       )}
 
       </>
-      )} {/* fecha aba lancamentos */}
+      ) : null} {/* fecha aba lancamentos */}
 
       {aba === 'tempo' && (
         <RelatorioTempo

@@ -28,6 +28,7 @@ const Configuracoes    = lazy(() => import('./pages/Configuracoes.jsx'))
 const Displays         = lazy(() => import('./pages/Displays.jsx'))
 const AdminPanel       = lazy(() => import('./pages/AdminPanel.jsx'))
 const Despesas         = lazy(() => import('./pages/Despesas.jsx'))
+const WhatsApp         = lazy(() => import('./pages/WhatsApp.jsx'))
 const ResetPassword    = lazy(() => import('./pages/ResetPassword.jsx'))
 const EmailConfirmado  = lazy(() => import('./pages/EmailConfirmado.jsx'))
 
@@ -73,6 +74,7 @@ export default function App() {
             <Route path="/mercadorias" element={<Mercadorias />} />
             <Route path="/receitas" element={<Receitas />} />
             <Route path="/cardapio" element={<Cardapio />} />
+            <Route path="/whatsapp" element={<WhatsApp />} />
             <Route path="/vendas" element={<Vendas />} />
             <Route path="/kanban" element={<Kanban />} />
             <Route path="/pdv" element={<PDV />} />

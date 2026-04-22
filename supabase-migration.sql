@@ -15,10 +15,14 @@ CREATE TABLE IF NOT EXISTS ingredientes (
   quantidade_estoque NUMERIC DEFAULT 0,
   estoque_minimo NUMERIC DEFAULT 0,
   fator_correcao NUMERIC DEFAULT 1,
+  perecivel BOOLEAN DEFAULT FALSE,
+  percentual_perda NUMERIC DEFAULT 0,
   criado_em TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE ingredientes ADD COLUMN IF NOT EXISTS estoque_minimo NUMERIC DEFAULT 0;
 ALTER TABLE ingredientes ADD COLUMN IF NOT EXISTS fator_correcao NUMERIC DEFAULT 1;
+ALTER TABLE ingredientes ADD COLUMN IF NOT EXISTS perecivel BOOLEAN DEFAULT FALSE;
+ALTER TABLE ingredientes ADD COLUMN IF NOT EXISTS percentual_perda NUMERIC DEFAULT 0;
 
 -- pratos
 CREATE TABLE IF NOT EXISTS pratos (
@@ -153,8 +157,12 @@ CREATE TABLE IF NOT EXISTS clientes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   nome TEXT NOT NULL,
+  telefone TEXT,
+  aniversario TEXT,
   criado_em TIMESTAMPTZ DEFAULT NOW()
 );
+ALTER TABLE clientes ADD COLUMN IF NOT EXISTS telefone TEXT;
+ALTER TABLE clientes ADD COLUMN IF NOT EXISTS aniversario TEXT;
 
 CREATE TABLE IF NOT EXISTS sessoes_mesas (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -255,6 +263,68 @@ CREATE TABLE IF NOT EXISTS menu_slugs (
   user_id TEXT NOT NULL
 );
 
+-- profiles (espelho público do auth.users)
+CREATE TABLE IF NOT EXISTS profiles (
+  id            UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  username      TEXT UNIQUE,
+  nome_exibicao TEXT,
+  foto          TEXT,
+  email         TEXT,
+  is_admin      BOOLEAN DEFAULT FALSE,
+  criado_em     TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- movimentos_caixa (sangrias / suprimentos)
+CREATE TABLE IF NOT EXISTS movimentos_caixa (
+  id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id   UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  data      DATE NOT NULL,
+  hora      TEXT,
+  tipo      TEXT NOT NULL,
+  valor     NUMERIC DEFAULT 0,
+  descricao TEXT DEFAULT '',
+  criado_em TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- pagamentos_config (MP, Efí Pay, etc. — armazenado como JSONB)
+CREATE TABLE IF NOT EXISTS pagamentos_config (
+  id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  config  JSONB DEFAULT '{}'
+);
+
+-- Trigger: auto-cria profile quando usuário se cadastra
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, username, nome_exibicao)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'username', split_part(NEW.email, '@', 1)),
+    COALESCE(NEW.raw_user_meta_data->>'nome_exibicao', NEW.raw_user_meta_data->>'username', split_part(NEW.email, '@', 1))
+  )
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Backfill profiles para usuários já existentes
+INSERT INTO public.profiles (id, email, username, nome_exibicao)
+SELECT
+  u.id,
+  u.email,
+  COALESCE(u.raw_user_meta_data->>'username', split_part(u.email, '@', 1)),
+  COALESCE(u.raw_user_meta_data->>'nome_exibicao', u.raw_user_meta_data->>'username', split_part(u.email, '@', 1))
+FROM auth.users u
+WHERE NOT EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = u.id)
+ON CONFLICT (id) DO NOTHING;
+
 -- ── RLS: habilitar em todas ──────────────────────────────────────
 
 ALTER TABLE ingredientes ENABLE ROW LEVEL SECURITY;
@@ -279,6 +349,9 @@ ALTER TABLE caixa_inicial ENABLE ROW LEVEL SECURITY;
 ALTER TABLE impostos_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE menu_slugs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE delivery_slugs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE movimentos_caixa ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pagamentos_config ENABLE ROW LEVEL SECURITY;
 
 -- ── Policies: own_data (cada user vê só seus dados) ─────────────
 
@@ -289,7 +362,8 @@ BEGIN
     'ingredientes','pratos','compras','despesas','despesas_fixas',
     'entradas_vendas','registros_vendas','pedidos','mesas','sessoes_mesas',
     'garcons','clientes','cardapio_config','config_delivery','kanban_config',
-    'configuracao_geral','notif_config','lista_compras','caixa_inicial','impostos_config'
+    'configuracao_geral','notif_config','lista_compras','caixa_inicial','impostos_config',
+    'movimentos_caixa','pagamentos_config'
   ] LOOP
     EXECUTE format('
       DROP POLICY IF EXISTS "own_data" ON %I;
@@ -297,6 +371,12 @@ BEGIN
     ', t, t);
   END LOOP;
 END $$;
+
+-- profiles: cada usuário vê/edita só o próprio
+DROP POLICY IF EXISTS "own_profile" ON profiles;
+CREATE POLICY "own_profile" ON profiles FOR ALL
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
 
 -- slug tables: leitura pública, escrita autenticada
 DROP POLICY IF EXISTS "public_read" ON menu_slugs;
@@ -345,3 +425,6 @@ CREATE POLICY "motoboy_public_update" ON motoboys FOR UPDATE USING (true) WITH C
 
 -- Realtime para o dono ver posição em tempo real
 ALTER PUBLICATION supabase_realtime ADD TABLE motoboys;
+
+-- ── Realtime adicional ───────────────────────────────────────────────────
+ALTER PUBLICATION supabase_realtime ADD TABLE movimentos_caixa;

@@ -256,9 +256,26 @@ function TabMotoboys() {
           </button>
         </div>
 
-        <p className="text-xs mt-3" style={{ color: 'var(--text-muted)', lineHeight: 1.6 }}>
-          Copie o link e envie para o motoboy. Ele abre no celular, ativa o rastreamento e aparece no mapa acima.
-        </p>
+        {/* Como funciona — explicação simples */}
+        <div style={{ marginTop: 16, padding: '14px 16px', borderRadius: 12, background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            📱 Como funciona o app do motoboy
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[
+              { icon: '1️⃣', texto: 'Você copia o link e manda pelo WhatsApp pro motoboy.' },
+              { icon: '2️⃣', texto: 'Ele abre o link no celular e toca em "Ativar Rastreamento". O celular vai pedir permissão de localização — ele precisa aceitar.' },
+              { icon: '3️⃣', texto: 'A cada 15 segundos o app manda a posição dele pra você. É como um ping automático: o celular fala "estou aqui" e aparece no mapa.' },
+              { icon: '4️⃣', texto: 'A tela do celular fica acesa sozinha enquanto o rastreamento estiver ligado — igual ao Waze. Ele não precisa fazer nada.' },
+              { icon: '⚠️', texto: 'Importante: o app precisa estar aberto na tela. Se fechar o navegador ou a tela apagar, o rastreamento para. O motoboy deve deixar o celular no suporte com a tela virada pra ele durante a entrega.' },
+            ].map((item, i) => (
+              <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 14, flexShrink: 0, lineHeight: 1.5 }}>{item.icon}</span>
+                <p style={{ fontSize: 12, color: item.icon === '⚠️' ? '#f59e0b' : 'var(--text-muted)', margin: 0, lineHeight: 1.6 }}>{item.texto}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )

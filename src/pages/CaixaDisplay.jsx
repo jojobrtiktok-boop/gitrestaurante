@@ -63,9 +63,15 @@ function CardCaixa({ pedido, coluna, pratos, garcons, mesas, onAvancar, onPagar,
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 13, fontWeight: 800, color: coluna.cor }}>{pedido.hora}</span>
           {pedido.canal === 'delivery' ? (
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#f04000', background: 'rgba(240,64,0,0.12)', padding: '1px 7px', borderRadius: 20, border: '1px solid rgba(240,64,0,0.3)' }}>
-              🛵 Delivery
-            </span>
+            pedido.enderecoEntrega === 'Retirada no local' ? (
+              <span style={{ fontSize: 10, fontWeight: 900, color: '#7c3aed', background: 'rgba(124,58,237,0.15)', padding: '2px 9px', borderRadius: 20, border: '2px solid rgba(124,58,237,0.5)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                🏪 Retirada
+              </span>
+            ) : (
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#f04000', background: 'rgba(240,64,0,0.12)', padding: '1px 7px', borderRadius: 20, border: '1px solid rgba(240,64,0,0.3)' }}>
+                🛵 Delivery
+              </span>
+            )
           ) : (
             <span style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 7px', borderRadius: 20 }}>
               {garcon ? garcon.nome : 'Caixa'}
@@ -170,7 +176,9 @@ function CardCaixa({ pedido, coluna, pratos, garcons, mesas, onAvancar, onPagar,
               <button onClick={() => onAvancar(pedido.id, coluna.proximoStatus)}
                 style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 8, border: 'none', background: coluna.cor, color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                 {coluna.proximoStatus === 'preparando' ? <ChefHat size={12} /> : <Check size={12} />}
-                {coluna.proximoLabel}
+                {coluna.proximoStatus === 'saindo' && pedido.enderecoEntrega === 'Retirada no local'
+                  ? '→ Entregue'
+                  : coluna.proximoLabel}
               </button>
             )}
             {!cfg.caixaPodeAvancar && (
@@ -617,10 +625,18 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
   }, 0), 0)
 
   // Intercepta avanço de delivery pronto→saindo para mostrar seletor de motoboy
+  // Para retiradas: pula "saindo" e vai direto pro último status (completo/entregue)
   function handleAvancarDelivery(pedidoId, novoStatus) {
     const pedido = pedidos.find(p => p.id === pedidoId)
     if (pedido?.canal === 'delivery' && pedido?.status === 'pronto' && novoStatus === 'saindo') {
-      setModalMotoboy({ pedidoId })
+      if (pedido?.enderecoEntrega === 'Retirada no local') {
+        // Retirada: pula saindo, vai direto pro último estágio
+        const etapas = kanbanConfig?.etapas || []
+        const ultimoStatus = etapas[etapas.length - 1]?.id || 'completo'
+        atualizarStatusPedido(pedidoId, ultimoStatus)
+      } else {
+        setModalMotoboy({ pedidoId })
+      }
     } else {
       atualizarStatusPedido(pedidoId, novoStatus)
     }

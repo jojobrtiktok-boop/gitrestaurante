@@ -928,10 +928,13 @@ export function AppProvider({ children }) {
           if (data) setMesas(data.map(rowToMesa))
         })
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'entradas_vendas', filter: `user_id=eq.${uid}` }, () => {
-        supabase.from('entradas_vendas').select('*').eq('user_id', uid).then(({ data }) => {
-          if (data) setEntradasVendas(data.map(rowToEntradaVenda))
-        })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'entradas_vendas' }, payload => {
+        // Verifica user_id manualmente pois filter pode falhar com inserções anon (display page)
+        if (payload.new?.user_id === uid || payload.old?.user_id === uid) {
+          supabase.from('entradas_vendas').select('*').eq('user_id', uid).then(({ data }) => {
+            if (data) setEntradasVendas(data.map(rowToEntradaVenda))
+          })
+        }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'motoboys', filter: `user_id=eq.${uid}` }, () => {
         supabase.from('motoboys').select('*').eq('user_id', uid).then(({ data }) => {
@@ -945,8 +948,10 @@ export function AppProvider({ children }) {
       })
 
     // Polling fallback: busca pedidos e mesas a cada 3s caso realtime falhe
-    const hojeStr = new Date().toISOString().slice(0, 10)
+    // IMPORTANTE: usa hojeBrasilia() para evitar erro de fuso horário (UTC vs BRT)
+    const getHojeStr = () => hojeBrasilia()
     const pollId = setInterval(() => {
+      const hojeStr = getHojeStr()
       supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', hojeStr)
         .then(({ data }) => {
           if (data) {
@@ -964,7 +969,21 @@ export function AppProvider({ children }) {
         .then(({ data }) => { if (data) setMesas(data.map(rowToMesa)) })
     }, 3000)
 
-    return () => { supabase.removeChannel(channel); clearInterval(pollId) }
+    // Polling de entradas_vendas a cada 30s (garante sync mesmo sem realtime)
+    const entradsPollId = setInterval(() => {
+      const hojeStr = getHojeStr()
+      supabase.from('entradas_vendas').select('*').eq('user_id', uid).gte('data', hojeStr)
+        .then(({ data }) => {
+          if (!data) return
+          setEntradasVendas(prev => {
+            if (prev.length !== data.length) return data.map(rowToEntradaVenda)
+            const ids = d => d.map(x => x.id).sort().join()
+            return ids(prev) === ids(data) ? prev : data.map(rowToEntradaVenda)
+          })
+        })
+    }, 30000)
+
+    return () => { supabase.removeChannel(channel); clearInterval(pollId); clearInterval(entradsPollId) }
   }, [auth.userId])
 
   // ── Carregar período histórico sob demanda ────────────────────────────

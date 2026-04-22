@@ -731,19 +731,19 @@ export default function VisaoGeral() {
           {/* ── KPIs principais ── */}
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
             {/* Faturamento */}
-            <div className="card col-span-2 lg:col-span-1" style={{ border: '1.5px solid var(--border-active)', background: 'var(--accent-bg)' }}>
+            <div className="card col-span-2 lg:col-span-1" style={{ border: '1.5px solid rgba(59,130,246,0.4)', background: 'rgba(59,130,246,0.05)' }}>
               <div className="flex items-center gap-2 mb-3">
-                <div style={{ padding: 7, borderRadius: 10, background: 'var(--accent)' }}><DollarSign size={15} color="#fff" /></div>
+                <div style={{ padding: 7, borderRadius: 10, background: '#3b82f6' }}><DollarSign size={15} color="#fff" /></div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Faturamento</p>
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Apenas vendas pagas</p>
                 </div>
               </div>
-              <p className="text-2xl font-bold mb-1" style={{ color: 'var(--accent)' }}>{formatarMoeda(receitaPaga)}</p>
+              <p className="text-2xl font-bold mb-1" style={{ color: '#3b82f6' }}>{formatarMoeda(receitaPaga)}</p>
               {receitaPaga > 0 && (
                 <div className="text-xs flex flex-col gap-0.5 mt-1" style={{ color: 'var(--text-secondary)' }}>
                   <span>— Custo dos pratos: <strong style={{ color: '#ef4444' }}>{formatarMoeda(custoTotal)}</strong></span>
-                  <span>— Lucro bruto: <strong style={{ color: 'var(--accent)' }}>{formatarMoeda(lucroPago)}</strong></span>
+                  <span>— Lucro bruto: <strong style={{ color: '#16a34a' }}>{formatarMoeda(lucroPago)}</strong></span>
                 </div>
               )}
             </div>
@@ -787,7 +787,7 @@ export default function VisaoGeral() {
             {/* Lucro */}
             <div className="card">
               <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Lucro Bruto</p>
-              <p className="text-xl font-bold" style={{ color: lucroPago > 0 ? '#3b82f6' : '#ef4444' }}>
+              <p className="text-xl font-bold" style={{ color: lucroPago > 0 ? '#16a34a' : '#ef4444' }}>
                 {formatarMoeda(lucroPago)}
               </p>
               <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>

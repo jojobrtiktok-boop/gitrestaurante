@@ -4,7 +4,7 @@ import {
   Lock, CheckCircle, AlertCircle,
   BellOff, BellRing, Chrome, Camera, Pencil,
   Wallet, Banknote, QrCode, CreditCard, ExternalLink,
-  Headphones, MessageCircle, Mail, Clock, Store, LogOut,
+  Headphones, MessageCircle, Mail, Clock, Store, LogOut, Package,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import { uploadImagem } from '../utils/storage.js'
@@ -90,7 +90,7 @@ function StepCard({ num, title, desc }) {
 
 /* Aba Conta */
 function AbaConta() {
-  const { auth, alterarSenha, logout, perfil, atualizarPerfil, cardapioConfig, atualizarCardapioConfig } = useApp()
+  const { auth, alterarSenha, logout, perfil, atualizarPerfil, cardapioConfig, atualizarCardapioConfig, configuracaoGeral, atualizarConfiguracaoGeral } = useApp()
 
   // Perfil
   const [nomeLocal,  setNomeLocal]  = useState(perfil?.nomeExibicao || '')
@@ -378,6 +378,28 @@ function AbaConta() {
           <button className="btn btn-primary" onClick={handleSalvarSenha} style={{ alignSelf: 'flex-start' }}>
             <Lock size={13} /> Salvar nova senha
           </button>
+        </div>
+      </div>
+
+      {/* ── Mercadorias ── */}
+      <div>
+        <SecaoHeader icon={Package} title="Mercadorias" cor="var(--accent)" />
+        <div style={{
+          padding: '16px', background: 'var(--bg-hover)', borderRadius: 12,
+          border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 12,
+        }}>
+          <Row label="Estoque mínimo padrão" sub="Aplicado a insumos sem valor individual configurado">
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input
+                type="number" min={0} step={0.1}
+                className="input"
+                value={configuracaoGeral?.estoqueMinimoPadrao ?? 0}
+                onChange={e => atualizarConfiguracaoGeral({ estoqueMinimoPadrao: Math.max(0, +e.target.value) })}
+                style={{ width: 80, textAlign: 'center' }}
+              />
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>unidades</span>
+            </div>
+          </Row>
         </div>
       </div>
 

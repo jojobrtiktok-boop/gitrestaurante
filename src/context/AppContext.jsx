@@ -794,7 +794,7 @@ export function AppProvider({ children }) {
     }
 
     // Carrega apenas hoje — histórico é buscado sob demanda via carregarPeriodo()
-    const dataLimite = new Date().toISOString().slice(0, 10)
+    const dataLimite = hojeBrasilia()
 
     try {
       // ── Estágio 1: dados críticos para exibição (parallel) ───────────
@@ -1731,6 +1731,74 @@ export function AppProvider({ children }) {
     }))
   }
 
+  // ── Aceitar pedido delivery: avança para preparando + cria entradas + baixa estoque ──
+  function aceitarPedidoDelivery(id) {
+    const pedido = pedidos.find(p => p.id === id)
+    if (!pedido) return
+    // fallback para pedidos não-delivery
+    if (pedido.canal !== 'delivery') { atualizarStatusPedido(id, 'preparando'); return }
+
+    const uid = auth.userId || displayUserId
+    const agora = agoraBrasiliaISO()
+    const updated = { ...pedido, status: 'preparando', timestamps: { ...pedido.timestamps, preparando: agora } }
+    setPedidos(prev => prev.map(p => p.id === id ? updated : p))
+    if (uid) sbWrite(supabase.from('pedidos').update({ status: 'preparando', timestamps: updated.timestamps }).eq('id', id))
+
+    const pedData = pedido.data || hojeBrasilia()
+    const pedHora = pedido.hora || horaAtual()
+
+    ;(pedido.itens || []).forEach(item => {
+      const prato = pratos.find(x => x.id === item.pratoId)
+      if (!prato) return
+
+      const extrasUnit = (item.opcoes || []).reduce((s, o) => s + (Number(o.precoExtra) || Number(o.preco) || 0), 0)
+      const custoPratoUnit = custoPrato(prato, ingredientes)
+      const precoVendaUnit = item.precoUnit || prato.precoVenda || 0
+
+      const entrada = {
+        id: crypto.randomUUID(),
+        pratoId: item.pratoId,
+        data: pedData,
+        hora: pedHora,
+        quantidade: item.quantidade,
+        garconId: null,
+        extrasUnit,
+        extrasCustoUnit: 0,
+        custoPratoUnit,
+        ingredientesSnapshot: null,
+        precoVendaUnit,
+        canal: 'delivery',
+      }
+      setEntradasVendas(prev => [...prev, entrada])
+      if (uid) sbWrite(supabase.from('entradas_vendas').insert(entradaVendaToRow(entrada, uid)))
+
+      // Registros de vendas
+      setRegistrosVendas(prev => {
+        const atual = prev.find(r => r.pratoId === item.pratoId && r.data === pedData)
+        if (atual) {
+          const qtdNova = atual.quantidade + item.quantidade
+          if (uid) sbWrite(supabase.from('registros_vendas').update({ quantidade: qtdNova }).eq('id', atual.id))
+          return prev.map(r => r.id === atual.id ? { ...r, quantidade: qtdNova } : r)
+        }
+        const novo = { id: crypto.randomUUID(), pratoId: item.pratoId, data: pedData, quantidade: item.quantidade }
+        if (uid) sbWrite(supabase.from('registros_vendas').insert(registroVendaToRow(novo, uid)))
+        return [...prev, novo]
+      })
+
+      // Baixar estoque dos ingredientes do prato
+      if (prato.ingredientes?.length) {
+        setIngredientes(prev => prev.map(ing => {
+          const linha = prato.ingredientes.find(l => l.ingredienteId === ing.id)
+          if (!linha) return ing
+          const deduct = fromBase(linha.quantidade, ing.unidade) * item.quantidade
+          const upd = { ...ing, quantidadeEstoque: ing.quantidadeEstoque - deduct }
+          if (uid) sbWrite(supabase.from('ingredientes').update({ quantidade_estoque: upd.quantidadeEstoque }).eq('id', ing.id))
+          return upd
+        }))
+      }
+    })
+  }
+
   function marcarEntregue(pedidoId) {
     const uid = auth.userId || displayUserId
     setPedidos(prev => prev.map(p => {
@@ -1958,7 +2026,7 @@ export function AppProvider({ children }) {
     cardapioConfig, atualizarCardapioConfig, definirSlugCardapio,
     garcons, adicionarGarcon, removerGarcon,
     clientes, adicionarCliente, editarCliente, removerCliente,
-    pedidos, adicionarPedido, adicionarPedidoDelivery, atualizarStatusPedido, atribuirMotoboy, marcarEntregue, marcarPedidoPago, pagarMesa, cancelarPedido,
+    pedidos, adicionarPedido, adicionarPedidoDelivery, atualizarStatusPedido, aceitarPedidoDelivery, atribuirMotoboy, marcarEntregue, marcarPedidoPago, pagarMesa, cancelarPedido,
     caixaInicial, registrarCaixaInicial, getCaixaInicial, getCaixaInicialPeriodo,
     movimentosCaixa, adicionarMovimentoCaixa, removerMovimentoCaixa, getMovimentosCaixaDia,
     mesas, adicionarMesa, editarMesa, removerMesa, setStatusMesa, alternarStatusMesa,

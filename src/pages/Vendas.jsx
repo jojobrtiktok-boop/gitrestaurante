@@ -669,21 +669,19 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
         <FiltroPeriodo onChange={handlePeriodo} />
       </div>
 
-      {entradasDia.length > 0 && (
-        <div className="grid grid-cols-4 gap-3 mb-6">
-          {[
-            { label: 'Faturamento', valor: totalReceita, cor: '#3b82f6', fmt: formatarMoeda },
-            { label: 'Lucro Bruto', valor: totalLucro, cor: '#16a34a', fmt: formatarMoeda },
-            { label: 'Margem Bruta', valor: margemBruta, cor: '#7c3aed', fmt: v => `${v.toFixed(1)}%` },
-            { label: 'CMV', valor: totalCMV, cor: '#ef4444', fmt: formatarMoeda },
-          ].map(({ label, valor, cor, fmt }) => (
-            <div key={label} className="card p-4">
-              <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{label}</p>
-              <p className="text-xl font-bold" style={{ color: cor }}>{fmt(valor)}</p>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="grid gap-3 mb-6" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>
+        {[
+          { label: 'Faturamento', valor: formatarMoeda(totalReceita), cor: '#3b82f6' },
+          { label: 'Lucro Bruto', valor: formatarMoeda(totalLucro), cor: '#16a34a' },
+          { label: 'Ag. Pagamento', valor: entradasPendentes.length === 0 ? 'Nenhum' : `${entradasPendentes.length} pedido${entradasPendentes.length !== 1 ? 's' : ''}`, cor: entradasPendentes.length > 0 ? '#f97316' : '#6b7280' },
+          { label: 'CMV', valor: formatarMoeda(totalCMV), cor: '#ef4444' },
+        ].map(({ label, valor, cor }) => (
+          <div key={label} className="card p-4">
+            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{label}</p>
+            <p className="text-xl font-bold" style={{ color: cor }}>{valor}</p>
+          </div>
+        ))}
+      </div>
 
       {/* Abas */}
       <div style={{ overflowX: 'auto', paddingBottom: 2, marginBottom: 16 }}>
@@ -1316,7 +1314,9 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
 
       {aba === 'delivery' && (() => {
         // ── dados base ────────────────────────────────────────────────────
-        const todosDelivery = pedidos.filter(p => p.canal === 'delivery' && p.data >= dataInicio && p.data <= dataFim)
+        // dataFimPlus1: acomoda pedidos criados com data UTC (pode ser 1 dia à frente do fuso Brasil)
+        const dataFimPlus1 = (() => { const d = new Date(dataFim + 'T00:00:00'); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10) })()
+        const todosDelivery = pedidos.filter(p => p.canal === 'delivery' && p.data >= dataInicio && p.data <= dataFimPlus1)
         const pedidosDelivery = todosDelivery.filter(p => !p.cancelado).sort((a, b) => b.data.localeCompare(a.data) || b.hora.localeCompare(a.hora))
         const cancelados = todosDelivery.filter(p => p.cancelado)
         const entregues  = pedidosDelivery.filter(p => p.status === 'entregue' || p.status === 'completo')

@@ -541,8 +541,9 @@ export default function DeliveryPublico() {
     if (userId) {
       try {
         const agora = new Date().toISOString()
-        const dataHoje = agora.slice(0, 10)
-        const horaAgora = agora.slice(11, 16)
+        const agoraBr = new Date()
+        const dataHoje = agoraBr.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }).split('/').reverse().join('-')
+        const horaAgora = agoraBr.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false })
         const enderecoEntrega = tipoEntrega === 'entrega'
           ? `${bairroSelecionado?.nome ? bairroSelecionado.nome + ' - ' : ''}${endereco}${complemento ? ', ' + complemento : ''}`
           : 'Retirada no local'

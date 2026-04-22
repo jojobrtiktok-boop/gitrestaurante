@@ -485,7 +485,7 @@ function ModalPagamento({ total, cfg, pagamentosConfig, onConfirmar, onFechar })
 
 export default function CaixaDisplay() {
   const { token } = useParams()
-  const { pedidos, pratos, garcons, mesas, clientes, kanbanConfig, pagamentosConfig, atualizarStatusPedido, atribuirMotoboy, marcarPedidoPago, pagarMesa, cancelarPedido, adicionarMesa, setStatusMesa, adicionarCliente, authLoading, displayReady, motoboys } = useApp()
+  const { pedidos, pratos, garcons, mesas, clientes, kanbanConfig, pagamentosConfig, atualizarStatusPedido, aceitarPedidoDelivery, atribuirMotoboy, marcarPedidoPago, pagarMesa, cancelarPedido, adicionarMesa, setStatusMesa, adicionarCliente, authLoading, displayReady, motoboys } = useApp()
   const cfg = kanbanConfig
 
   const [abaAtiva, setAbaAtiva] = useState('pedidos') // 'pedidos' | 'novo-pedido'
@@ -1101,7 +1101,7 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
                                   mesas={mesas}
                                   onAvancar={isDelivery ? handleAvancarDelivery : atualizarStatusPedido}
                                   onPagar={(id) => abrirPagamento(id, null)}
-                                  onAceitar={(id) => atualizarStatusPedido(id, 'preparando')}
+                                  onAceitar={(id) => isDelivery ? aceitarPedidoDelivery(id) : atualizarStatusPedido(id, 'preparando')}
                                   onCancelar={(id) => cancelarPedido(id)}
                                   cfg={cfg}
                                   isNovo={isPrimeiro && (Date.now() - new Date(pedido.timestamps?.novo || pedido.timestamps?.pendente).getTime()) < 300000}

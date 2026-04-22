@@ -569,7 +569,8 @@ export default function DeliveryPublico() {
           cliente_nome: nome,
           cliente_telefone: telefone,
           endereco_entrega: enderecoEntrega,
-          timestamps: { [statusInicial]: agora },
+          // sempre inclui 'novo' para timer funcionar no caixa/cozinha
+          timestamps: { novo: agora, [statusInicial]: agora },
         })
       } catch (e) {
         console.error('[DeliveryPublico] erro ao registrar pedido:', e)

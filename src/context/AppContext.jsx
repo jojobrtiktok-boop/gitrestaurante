@@ -1737,6 +1737,8 @@ export function AppProvider({ children }) {
     if (!pedido) return
     // fallback para pedidos não-delivery
     if (pedido.canal !== 'delivery') { atualizarStatusPedido(id, 'preparando'); return }
+    // guard: só aceita se ainda está em novo/pendente (evita duplicar entradas em double-click/polling)
+    if (pedido.status !== 'novo' && pedido.status !== 'pendente') return
 
     const uid = auth.userId || displayUserId
     const agora = agoraBrasiliaISO()
@@ -1890,6 +1892,29 @@ export function AppProvider({ children }) {
         if (auth.userId) sbWrite(supabase.from('pedidos').update({ cancelado: true }).eq('id', id))
         return updated
       }))
+
+      // Delivery aceito (preparando+): reverter entradas_vendas e estoque
+      if (pedido.canal === 'delivery' && ['preparando', 'pronto', 'saindo'].includes(pedido.status)) {
+        pedido.itens?.forEach(item => {
+          const entrada = entradasVendas.find(e =>
+            e.data === pedido.data && e.hora === pedido.hora && e.pratoId === item.pratoId && e.canal === 'delivery'
+          )
+          if (entrada) {
+            setEntradasVendas(prev => prev.filter(e => e.id !== entrada.id))
+            if (auth.userId) sbWrite(supabase.from('entradas_vendas').delete().eq('id', entrada.id).eq('user_id', auth.userId))
+          }
+          const prato = pratos.find(p => p.id === item.pratoId)
+          if (prato?.ingredientes?.length) {
+            setIngredientes(prev => prev.map(ing => {
+              const linha = prato.ingredientes.find(l => l.ingredienteId === ing.id)
+              if (!linha) return ing
+              const restored = { ...ing, quantidadeEstoque: ing.quantidadeEstoque + fromBase(linha.quantidade, ing.unidade) * item.quantidade }
+              if (auth.userId) sbWrite(supabase.from('ingredientes').update({ quantidade_estoque: restored.quantidadeEstoque }).eq('id', ing.id))
+              return restored
+            }))
+          }
+        })
+      }
     }
   }
 

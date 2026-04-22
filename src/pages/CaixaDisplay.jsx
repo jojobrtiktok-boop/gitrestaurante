@@ -1131,13 +1131,9 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
         return (
           <div style={{ paddingTop: 16 }}>
             <style>{`@keyframes pulseNovo { 0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,0.5)} 50%{box-shadow:0 0 0 8px rgba(22,163,74,0)} }`}</style>
-            <BoardColunas lista={pedidosLocal} titulo={pedidosDelivery.length > 0 ? 'Local' : null} icone="🍽️" />
-            {pedidosDelivery.length > 0 && (
-              <>
-                <div style={{ height: 1, background: 'var(--border)', margin: '0 16px 20px' }} />
-                <BoardColunas lista={pedidosDelivery} titulo="Delivery" icone="🛵" colunas={colunasDelivery} isDelivery />
-              </>
-            )}
+            <BoardColunas lista={pedidosLocal} titulo="Local" icone="🍽️" />
+            <div style={{ height: 1, background: 'var(--border)', margin: '0 16px 20px' }} />
+            <BoardColunas lista={pedidosDelivery} titulo="Delivery" icone="🛵" colunas={colunasDelivery} isDelivery />
           </div>
         )
       })()}

@@ -95,7 +95,7 @@ function CardCaixa({ pedido, coluna, pratos, garcons, mesas, onAvancar, onPagar,
         {pedido.itens?.map(item => {
           const p = pratos.find(x => x.id === item.pratoId)
           if (!p) return null
-          const extras = (item.opcoes || []).reduce((s, o) => s + o.precoExtra, 0)
+          const extras = (item.opcoes || []).reduce((s, o) => s + (o.precoExtra || 0), 0)
           return (
             <div key={item.uid || item.pratoId}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -128,7 +128,7 @@ export default function ComandaDigital() {
   const totalPreco = carrinho.reduce((s, i) => {
     const p = pratos.find(x => x.id === i.pratoId)
     if (!p) return s
-    const extras = (i.opcoes || []).reduce((ss, o) => ss + o.precoExtra, 0)
+    const extras = (i.opcoes || []).reduce((ss, o) => ss + (o.precoExtra || 0), 0)
     return s + (p.precoVenda + extras) * i.quantidade
   }, 0)
 
@@ -427,7 +427,7 @@ export default function ComandaDigital() {
               {carrinho.map(item => {
                 const p = pratos.find(x => x.id === item.pratoId)
                 if (!p) return null
-                const extras = (item.opcoes || []).reduce((s, o) => s + o.precoExtra, 0)
+                const extras = (item.opcoes || []).reduce((s, o) => s + (o.precoExtra || 0), 0)
                 const precoUnit = p.precoVenda + extras
                 return (
                   <div key={item.uid} style={{ background: bgHover, borderRadius: 10, padding: '8px 10px' }}>

@@ -552,7 +552,7 @@ export default function DeliveryPublico() {
           nome: i.nome,
           quantidade: i.qtd,
           precoUnit: i.preco,
-          opcoes: (i.adicionaisEscolhidos || []).map(a => ({ nome: a.nome, preco: a.precoExtra, qtd: a.qtd })),
+          opcoes: (i.adicionaisEscolhidos || []).map(a => ({ nome: a.nome, precoExtra: a.precoExtra || 0, qtd: a.qtd })),
         }))
         const statusInicial = ['dinheiro', 'cartao', 'maquininha'].includes(pagamento) ? 'novo' : 'pendente'
         await supabase.from('pedidos').insert({

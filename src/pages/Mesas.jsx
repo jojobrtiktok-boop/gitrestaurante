@@ -192,7 +192,7 @@ export default function Mesas() {
       .filter(p => p.mesaId === mesa.id && !p.cancelado && (p.timestamps?.novo || (p.data + 'T' + (p.hora || '00:00') + ':00-03:00')) >= mesa.inicioSessao)
       .reduce((s, p) => s + (p.itens || []).reduce((ss, item) => {
         const prato = pratos.find(x => x.id === item.pratoId)
-        const extras = (item.opcoes || []).reduce((e, o) => e + o.precoExtra, 0)
+        const extras = (item.opcoes || []).reduce((e, o) => e + (o.precoExtra || 0), 0)
         return ss + ((prato?.precoVenda || 0) + extras) * item.quantidade
       }, 0), 0)
   }

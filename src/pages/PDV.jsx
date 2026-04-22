@@ -134,7 +134,7 @@ export default function PDV() {
   function precoItem(item) {
     const prato = pratos.find(x => x.id === item.pratoId)
     if (!prato) return 0
-    const extras = (item.opcoes || []).reduce((s, o) => s + o.precoExtra, 0)
+    const extras = (item.opcoes || []).reduce((s, o) => s + (o.precoExtra || 0), 0)
     return (prato.precoVenda + extras) * item.quantidade
   }
   const total = carrinho.reduce((s, c) => s + precoItem(c), 0)
@@ -270,7 +270,7 @@ export default function PDV() {
               {carrinho.map(item => {
                 const prato = pratos.find(x => x.id === item.pratoId)
                 if (!prato) return null
-                const extras = (item.opcoes || []).reduce((s, o) => s + o.precoExtra, 0)
+                const extras = (item.opcoes || []).reduce((s, o) => s + (o.precoExtra || 0), 0)
                 const precoUnit = prato.precoVenda + extras
                 return (
                   <div key={item.uid} style={{ borderRadius: 10, padding: '10px 12px', background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>

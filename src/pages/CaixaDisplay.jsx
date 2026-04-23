@@ -154,7 +154,7 @@ function CardCaixa({ pedido, coluna, pratos, garcons, mesas, onAvancar, onPagar,
           : <span />
         }
         {/* Pedido pendente: Aceitar / Cancelar */}
-        {pedido.status === 'pendente' ? (
+        {(pedido.status === 'pendente' || (pedido.canal === 'delivery' && pedido.status === 'novo')) ? (
           <div style={{ display: 'flex', gap: 6 }}>
             <button onClick={() => onCancelar && onCancelar(pedido.id)}
               style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 11px', borderRadius: 8, border: '1.5px solid #ef4444', background: 'transparent', color: '#ef4444', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>

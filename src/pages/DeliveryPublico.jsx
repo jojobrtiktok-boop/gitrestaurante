@@ -186,6 +186,8 @@ export default function DeliveryPublico() {
           mensagemIntro: cdData.mensagem_intro || '',
           modoIfood: cdData.modo_ifood || false,
           corDestaqueIfood: cdData.cor_destaque_ifood || '#ea1d2c',
+          cupons: cdData.cupons || [],
+          produtosSugeridos: cdData.produtos_sugeridos || [],
         } : {}
         const pgto = pgtoData?.config || {}
         setPratos(prts); setConfig(cfg); setConfigDelivery(cd); setPagamentosConfig(pgto)

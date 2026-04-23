@@ -1869,9 +1869,10 @@ export function AppProvider({ children }) {
   function cancelarPedido(id) {
     const pedido = pedidos.find(p => p.id === id)
     if (!pedido || pedido.cancelado) return
+    const uid = auth.userId || displayUserId
     if (pedido.status === 'novo') {
       setPedidos(prev => prev.filter(p => p.id !== id))
-      if (auth.userId) sbWrite(supabase.from('pedidos').delete().eq('id', id).eq('user_id', auth.userId))
+      if (uid) sbWrite(supabase.from('pedidos').delete().eq('id', id).eq('user_id', uid))
 
       pedido.itens?.forEach(item => {
         const entrada = entradasVendas.find(e =>
@@ -1879,17 +1880,17 @@ export function AppProvider({ children }) {
         )
         if (!entrada) return
         setEntradasVendas(prev => prev.filter(e => e.id !== entrada.id))
-        if (auth.userId) sbWrite(supabase.from('entradas_vendas').delete().eq('id', entrada.id).eq('user_id', auth.userId))
+        if (uid) sbWrite(supabase.from('entradas_vendas').delete().eq('id', entrada.id).eq('user_id', uid))
 
         setRegistrosVendas(prev => {
           const reg = prev.find(r => r.pratoId === item.pratoId && r.data === pedido.data)
           if (!reg) return prev
           const nova = Math.max(0, reg.quantidade - item.quantidade)
           if (nova > 0) {
-            if (auth.userId) sbWrite(supabase.from('registros_vendas').update({ quantidade: nova }).eq('id', reg.id))
+            if (uid) sbWrite(supabase.from('registros_vendas').update({ quantidade: nova }).eq('id', reg.id))
             return prev.map(r => r.id === reg.id ? { ...r, quantidade: nova } : r)
           }
-          if (auth.userId) sbWrite(supabase.from('registros_vendas').delete().eq('id', reg.id).eq('user_id', auth.userId))
+          if (uid) sbWrite(supabase.from('registros_vendas').delete().eq('id', reg.id).eq('user_id', uid))
           return prev.filter(r => r.id !== reg.id)
         })
 
@@ -1899,7 +1900,7 @@ export function AppProvider({ children }) {
             const linha = prato.ingredientes.find(l => l.ingredienteId === ing.id)
             if (!linha) return ing
             const updated = { ...ing, quantidadeEstoque: ing.quantidadeEstoque + fromBase(linha.quantidade, ing.unidade) * item.quantidade }
-            if (auth.userId) sbWrite(supabase.from('ingredientes').update({ quantidade_estoque: updated.quantidadeEstoque }).eq('id', ing.id))
+            if (uid) sbWrite(supabase.from('ingredientes').update({ quantidade_estoque: updated.quantidadeEstoque }).eq('id', ing.id))
             return updated
           }))
         }
@@ -1908,7 +1909,7 @@ export function AppProvider({ children }) {
       setPedidos(prev => prev.map(p => {
         if (p.id !== id) return p
         const updated = { ...p, cancelado: true }
-        if (auth.userId) sbWrite(supabase.from('pedidos').update({ cancelado: true }).eq('id', id))
+        if (uid) sbWrite(supabase.from('pedidos').update({ cancelado: true }).eq('id', id).eq('user_id', uid))
         return updated
       }))
 
@@ -1920,7 +1921,7 @@ export function AppProvider({ children }) {
           )
           if (entrada) {
             setEntradasVendas(prev => prev.filter(e => e.id !== entrada.id))
-            if (auth.userId) sbWrite(supabase.from('entradas_vendas').delete().eq('id', entrada.id).eq('user_id', auth.userId))
+            if (uid) sbWrite(supabase.from('entradas_vendas').delete().eq('id', entrada.id).eq('user_id', uid))
           }
           const prato = pratos.find(p => p.id === item.pratoId)
           if (prato?.ingredientes?.length) {
@@ -1928,7 +1929,7 @@ export function AppProvider({ children }) {
               const linha = prato.ingredientes.find(l => l.ingredienteId === ing.id)
               if (!linha) return ing
               const restored = { ...ing, quantidadeEstoque: ing.quantidadeEstoque + fromBase(linha.quantidade, ing.unidade) * item.quantidade }
-              if (auth.userId) sbWrite(supabase.from('ingredientes').update({ quantidade_estoque: restored.quantidadeEstoque }).eq('id', ing.id))
+              if (uid) sbWrite(supabase.from('ingredientes').update({ quantidade_estoque: restored.quantidadeEstoque }).eq('id', ing.id))
               return restored
             }))
           }
@@ -1938,10 +1939,11 @@ export function AppProvider({ children }) {
   }
 
   function marcarPedidoPago(id, formaPagamento) {
+    const uid = auth.userId || displayUserId
     setPedidos(prev => prev.map(p => {
       if (p.id !== id) return p
       const updated = { ...p, pago: true, formaPagamento: formaPagamento || null }
-      if (auth.userId) sbWrite(supabase.from('pedidos').update({ pago: true, forma_pagamento: formaPagamento || null }).eq('id', id))
+      if (uid) sbWrite(supabase.from('pedidos').update({ pago: true, forma_pagamento: formaPagamento || null }).eq('id', id).eq('user_id', uid))
       return updated
     }))
     const pedido = pedidos.find(p => p.id === id)
@@ -1952,11 +1954,12 @@ export function AppProvider({ children }) {
   }
 
   function pagarMesa(mesaId, formaPagamento) {
+    const uid = auth.userId || displayUserId
     const h = hojeBrasilia()
     setPedidos(prev => prev.map(p => {
       if (p.mesaId !== mesaId || p.data !== h || p.pago || p.cancelado) return p
       const updated = { ...p, pago: true, formaPagamento: formaPagamento || null }
-      if (auth.userId) sbWrite(supabase.from('pedidos').update({ pago: true, forma_pagamento: formaPagamento || null }).eq('id', p.id))
+      if (uid) sbWrite(supabase.from('pedidos').update({ pago: true, forma_pagamento: formaPagamento || null }).eq('id', p.id).eq('user_id', uid))
       return updated
     }))
     // NÃO libera a mesa aqui — o display decide com "Deixar Livre" / "Manter Ocupada"

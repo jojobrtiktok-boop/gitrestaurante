@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect } from 'react'
-import { BarChart2, TrendingUp, ShoppingCart, Plus, Check, BookOpen } from 'lucide-react'
+import { useState, useRef, useEffect, useMemo } from 'react'
+import { BarChart2, TrendingUp, ShoppingCart, Plus, Check, BookOpen, Users, Crown, Phone } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import TabelaVazia from '../components/ui/TabelaVazia.jsx'
 import Badge, { margemCor, cmvCor } from '../components/ui/Badge.jsx'
-import { rankingVendidos, rankingLucrativos, custoPrato, precoPorBase } from '../utils/calculos.js'
+import { rankingVendidos, rankingLucrativos, custoPrato, precoPorBase, receitaEntrada } from '../utils/calculos.js'
 import { formatarMoeda, formatarPorcentagem, hoje } from '../utils/formatacao.js'
 
 const MEDALHAS = ['🥇', '🥈', '🥉']
@@ -54,7 +54,7 @@ function ModalVenda({ prato, qtdAtual, onSalvar, onFechar }) {
 }
 
 export default function Relatorios() {
-  const { pratos, ingredientes, registrosVendas, registrarVendas, buscarVendasDia, adicionarEntradaVenda } = useApp()
+  const { pratos, ingredientes, registrosVendas, registrarVendas, buscarVendasDia, adicionarEntradaVenda, entradasVendas, garcons, clientes, pedidos } = useApp()
   const [aba, setAba] = useState('vendidos')
   const [dataInicio, setDataInicio] = useState(hoje())
   const [dataFim, setDataFim] = useState(hoje())
@@ -63,6 +63,58 @@ export default function Relatorios() {
 
   const rankV = rankingVendidos(pratos, ingredientes, registrosVendas, dataInicio, dataFim)
   const rankL = rankingLucrativos(pratos, ingredientes, registrosVendas, dataInicio, dataFim)
+
+  // Ranking de Garçons
+  const rankGarcons = useMemo(() => {
+    const map = {}
+    entradasVendas
+      .filter(e => e.data >= dataInicio && e.data <= dataFim)
+      .forEach(e => {
+        const gId = e.garconId || '__balcao__'
+        if (!map[gId]) map[gId] = { atendimentos: 0, receita: 0 }
+        map[gId].atendimentos += 1
+        const prato = pratos.find(p => p.id === e.pratoId)
+        map[gId].receita += receitaEntrada(e, prato)
+      })
+    return Object.entries(map)
+      .map(([gId, data]) => {
+        const garcon = garcons.find(g => g.id === gId)
+        return {
+          nome: garcon ? garcon.nome : 'Balcão',
+          atendimentos: data.atendimentos,
+          receita: data.receita,
+          ticketMedio: data.atendimentos > 0 ? data.receita / data.atendimentos : 0,
+        }
+      })
+      .sort((a, b) => b.atendimentos - a.atendimentos)
+  }, [entradasVendas, garcons, pratos, dataInicio, dataFim])
+
+  // Ranking de Clientes
+  const rankClientes = useMemo(() => {
+    const map = {}
+    pedidos
+      .filter(p => !p.cancelado && p.data >= dataInicio && p.data <= dataFim && (p.clienteId || p.clienteNome))
+      .forEach(pedido => {
+        const key = pedido.clienteId || pedido.clienteNome
+        if (!map[key]) {
+          const clienteObj = clientes.find(c => c.id === pedido.clienteId)
+          map[key] = {
+            nome: clienteObj?.nome || pedido.clienteNome || 'Desconhecido',
+            telefone: clienteObj?.telefone || pedido.clienteTelefone || null,
+            pedidosQtd: 0,
+            total: 0,
+          }
+        }
+        const total = (pedido.itens || []).reduce((sum, item) => {
+          const prato = pratos.find(p => p.id === item.pratoId)
+          const extras = (item.opcoes || []).reduce((e, o) => e + (o.precoExtra || 0), 0)
+          return sum + ((item.precoUnit ?? prato?.precoVenda ?? 0) + extras) * item.quantidade
+        }, 0)
+        map[key].pedidosQtd += 1
+        map[key].total += total
+      })
+    return Object.values(map).sort((a, b) => b.total - a.total)
+  }, [pedidos, clientes, pratos, dataInicio, dataFim])
 
   function handleSalvar(pratoId, quantidade) {
     const qtdAnterior = buscarVendasDia(pratoId, hoje())
@@ -164,10 +216,12 @@ export default function Relatorios() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-4 p-1 rounded-xl w-fit" style={{ background: 'var(--bg-hover)' }}>
+      <div className="flex flex-wrap gap-1 mb-4 p-1 rounded-xl w-fit" style={{ background: 'var(--bg-hover)' }}>
         {[
           { id: 'vendidos',   label: 'Mais Vendidos',   icon: ShoppingCart },
           { id: 'lucrativos', label: 'Mais Lucrativos', icon: TrendingUp },
+          { id: 'garcons',    label: 'Garçons',         icon: Users },
+          { id: 'clientes',   label: 'Clientes',        icon: Crown },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -238,6 +292,101 @@ export default function Relatorios() {
                       <td style={{ color: 'var(--accent)', fontWeight: 600 }}>{formatarMoeda(r.lucroPorUnidade)}</td>
                       <td style={{ color: '#3b82f6' }}>{formatarMoeda(r.lucroTotal)}</td>
                       <td style={{ color: 'var(--text-secondary)' }}>{r.quantidade} un</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Ranking Garçons */}
+      {aba === 'garcons' && (
+        <div className="card p-0 overflow-hidden">
+          {rankGarcons.length === 0 ? (
+            <TabelaVazia icone={Users} mensagem="Sem atendimentos no período" submensagem="Os lançamentos vinculados a garçons aparecerão aqui." />
+          ) : (
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Garçom</th>
+                    <th>Atendimentos</th>
+                    <th>Receita Total</th>
+                    <th>Ticket Médio</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rankGarcons.map((r, idx) => (
+                    <tr key={r.nome}>
+                      <td className="text-base">{MEDALHAS[idx] || `${idx + 1}º`}</td>
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--accent-bg)', border: '1px solid var(--border-active)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Users size={13} style={{ color: 'var(--accent)' }} />
+                          </div>
+                          <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{r.nome}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="font-bold" style={{ color: 'var(--text-primary)' }}>{r.atendimentos}</span>
+                        <span className="text-xs ml-1" style={{ color: 'var(--text-muted)' }}>lançamentos</span>
+                      </td>
+                      <td style={{ color: 'var(--accent)', fontWeight: 600 }}>{formatarMoeda(r.receita)}</td>
+                      <td style={{ color: '#3b82f6', fontWeight: 600 }}>{formatarMoeda(r.ticketMedio)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Ranking Clientes */}
+      {aba === 'clientes' && (
+        <div className="card p-0 overflow-hidden">
+          {rankClientes.length === 0 ? (
+            <TabelaVazia icone={Crown} mensagem="Sem clientes identificados no período" submensagem="Clientes cadastrados ou de delivery com nome aparecem aqui." />
+          ) : (
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Cliente</th>
+                    <th>Pedidos</th>
+                    <th>Total Gasto</th>
+                    <th>Ticket Médio</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rankClientes.map((r, idx) => (
+                    <tr key={r.nome + idx}>
+                      <td className="text-base">{MEDALHAS[idx] || `${idx + 1}º`}</td>
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(234,179,8,0.12)', border: '1px solid rgba(234,179,8,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Crown size={13} style={{ color: '#ca8a04' }} />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{r.nome}</p>
+                            {r.telefone && (
+                              <p className="text-xs flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                                <Phone size={10} /> {r.telefone}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="font-bold" style={{ color: 'var(--text-primary)' }}>{r.pedidosQtd}</span>
+                        <span className="text-xs ml-1" style={{ color: 'var(--text-muted)' }}>pedido{r.pedidosQtd !== 1 ? 's' : ''}</span>
+                      </td>
+                      <td style={{ color: '#ca8a04', fontWeight: 700, fontSize: 15 }}>{formatarMoeda(r.total)}</td>
+                      <td style={{ color: '#3b82f6', fontWeight: 600 }}>{formatarMoeda(r.pedidosQtd > 0 ? r.total / r.pedidosQtd : 0)}</td>
                     </tr>
                   ))}
                 </tbody>

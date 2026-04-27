@@ -464,7 +464,12 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
       if (variacoes.length < 2) return alert('Adicione pelo menos 2 receitas/sabores.')
     }
     const precoVenda = comTamanhos
-      ? (tamanhos.length > 0 ? Math.min(...tamanhos.map(t => t.preco || 0)) : 0)
+      ? (() => {
+          const allPrecos = tamanhos.flatMap(t => (t.variacoes || []).map(v => v.preco || 0).filter(p => p > 0))
+          const tamPrecos = tamanhos.map(t => t.preco || 0).filter(p => p > 0)
+          const todos = [...allPrecos, ...tamPrecos]
+          return todos.length > 0 ? Math.min(...todos) : 0
+        })()
       : Math.min(...variacoes.map(v => v.preco))
     onSalvar({
       nome: nome.trim(), categoria: categoria.trim(), descricao: descricao.trim(), foto,

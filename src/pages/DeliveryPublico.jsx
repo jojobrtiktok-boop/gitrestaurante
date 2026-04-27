@@ -396,8 +396,14 @@ export default function DeliveryPublico() {
     let precoBase
     const temTamanhos = (pratoDetalhe.tamanhos || []).length > 0
     if (temTamanhos) {
-      // Com tamanhos: preço é fixo pelo tamanho
-      precoBase = modalTamanho?.preco ?? pratoDetalhe.precoVenda ?? 0
+      if (modalTamanho && modalVariacoes.length > 0) {
+        const precos = modalVariacoes.map(v => v.preco ?? modalTamanho.preco ?? 0)
+        precoBase = modalTamanho.calcVariacao === 'media'
+          ? precos.reduce((a, b) => a + b, 0) / precos.length
+          : Math.max(...precos)
+      } else {
+        precoBase = modalTamanho?.preco ?? pratoDetalhe.precoVenda ?? 0
+      }
     } else if (modalVariacoes.length > 0) {
       const precos = modalVariacoes.map(v => v.preco ?? pratoDetalhe.precoVenda ?? 0)
       precoBase = pratoDetalhe.calcVariacao === 'media'
@@ -432,7 +438,14 @@ export default function DeliveryPublico() {
 
     let preco
     if (temTamanhos) {
-      preco = modalTamanho?.preco ?? pratoDetalhe.precoVenda ?? 0
+      if (modalTamanho && modalVariacoes.length > 0) {
+        const precos = modalVariacoes.map(v => v.preco ?? modalTamanho.preco ?? 0)
+        preco = modalTamanho.calcVariacao === 'media'
+          ? precos.reduce((a, b) => a + b, 0) / precos.length
+          : Math.max(...precos)
+      } else {
+        preco = modalTamanho?.preco ?? pratoDetalhe.precoVenda ?? 0
+      }
     } else if (modalVariacoes.length > 0) {
       const precos = modalVariacoes.map(v => v.preco ?? pratoDetalhe.precoVenda ?? 0)
       preco = pratoDetalhe.calcVariacao === 'media'

@@ -87,8 +87,14 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
   // Preço baseado em tamanho ou variações selecionadas
   const precoVariacao = (() => {
     if (temTamanhos) {
-      // Com tamanhos: preço = tamanho selecionado (fixo)
-      return tamanhoSel?.preco ?? prato.precoVenda ?? 0
+      if (!tamanhoSel) return prato.precoVenda ?? 0
+      // Se sabores selecionados, calcula pelo calcVariacao do tamanho
+      if (saboresSel.length > 0) {
+        const precos = saboresSel.map(v => v.preco ?? tamanhoSel.preco ?? 0)
+        if (tamanhoSel.calcVariacao === 'media') return precos.reduce((s, p) => s + p, 0) / precos.length
+        return Math.max(...precos)
+      }
+      return tamanhoSel.preco ?? prato.precoVenda ?? 0
     }
     if (!temVariacoes || saboresSel.length === 0) return prato.precoVenda || 0
     const precos = saboresSel.map(v => v.preco ?? prato.precoVenda ?? 0)

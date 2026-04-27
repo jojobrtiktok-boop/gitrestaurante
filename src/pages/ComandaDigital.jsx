@@ -451,7 +451,7 @@ export default function ComandaDigital() {
                 const p = pratos.find(x => x.id === item.pratoId)
                 if (!p) return null
                 const extras = (item.opcoes || []).reduce((s, o) => s + (o.precoExtra || 0), 0)
-                const precoUnit = p.precoVenda + extras
+                const precoUnit = item.precoUnit != null ? item.precoUnit : p.precoVenda + extras
                 return (
                   <div key={item.uid} style={{ background: bgHover, borderRadius: 10, padding: '8px 10px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

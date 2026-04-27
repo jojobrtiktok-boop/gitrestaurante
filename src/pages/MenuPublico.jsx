@@ -56,10 +56,19 @@ export default function MenuPublico() {
           emDestaque: row.em_destaque || false,
           maisPedido: row.mais_pedido || false,
           foto: row.foto || null,
+          descricao: row.descricao || '',
           ingredientes: row.ingredientes || [],
           grupos: row.grupos || [],
           variacoes: row.variacoes || [],
-        })) : []
+          tamanhos: row.tamanhos || [],
+          bordas: row.bordas || [],
+          tipo: row.tipo || 'normal',
+          calcVariacao: row.calc_variacao || 'maior',
+          maxSabores: row.max_sabores || (row.meia_a_meia ? 2 : 1),
+          labelSabores: row.label_sabores || null,
+          labelBordas: row.label_bordas || null,
+          visivelIndividual: row.visivel_individual !== false,
+        })).filter(p => p.visivelIndividual !== false) : []
         const cfg = cfgData?.config || {}
         setPratos(prts); setConfig(cfg)
         try { localStorage.setItem(`menu_cache_${slug}`, JSON.stringify({ t: Date.now(), uid: slugRow.user_id, prts, cfg })) } catch {}
@@ -291,6 +300,17 @@ export default function MenuPublico() {
         const p = pratoDetalhe
         const gruposComplemento = (p.grupos || []).filter(g => g.categoria !== 'adicional')
         const gruposAdicional = (p.grupos || []).filter(g => g.categoria === 'adicional')
+        const temTamanhos = (p.tamanhos || []).length > 0
+        const temVariacoes = !temTamanhos && (p.variacoes || []).length > 0
+        const temBordas = (p.bordas || []).length > 0
+        const precoExibir = (() => {
+          if (temTamanhos) {
+            const precos = p.tamanhos.flatMap(t => (t.variacoes || []).map(v => v.preco || 0)).filter(x => x > 0)
+            return precos.length > 0 ? Math.min(...precos) : p.precoVenda
+          }
+          if (temVariacoes) return Math.min(...p.variacoes.map(v => v.preco || 0).filter(x => x > 0)) || p.precoVenda
+          return p.precoVenda
+        })()
         return (
           <div style={{
             position: 'fixed', inset: 0, zIndex: 1000,
@@ -328,11 +348,86 @@ export default function MenuPublico() {
                 <h2 style={{ fontSize: 20, fontWeight: 800, color: corTextoBase, margin: '0 0 6px', lineHeight: 1.25 }}>{p.nome}</h2>
                 {config.mostrarPrecos && (
                   <p style={{ fontSize: 16, fontWeight: 700, color: corPreco, margin: '0 0 10px' }}>
-                    {p.precoVenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    {(temTamanhos || temVariacoes) && <span style={{ fontSize: 13, fontWeight: 500 }}>a partir de </span>}
+                    {precoExibir.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </p>
                 )}
                 {p.descricao && (
                   <p style={{ fontSize: 14, color: corTextoSec, margin: '0 0 20px', lineHeight: 1.6 }}>{p.descricao}</p>
+                )}
+
+                {/* Tamanhos */}
+                {temTamanhos && (
+                  <div style={{ marginBottom: 20 }}>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: corTextoBase, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                      {p.labelSabores || 'Tamanhos'}
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {p.tamanhos.map(t => {
+                        const precos = (t.variacoes || []).map(v => v.preco || 0).filter(x => x > 0)
+                        const precoMin = precos.length > 0 ? Math.min(...precos) : (t.preco || 0)
+                        return (
+                          <div key={t.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 10, background: modoClaro ? '#f8f8f8' : 'rgba(255,255,255,0.06)', border: '1px solid ' + bordaCard }}>
+                            <div>
+                              <span style={{ fontSize: 14, fontWeight: 600, color: corTextoBase }}>{t.nome}</span>
+                              {(t.variacoes || []).length > 0 && (
+                                <p style={{ fontSize: 12, color: corTextoSec, margin: '2px 0 0' }}>
+                                  {t.variacoes.map(v => v.nome).join(' · ')}
+                                </p>
+                              )}
+                            </div>
+                            {config.mostrarPrecos && precoMin > 0 && (
+                              <span style={{ fontSize: 13, fontWeight: 700, color: corPreco }}>
+                                a partir de {precoMin.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sabores (sem tamanhos) */}
+                {temVariacoes && (
+                  <div style={{ marginBottom: 20 }}>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: corTextoBase, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                      {p.labelSabores || 'Sabores'}
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {p.variacoes.map(v => (
+                        <div key={v.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 10, background: modoClaro ? '#f8f8f8' : 'rgba(255,255,255,0.06)', border: '1px solid ' + bordaCard }}>
+                          <span style={{ fontSize: 14, color: corTextoBase }}>{v.nome}</span>
+                          {config.mostrarPrecos && v.preco > 0 && (
+                            <span style={{ fontSize: 13, fontWeight: 700, color: corPreco }}>
+                              {v.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Bordas */}
+                {temBordas && (
+                  <div style={{ marginBottom: 20 }}>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: corTextoBase, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                      {p.labelBordas || 'Bordas disponíveis'}
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {p.bordas.map(b => (
+                        <div key={b.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 10, background: modoClaro ? '#f8f8f8' : 'rgba(255,255,255,0.06)', border: '1px solid ' + bordaCard }}>
+                          <span style={{ fontSize: 14, color: corTextoBase }}>{b.nome}</span>
+                          {config.mostrarPrecos && b.precoExtra > 0 && (
+                            <span style={{ fontSize: 13, fontWeight: 700, color: corPreco }}>
+                              +{b.precoExtra.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
 
                 {/* Complementos */}

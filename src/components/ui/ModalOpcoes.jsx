@@ -32,6 +32,7 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
     return init
   })
   const [saboresSel, setSaboresSel] = useState([]) // array de variacao objects
+  const [bordaSel, setBordaSel] = useState(null)   // borda selecionada ou null
   const [erro, setErro] = useState('')
   const [quantidade, setQuantidade] = useState(1)
 
@@ -85,7 +86,7 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
     return Math.max(...precos) // padrão: maior preço
   })()
 
-  const precoUnitario = precoVariacao + extrasTotal
+  const precoUnitario = precoVariacao + extrasTotal + (bordaSel?.precoExtra || 0)
   const precoTotal = precoUnitario * quantidade
 
   function confirmar() {
@@ -113,7 +114,7 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
         }
       })
     )
-    onConfirmar(opcoes, quantidade, temVariacoes ? saboresSel : null)
+    onConfirmar(opcoes, quantidade, temVariacoes ? saboresSel : null, bordaSel || null)
   }
 
   function renderGrupo(grupo) {
@@ -268,8 +269,56 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
             </div>
           )}
 
+          {/* ── Seleção de borda (opcional) ── */}
+          {prato.bordas?.length > 0 && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>🍕 Borda</p>
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '2px 0 0' }}>Opcional · escolha 1</p>
+                </div>
+                {bordaSel && (
+                  <button onClick={() => setBordaSel(null)}
+                    style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', cursor: 'pointer' }}>
+                    Sem borda
+                  </button>
+                )}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {prato.bordas.map(b => {
+                  const sel = bordaSel?.id === b.id
+                  return (
+                    <button key={b.id} onClick={() => setBordaSel(sel ? null : b)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '10px 14px', borderRadius: 12, border: 'none',
+                        cursor: 'pointer',
+                        background: sel ? (corStr ? `${corStr}15` : 'var(--accent-bg)') : 'var(--bg-hover)',
+                        outline: sel ? `1.5px solid ${accentCss}` : '1px solid transparent',
+                        transition: 'all .12s', textAlign: 'left', width: '100%',
+                      }}>
+                      <div style={{
+                        width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                        border: sel ? `2px solid ${accentCss}` : '2px solid var(--border)',
+                        background: sel ? accentCss : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {sel && <Check size={11} color="#fff" />}
+                      </div>
+                      <span style={{ flex: 1, fontSize: 14, color: 'var(--text-primary)', fontWeight: sel ? 600 : 400 }}>{b.nome}</span>
+                      {b.precoExtra > 0
+                        ? <span style={{ fontSize: 13, fontWeight: 600, color: '#16a34a' }}>+{formatarMoeda(b.precoExtra)}</span>
+                        : <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>inclusa</span>
+                      }
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Separador */}
-          {temVariacoes && grupos.length > 0 && (
+          {(temVariacoes || prato.bordas?.length > 0) && grupos.length > 0 && (
             <div style={{ height: 1, background: 'var(--border)' }} />
           )}
 

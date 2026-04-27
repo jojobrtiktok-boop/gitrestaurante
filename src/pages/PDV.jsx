@@ -90,6 +90,7 @@ export default function PDV() {
   })()
 
   const pratosFiltrados = pratos.filter(p => {
+    if (p.visivelIndividual === false) return false
     const matchBusca = !busca || p.nome.toLowerCase().includes(busca.toLowerCase())
     const matchCat = !catSelecionada || (catSelecionada === '__sem__' ? !p.categoria : p.categoria === catSelecionada)
     return matchBusca && matchCat
@@ -117,7 +118,7 @@ export default function PDV() {
       return prev.map(c => c.uid === ex.uid ? { ...c, quantidade: c.quantidade - 1 } : c)
     })
   }
-  function confirmarOpcoes(opcoes, quantidade, variacoes) {
+  function confirmarOpcoes(opcoes, quantidade, variacoes, borda) {
     const prato = pratoOpcoes
     let precoUnit = prato.precoVenda || 0
     if (variacoes?.length) {
@@ -127,9 +128,10 @@ export default function PDV() {
         : Math.max(...precos)
     }
     precoUnit += (opcoes || []).reduce((s, o) => s + (o.precoExtra || 0), 0)
+    precoUnit += borda?.precoExtra || 0
     setCarrinho(prev => [...prev, {
       uid: crypto.randomUUID(), pratoId: prato.id, quantidade, opcoes,
-      variacoes: variacoes || null, precoUnit,
+      variacoes: variacoes || null, borda: borda || null, precoUnit,
     }])
     setPratoOpcoes(null)
   }

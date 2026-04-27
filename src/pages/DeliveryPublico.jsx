@@ -270,6 +270,7 @@ export default function DeliveryPublico() {
   // ── modal produto ──────────────────────────────────────────────────────────
   const [pratoDetalhe, setPratoDetalhe] = useState(null)
   const [modalVariacoes, setModalVariacoes] = useState([])   // variacoes selecionadas (array)
+  const [modalBorda, setModalBorda] = useState(null)         // borda selecionada ou null
   const [modalAdicionais, setModalAdicionais] = useState({}) // { itemId: qty }
   const [modalComplementos, setModalComplementos] = useState({}) // { groupId: itemId }
   const [modalQtd, setModalQtd] = useState(1)
@@ -325,7 +326,7 @@ export default function DeliveryPublico() {
   }
 
   // ── derived catalog data ───────────────────────────────────────────────────
-  const todasCats = [...new Set(pratos.filter(p => p.disponivel !== false).map(p => p.categoria).filter(Boolean))]
+  const todasCats = [...new Set(pratos.filter(p => p.disponivel !== false && p.visivelIndividual !== false).map(p => p.categoria).filter(Boolean))]
   const ordemSalva = config.ordemCategorias || []
   const catsOrdenadas = [
     ...ordemSalva.filter(c => todasCats.includes(c)),
@@ -334,7 +335,7 @@ export default function DeliveryPublico() {
   const categorias = ['Todas', ...catsOrdenadas]
 
   const pratosFiltrados = pratos
-    .filter(p => p.disponivel !== false)
+    .filter(p => p.disponivel !== false && p.visivelIndividual !== false)
     .filter(p => filtro === 'Todas' || p.categoria === filtro)
     .filter(p => p.nome.toLowerCase().includes(busca.toLowerCase()))
 
@@ -363,13 +364,14 @@ export default function DeliveryPublico() {
 
   // produtos sugeridos (configDelivery.produtosSugeridos = array de pratoIds)
   const sugeridos = (configDelivery.produtosSugeridos || [])
-    .map(id => pratos.find(p => p.id === id && p.disponivel !== false))
+    .map(id => pratos.find(p => p.id === id && p.disponivel !== false && p.visivelIndividual !== false))
     .filter(Boolean)
 
   // ── modal helpers ──────────────────────────────────────────────────────────
   function abrirModal(prato) {
     setPratoDetalhe(prato)
     setModalVariacoes([])
+    setModalBorda(null)
     setModalAdicionais({})
     setModalComplementos({})
     setModalQtd(1)
@@ -377,6 +379,7 @@ export default function DeliveryPublico() {
 
   function fecharModal() {
     setPratoDetalhe(null)
+    setModalBorda(null)
   }
 
   function calcularTotalModal() {
@@ -400,7 +403,7 @@ export default function DeliveryPublico() {
       }
       return sum
     }, 0)
-    return (precoBase + extraAdicionais) * modalQtd
+    return (precoBase + extraAdicionais + (modalBorda?.precoExtra || 0)) * modalQtd
   }
 
   function adicionarAoCarrinho() {
@@ -444,10 +447,11 @@ export default function DeliveryPublico() {
       chave: gerarChave(),
       pratoId: pratoDetalhe.id,
       nome: nomeCompleto,
-      preco,
+      preco: preco + (modalBorda?.precoExtra || 0),
       qtd: modalQtd,
       foto: pratoDetalhe.foto || null,
       variacoes: modalVariacoes.length > 0 ? modalVariacoes : null,
+      borda: modalBorda || null,
       adicionaisEscolhidos,
       obs: '',
     }
@@ -778,8 +782,8 @@ export default function DeliveryPublico() {
       {modoIfood && (() => {
         const catNome = catsOrdenadas.find(c => c.toLowerCase() === 'destaques')
         const itensDestaques = catNome
-          ? pratos.filter(p => p.disponivel !== false && p.categoria === catNome && p.nome.toLowerCase().includes(busca.toLowerCase()))
-          : pratos.filter(p => p.disponivel !== false && p.emDestaque && p.nome.toLowerCase().includes(busca.toLowerCase()))
+          ? pratos.filter(p => p.disponivel !== false && p.visivelIndividual !== false && p.categoria === catNome && p.nome.toLowerCase().includes(busca.toLowerCase()))
+          : pratos.filter(p => p.disponivel !== false && p.visivelIndividual !== false && p.emDestaque && p.nome.toLowerCase().includes(busca.toLowerCase()))
         if (itensDestaques.length === 0) return null
         return (
           <div style={{ background: '#fff', marginBottom: 8, maxWidth: 640, margin: '0 auto 8px' }}>
@@ -813,7 +817,7 @@ export default function DeliveryPublico() {
 
       {/* ── Product list ── */}
       <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 0 40px' }}>
-        {pratos.filter(p => p.disponivel !== false).length === 0 ? (
+        {pratos.filter(p => p.disponivel !== false && p.visivelIndividual !== false).length === 0 ? (
           <div style={{ textAlign: 'center', padding: '80px 16px', color: corTextoSec }}>
             <div style={{ margin: '0 auto 12px', width: 40 }}><IcoUtensils /></div>
             <p style={{ fontSize: 15 }}>Nenhum item no cardápio</p>
@@ -1042,6 +1046,65 @@ export default function DeliveryPublico() {
                         <span style={{ fontSize: 13, fontWeight: 700, color: corPreco }}>
                           {formatarMoeda(v.preco ?? pratoDetalhe.precoVenda ?? pratoDetalhe.preco ?? 0)}
                         </span>
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Borda (só aparece em produtos variação que têm bordas cadastradas) */}
+            {temVariacoesModal && (pratoDetalhe.bordas || []).length > 0 && (
+              <div style={{ marginBottom: 24 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: corTextoBase, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                  🍕 Borda <span style={{ fontSize: 11, fontWeight: 500, textTransform: 'none', color: corTextoSec }}>(opcional)</span>
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {/* Opção "Sem borda" */}
+                  <label onClick={() => setModalBorda(null)} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 14px', borderRadius: 12, cursor: 'pointer',
+                    border: '2px solid ' + (modalBorda === null ? destaque : bordaCard),
+                    background: modalBorda === null ? (modoClaro ? `${destaque}12` : `${destaque}22`) : (modoClaro ? '#f8f8f8' : 'rgba(255,255,255,0.06)'),
+                    transition: 'all 0.15s',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{
+                        width: 18, height: 18, borderRadius: '50%',
+                        border: '2px solid ' + (modalBorda === null ? destaque : corTextoSec),
+                        background: modalBorda === null ? destaque : 'transparent', flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {modalBorda === null && <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff' }} />}
+                      </div>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: corTextoBase }}>Sem borda</span>
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: corTextoSec }}>—</span>
+                  </label>
+                  {(pratoDetalhe.bordas || []).map((b, i) => {
+                    const sel = modalBorda?.nome === b.nome
+                    return (
+                      <label key={i} onClick={() => setModalBorda(b)} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '10px 14px', borderRadius: 12, cursor: 'pointer',
+                        border: '2px solid ' + (sel ? destaque : bordaCard),
+                        background: sel ? (modoClaro ? `${destaque}12` : `${destaque}22`) : (modoClaro ? '#f8f8f8' : 'rgba(255,255,255,0.06)'),
+                        transition: 'all 0.15s',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{
+                            width: 18, height: 18, borderRadius: '50%',
+                            border: '2px solid ' + (sel ? destaque : corTextoSec),
+                            background: sel ? destaque : 'transparent', flexShrink: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            {sel && <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff' }} />}
+                          </div>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: corTextoBase }}>{b.nome}</span>
+                        </div>
+                        {b.precoExtra > 0 && (
+                          <span style={{ fontSize: 13, fontWeight: 700, color: corPreco }}>+{formatarMoeda(b.precoExtra)}</span>
+                        )}
                       </label>
                     )
                   })}

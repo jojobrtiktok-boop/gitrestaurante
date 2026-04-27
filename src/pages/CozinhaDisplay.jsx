@@ -120,6 +120,18 @@ function CardCozinha({ pedido, coluna, pratos, garcons, mesas, onAvancar, cfg })
                   ))}
                 </div>
               )}
+              {/* Borda */}
+              {item.borda && (
+                <div style={{ paddingLeft: 44, marginTop: 4 }}>
+                  <span style={{
+                    fontSize: 12, fontWeight: 700, color: '#b45309',
+                    background: 'rgba(180,83,9,0.12)', padding: '2px 8px', borderRadius: 20,
+                    border: '1px solid rgba(180,83,9,0.3)',
+                  }}>
+                    🍕 Borda: {item.borda.nome}
+                  </span>
+                </div>
+              )}
               {item.opcoes?.length > 0 && (
                 <div style={{ paddingLeft: 44, marginTop: 3 }}>
                   {item.opcoes.map((o, i) => (

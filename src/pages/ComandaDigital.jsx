@@ -121,6 +121,7 @@ export default function ComandaDigital() {
   const categorias = ['Todas', ...catsOrdenadas]
 
   const pratosFiltrados = pratos
+    .filter(p => p.visivelIndividual !== false)
     .filter(p => filtro === 'Todas' || p.categoria === filtro)
     .filter(p => p.nome.toLowerCase().includes(busca.toLowerCase()))
 
@@ -151,7 +152,7 @@ export default function ComandaDigital() {
     setCarrinhoAberto(false)
   }
 
-  function confirmarOpcoes(opcoes, quantidade, variacoes) {
+  function confirmarOpcoes(opcoes, quantidade, variacoes, borda) {
     const prato = pratoOpcoes
     let precoUnit = prato.precoVenda || 0
     if (variacoes?.length) {
@@ -161,9 +162,10 @@ export default function ComandaDigital() {
         : Math.max(...precos)
     }
     precoUnit += (opcoes || []).reduce((s, o) => s + (o.precoExtra || 0), 0)
+    precoUnit += borda?.precoExtra || 0
     setCarrinho(prev => [...prev, {
       uid: crypto.randomUUID(), pratoId: prato.id, quantidade, opcoes,
-      variacoes: variacoes || null, precoUnit,
+      variacoes: variacoes || null, borda: borda || null, precoUnit,
     }])
     setPratoOpcoes(null)
   }

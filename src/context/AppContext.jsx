@@ -139,6 +139,8 @@ function pratoToRow(p, uid) {
     meia_a_meia: p.meiaAMeia || false,
     calc_variacao: p.calcVariacao || 'maior',
     max_sabores: p.maxSabores || (p.meiaAMeia ? 2 : 1),
+    bordas: p.bordas || [],
+    visivel_individual: p.visivelIndividual !== false,
   }
 }
 function rowToPrato(row) {
@@ -158,6 +160,8 @@ function rowToPrato(row) {
     meiaAMeia: row.meia_a_meia || false,
     calcVariacao: row.calc_variacao || 'maior',
     maxSabores: row.max_sabores || (row.meia_a_meia ? 2 : 1),
+    bordas: row.bordas || [],
+    visivelIndividual: row.visivel_individual !== false,
   }
 }
 

@@ -126,6 +126,18 @@ function CardCaixa({ pedido, coluna, pratos, garcons, mesas, onAvancar, onPagar,
                   ))}
                 </div>
               )}
+              {/* Borda */}
+              {item.borda && (
+                <div style={{ paddingLeft: 12, marginTop: 3 }}>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, color: '#b45309',
+                    background: 'rgba(180,83,9,0.1)', padding: '1px 7px', borderRadius: 20,
+                    border: '1px solid rgba(180,83,9,0.25)',
+                  }}>
+                    🍕 Borda: {item.borda.nome}
+                  </span>
+                </div>
+              )}
               {item.opcoes?.length > 0 && (
                 <div style={{ paddingLeft: 12 }}>
                   {item.opcoes.map((o, i) => (

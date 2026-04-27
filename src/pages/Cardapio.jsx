@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { UtensilsCrossed, Camera, X, Search, Check, Smartphone, Copy, Settings, Plus, Trash2, Link2, Users, FileText, Monitor, RefreshCw, Star, LayoutGrid, List, Truck, MapPin, ToggleLeft, ToggleRight, Banknote, QrCode, CreditCard, Clock } from 'lucide-react'
+import { UtensilsCrossed, Camera, X, Search, Check, Smartphone, Copy, Settings, Plus, Trash2, Link2, Users, FileText, Monitor, RefreshCw, Star, LayoutGrid, List, Truck, MapPin, ToggleLeft, ToggleRight, Banknote, QrCode, CreditCard, Clock, Eye, EyeOff } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import { uploadImagem } from '../utils/storage.js'
 import Badge, { margemCor, cmvCor } from '../components/ui/Badge.jsx'
@@ -194,16 +194,34 @@ function ModalDetalhe({ prato, onFechar, onFotoChange }) {
 }
 
 /* ─── Card clean — sem foto ───────────────────────── */
-function CardReceita({ prato, ingredientes, onClick }) {
+function CardReceita({ prato, ingredientes, onClick, onToggleVisivel }) {
+  const visivel = prato.visivelIndividual !== false
+  const btnOlho = onToggleVisivel ? (
+    <button
+      onClick={e => { e.stopPropagation(); onToggleVisivel(prato) }}
+      title={visivel ? 'Ocultar dos cardápios standalone' : 'Mostrar nos cardápios standalone'}
+      style={{
+        position: 'absolute', top: 8, right: 8, zIndex: 2,
+        width: 28, height: 28, borderRadius: 8, border: 'none', cursor: 'pointer',
+        background: visivel ? 'rgba(22,163,74,0.15)' : 'rgba(239,68,68,0.15)',
+        color: visivel ? '#16a34a' : '#ef4444',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+      {visivel ? <Eye size={13} /> : <EyeOff size={13} />}
+    </button>
+  ) : null
+
   if (prato.tipo === 'variacao') {
     const precos = prato.variacoes?.map(v => v.preco) || []
     const min = precos.length ? Math.min(...precos) : 0
     const max = precos.length ? Math.max(...precos) : 0
     return (
+      <div style={{ position: 'relative' }}>
+        {btnOlho}
       <button onClick={onClick} className="group flex flex-col text-left w-full transition-all duration-200"
-        style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, padding: '18px 16px 16px', cursor: 'pointer', outline: 'none', gap: 0 }}
+        style={{ background: visivel ? 'var(--bg-card)' : 'var(--bg-hover)', border: `1px solid ${visivel ? 'var(--border)' : 'rgba(239,68,68,0.3)'}`, borderRadius: 18, padding: '18px 16px 16px', cursor: 'pointer', outline: 'none', gap: 0, opacity: visivel ? 1 : 0.7 }}
         onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-active)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-glow)' }}
-        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none' }}>
+        onMouseLeave={e => { e.currentTarget.style.borderColor = visivel ? 'var(--border)' : 'rgba(239,68,68,0.3)'; e.currentTarget.style.boxShadow = 'none' }}>
         <div style={{ width: '100%', aspectRatio: '4/3', borderRadius: 12, overflow: 'hidden', marginBottom: 12, background: 'var(--bg-hover)', flexShrink: 0, position: 'relative' }}>
           {prato.foto && <img src={prato.foto} alt={prato.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
           {(prato.maxSabores >= 2 || prato.meiaAMeia) && (
@@ -233,22 +251,26 @@ function CardReceita({ prato, ingredientes, onClick }) {
           )}
         </div>
       </button>
+      </div>
     )
   }
 
   const custo = custoPrato(prato, ingredientes)
   const lucro = lucroPrato(prato, ingredientes)
   return (
+    <div style={{ position: 'relative' }}>
+      {btnOlho}
     <button
       onClick={onClick}
       className="group flex flex-col text-left w-full transition-all duration-200"
       style={{
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border)',
+        background: visivel ? 'var(--bg-card)' : 'var(--bg-hover)',
+        border: `1px solid ${visivel ? 'var(--border)' : 'rgba(239,68,68,0.3)'}`,
         borderRadius: 18,
         padding: '18px 16px 16px',
         cursor: 'pointer',
         outline: 'none',
+        opacity: visivel ? 1 : 0.7,
         gap: 0,
       }}
       onMouseEnter={e => {
@@ -314,6 +336,7 @@ function CardReceita({ prato, ingredientes, onClick }) {
         </div>
       </div>
     </button>
+    </div>
   )
 }
 
@@ -334,6 +357,9 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
   })
   const [calcVariacao, setCalcVariacao] = useState(pratoEdit?.calcVariacao || 'maior')
   const [variacoes, setVariacoes] = useState(pratoEdit?.variacoes || [])
+  const [bordas, setBordas] = useState(pratoEdit?.bordas || [])
+  const [novaBordaNome, setNovaBordaNome] = useState('')
+  const [novaBordaPreco, setNovaBordaPreco] = useState('')
 
   // Seleção de receita para adicionar
   const [pratoSelecionadoId, setPratoSelecionadoId] = useState('')
@@ -370,6 +396,12 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
     setBusca('')
   }
 
+  function adicionarBorda() {
+    if (!novaBordaNome.trim()) return
+    setBordas(prev => [...prev, { id: crypto.randomUUID(), nome: novaBordaNome.trim(), precoExtra: Number(novaBordaPreco) || 0 }])
+    setNovaBordaNome(''); setNovaBordaPreco('')
+  }
+
   function salvar() {
     if (!nome.trim()) return alert('Informe o nome do produto.')
     if (variacoes.length < 2) return alert('Adicione pelo menos 2 receitas/sabores.')
@@ -381,6 +413,7 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
       maxSabores,
       calcVariacao,
       variacoes,
+      bordas,
       precoVenda: Math.min(...precos),
       ingredientes: [],
     })
@@ -541,6 +574,27 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
                 )}
               </div>
             )}
+          </div>
+
+          {/* Bordas */}
+          <div className="p-3 rounded-xl" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+            <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>🍕 Bordas disponíveis (opcional)</p>
+            {bordas.length > 0 && (
+              <div className="flex flex-col gap-1.5 mb-2">
+                {bordas.map(b => (
+                  <div key={b.id} className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                    <span className="flex-1 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{b.nome}</span>
+                    <span className="text-sm font-bold" style={{ color: '#16a34a' }}>+{b.precoExtra.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                    <button onClick={() => setBordas(prev => prev.filter(x => x.id !== b.id))} className="btn btn-ghost p-1" style={{ color: '#ef4444' }}><Trash2 size={12} /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <input className="input text-sm flex-1" placeholder="Nome da borda (ex: Catupiry)" value={novaBordaNome} onChange={e => setNovaBordaNome(e.target.value)} onKeyDown={e => e.key === 'Enter' && adicionarBorda()} />
+              <input className="input text-sm" placeholder="R$ extra" type="number" min="0" step="0.01" value={novaBordaPreco} onChange={e => setNovaBordaPreco(e.target.value)} style={{ width: 90 }} onKeyDown={e => e.key === 'Enter' && adicionarBorda()} />
+              <button onClick={adicionarBorda} className="btn btn-primary px-3"><Plus size={14} /></button>
+            </div>
           </div>
         </div>
 
@@ -2197,14 +2251,17 @@ export default function Cardapio() {
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                   {pratosFiltrados.map(prato => (
-                    <CardReceita key={prato.id} prato={prato} ingredientes={ingredientes} onClick={() => {
-                      if (prato.tipo === 'variacao') {
-                        setPratoVariacaoEditar(prato)
-                        setModalVariacao(true)
-                      } else {
-                        setPratoSelecionado(prato)
-                      }
-                    }} />
+                    <CardReceita key={prato.id} prato={prato} ingredientes={ingredientes}
+                      onClick={() => {
+                        if (prato.tipo === 'variacao') {
+                          setPratoVariacaoEditar(prato)
+                          setModalVariacao(true)
+                        } else {
+                          setPratoSelecionado(prato)
+                        }
+                      }}
+                      onToggleVisivel={p => editarPrato(p.id, { visivelIndividual: p.visivelIndividual === false ? true : false })}
+                    />
                   ))}
                 </div>
               )}

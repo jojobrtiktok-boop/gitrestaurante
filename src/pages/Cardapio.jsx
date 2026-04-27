@@ -340,10 +340,10 @@ function CardReceita({ prato, ingredientes, onClick, onToggleVisivel }) {
   )
 }
 
-/* ─── Modal Variação (Meia a Meia) ───────────────── */
+/* ─── Modal Produtos Customizáveis ───────────────── */
 function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
   const { pratos: todosPrecos, ingredientes: todosInsumos } = useApp()
-  // Receitas disponíveis (excluindo variações já criadas)
+  // Receitas disponíveis (excluindo produtos customizáveis)
   const receitasDisponiveis = todosPrecos.filter(p => p.tipo !== 'variacao')
 
   const fotoRef = useRef(null)
@@ -351,28 +351,63 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
   const [categoria, setCategoria] = useState(pratoEdit?.categoria || '')
   const [descricao, setDescricao] = useState(pratoEdit?.descricao || '')
   const [foto, setFoto] = useState(pratoEdit?.foto || null)
+  // Modo: simples (global) ou com tamanhos
+  const [comTamanhos, setComTamanhos] = useState(() => (pratoEdit?.tamanhos?.length > 0))
+
+  // Config global (modo simples)
   const [maxSabores, setMaxSabores] = useState(() => {
     if (pratoEdit?.maxSabores) return pratoEdit.maxSabores
     return pratoEdit?.meiaAMeia ? 2 : 1
   })
   const [calcVariacao, setCalcVariacao] = useState(pratoEdit?.calcVariacao || 'maior')
   const [variacoes, setVariacoes] = useState(pratoEdit?.variacoes || [])
+
+  // Tamanhos (modo com tamanhos)
+  const [tamanhos, setTamanhos] = useState(pratoEdit?.tamanhos || [])
+  const [tamanhoAtivoId, setTamanhoAtivoId] = useState(null)
+  const tamanhoAtivo = tamanhos.find(t => t.id === tamanhoAtivoId) || null
+
+  // Bordas
   const [bordas, setBordas] = useState(pratoEdit?.bordas || [])
   const [novaBordaNome, setNovaBordaNome] = useState('')
   const [novaBordaPreco, setNovaBordaPreco] = useState('')
   const [novaBordaInsumoId, setNovaBordaInsumoId] = useState('')
   const [novaBordaInsumoQtd, setNovaBordaInsumoQtd] = useState('')
 
-  // Seleção de receita para adicionar
+  // Seleção de receita (compartilhada, contexto-ciente)
   const [pratoSelecionadoId, setPratoSelecionadoId] = useState('')
   const [busca, setBusca] = useState('')
   const [precoOverride, setPrecoOverride] = useState('')
 
+  const variacoesAtivas = (comTamanhos && tamanhoAtivo) ? tamanhoAtivo.variacoes : variacoes
   const receitasFiltradas = receitasDisponiveis.filter(p =>
     p.nome.toLowerCase().includes(busca.toLowerCase()) &&
-    !variacoes.find(v => v.pratoId === p.id)
+    !variacoesAtivas.find(v => v.pratoId === p.id)
   )
   const pratoSelecionado = receitasDisponiveis.find(p => p.id === pratoSelecionadoId)
+
+  // Funções de tamanho
+  function adicionarTamanho() {
+    const id = crypto.randomUUID()
+    const novo = { id, nome: '', preco: 0, maxSabores: 1, calcVariacao: 'maior', variacoes: [] }
+    setTamanhos(prev => [...prev, novo])
+    setTamanhoAtivoId(id)
+    setPratoSelecionadoId(''); setBusca(''); setPrecoOverride('')
+  }
+
+  function removerTamanho(id) {
+    setTamanhos(prev => prev.filter(t => t.id !== id))
+    if (tamanhoAtivoId === id) setTamanhoAtivoId(null)
+  }
+
+  function atualizarTamanho(id, dados) {
+    setTamanhos(prev => prev.map(t => t.id === id ? { ...t, ...dados } : t))
+  }
+
+  function selecionarTamanho(id) {
+    setTamanhoAtivoId(prev => prev === id ? null : id)
+    setPratoSelecionadoId(''); setBusca(''); setPrecoOverride('')
+  }
 
   function handleFoto(e) {
     const file = e.target.files?.[0]; if (!file) return
@@ -385,17 +420,20 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
   function addVariacao() {
     if (!pratoSelecionado) return
     const preco = precoOverride !== '' ? Number(precoOverride) : pratoSelecionado.precoVenda
-    setVariacoes(prev => [...prev, {
+    const nova = {
       id: crypto.randomUUID(),
       pratoId: pratoSelecionado.id,
       nome: pratoSelecionado.nome,
       descricao: pratoSelecionado.descricao || '',
       foto: pratoSelecionado.foto || null,
       preco,
-    }])
-    setPratoSelecionadoId('')
-    setPrecoOverride('')
-    setBusca('')
+    }
+    if (comTamanhos && tamanhoAtivo) {
+      atualizarTamanho(tamanhoAtivo.id, { variacoes: [...tamanhoAtivo.variacoes, nova] })
+    } else {
+      setVariacoes(prev => [...prev, nova])
+    }
+    setPratoSelecionadoId(''); setPrecoOverride(''); setBusca('')
   }
 
   function adicionarBorda() {
@@ -416,19 +454,111 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
 
   function salvar() {
     if (!nome.trim()) return alert('Informe o nome do produto.')
-    if (variacoes.length < 2) return alert('Adicione pelo menos 2 receitas/sabores.')
-    const precos = variacoes.map(v => v.preco)
+    if (comTamanhos) {
+      if (tamanhos.length < 1) return alert('Adicione pelo menos 1 tamanho.')
+    } else {
+      if (variacoes.length < 2) return alert('Adicione pelo menos 2 receitas/sabores.')
+    }
+    const precoVenda = comTamanhos
+      ? (tamanhos.length > 0 ? Math.min(...tamanhos.map(t => t.preco || 0)) : 0)
+      : Math.min(...variacoes.map(v => v.preco))
     onSalvar({
       nome: nome.trim(), categoria: categoria.trim(), descricao: descricao.trim(), foto,
       tipo: 'variacao',
-      meiaAMeia: maxSabores >= 2,
-      maxSabores,
-      calcVariacao,
-      variacoes,
+      meiaAMeia: !comTamanhos && maxSabores >= 2,
+      maxSabores: comTamanhos ? 1 : maxSabores,
+      calcVariacao: comTamanhos ? 'maior' : calcVariacao,
+      variacoes: comTamanhos ? [] : variacoes,
+      tamanhos: comTamanhos ? tamanhos : [],
       bordas,
-      precoVenda: Math.min(...precos),
+      precoVenda,
       ingredientes: [],
     })
+  }
+
+  // Componente inline do seletor de receitas (reutilizável)
+  function SeletorReceita({ variacoesJa, onAdd }) {
+    const filtradas = receitasDisponiveis.filter(p =>
+      p.nome.toLowerCase().includes(busca.toLowerCase()) &&
+      !variacoesJa.find(v => v.pratoId === p.id)
+    )
+    const selecionado = receitasDisponiveis.find(p => p.id === pratoSelecionadoId)
+    return receitasDisponiveis.length === 0 ? (
+      <div className="p-3 rounded-xl text-center" style={{ background: 'var(--bg-hover)', border: '1px dashed var(--border)' }}>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Nenhuma receita cadastrada ainda.</p>
+      </div>
+    ) : (
+      <div className="flex flex-col gap-2 p-3 rounded-xl" style={{ background: 'var(--bg-hover)', border: '1px dashed var(--border)' }}>
+        <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>Adicionar receita como sabor/opção</p>
+        <input className="input text-sm" placeholder="Buscar receita..." value={busca}
+          onChange={e => { setBusca(e.target.value); setPratoSelecionadoId('') }} />
+        {busca && filtradas.length > 0 && !selecionado && (
+          <div className="flex flex-col gap-1 max-h-40 overflow-y-auto rounded-lg" style={{ border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+            {filtradas.map(p => (
+              <button key={p.id} onClick={() => { setPratoSelecionadoId(p.id); setBusca(p.nome); setPrecoOverride('') }}
+                className="flex items-center gap-2 px-3 py-2 text-left text-sm"
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-primary)' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                {p.foto && <img src={p.foto} alt={p.nome} style={{ width: 24, height: 24, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }} />}
+                <span className="flex-1 font-medium">{p.nome}</span>
+                <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: 12 }}>{p.precoVenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {selecionado && (
+          <div className="flex items-center gap-2 p-2 rounded-lg" style={{ background: 'var(--accent-bg)', border: '1px solid var(--border-active)' }}>
+            {selecionado.foto && <img src={selecionado.foto} alt={selecionado.nome} style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{selecionado.nome}</p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Preço original: {selecionado.precoVenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+            </div>
+            <input className="input text-sm" style={{ width: 90 }} type="number" min="0" step="0.01"
+              placeholder="R$ preço" value={precoOverride} onChange={e => setPrecoOverride(e.target.value)} />
+            <button onClick={onAdd} className="btn btn-primary text-sm px-3" style={{ gap: 4, whiteSpace: 'nowrap' }}>
+              <Plus size={13} /> Add
+            </button>
+          </div>
+        )}
+        {!busca && (
+          <select className="input text-sm" value={pratoSelecionadoId}
+            onChange={e => { setPratoSelecionadoId(e.target.value); if (e.target.value) setBusca(receitasDisponiveis.find(p => p.id === e.target.value)?.nome || '') }}>
+            <option value="">— selecionar receita —</option>
+            {filtradas.map(p => (
+              <option key={p.id} value={p.id}>{p.nome} ({p.precoVenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})</option>
+            ))}
+          </select>
+        )}
+      </div>
+    )
+  }
+
+  function SaboresConfig({ maxS, calcV, onMaxS, onCalcV }) {
+    return (
+      <div>
+        <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Quantos sabores o cliente escolhe?</p>
+        <div className="flex gap-2 mb-2">
+          {[{ v: 1, label: '1 sabor', sub: 'Único' }, { v: 2, label: '½+½', sub: 'Dois sabores' }, { v: 3, label: '⅓+⅓+⅓', sub: 'Três sabores' }].map(op => (
+            <button key={op.v} onClick={() => onMaxS(op.v)} className="flex-1 py-2 px-1 rounded-lg text-center transition-all"
+              style={maxS === op.v ? { background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)' } : { background: 'var(--bg-card)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+              <p className="text-sm font-bold">{op.label}</p>
+              <p style={{ fontSize: 10, opacity: 0.75 }}>{op.sub}</p>
+            </button>
+          ))}
+        </div>
+        {maxS >= 2 && (
+          <div className="flex gap-2">
+            {[{ id: 'maior', label: 'Maior preço' }, { id: 'media', label: 'Média' }].map(op => (
+              <button key={op.id} onClick={() => onCalcV(op.id)} className="flex-1 py-1.5 rounded-lg text-xs font-medium transition-all"
+                style={calcV === op.id ? { background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)' } : { background: 'var(--bg-card)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+                {op.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
@@ -436,8 +566,8 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
       <div className="modal-box max-w-lg w-full" style={{ padding: 0, maxHeight: '92vh', overflowY: 'auto' }}>
         <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
           <div>
-            <p className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>{pratoEdit ? 'Editar Produto com Variação' : 'Novo Produto com Variação'}</p>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Ex: Pizza meia a meia, combinações de sabores</p>
+            <p className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>{pratoEdit ? 'Editar Produto Customizável' : 'Novo Produto Customizável'}</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Pizza, açaí, hambúrguer — com sabores, tamanhos e bordas</p>
           </div>
           <button onClick={onFechar} className="btn btn-ghost p-1"><X size={15} /></button>
         </div>
@@ -448,145 +578,153 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
             <div className="relative shrink-0 rounded-xl overflow-hidden cursor-pointer"
               style={{ width: 72, height: 72, background: 'var(--bg-hover)', border: '1px solid var(--border)' }}
               onClick={() => fotoRef.current?.click()}>
-              {foto
-                ? <img src={foto} alt="foto" className="w-full h-full object-cover" />
-                : <div className="w-full h-full flex items-center justify-center"><Camera size={20} style={{ color: 'var(--text-muted)' }} /></div>
-              }
+              {foto ? <img src={foto} alt="foto" className="w-full h-full object-cover" />
+                : <div className="w-full h-full flex items-center justify-center"><Camera size={20} style={{ color: 'var(--text-muted)' }} /></div>}
             </div>
             <div className="flex-1 flex flex-col gap-2">
-              <input className="input" placeholder="Nome do produto (ex: Pizza)" value={nome} onChange={e => setNome(e.target.value)} />
+              <input className="input" placeholder="Nome do produto (ex: Pizza, Açaí)" value={nome} onChange={e => setNome(e.target.value)} />
               <input className="input" placeholder="Categoria (ex: Pizzas)" value={categoria} onChange={e => setCategoria(e.target.value)} />
             </div>
           </div>
           <input className="input" placeholder="Descrição (opcional)" value={descricao} onChange={e => setDescricao(e.target.value)} />
 
-          {/* Quantos sabores */}
-          <div className="p-3 rounded-xl" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
-            <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Quantos sabores o cliente escolhe?</p>
-            <div className="flex gap-2 mb-3">
-              {[
-                { v: 1, label: '1 sabor', sub: 'Sabor único' },
-                { v: 2, label: '½ + ½', sub: 'Meia a meia' },
-                { v: 3, label: '⅓+⅓+⅓', sub: 'Três sabores' },
-              ].map(op => (
-                <button key={op.v} onClick={() => setMaxSabores(op.v)}
-                  className="flex-1 py-2 px-1 rounded-lg text-center transition-all"
-                  style={maxSabores === op.v
-                    ? { background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)' }
-                    : { background: 'var(--bg-card)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
-                  <p className="text-sm font-bold">{op.label}</p>
-                  <p style={{ fontSize: 10, opacity: 0.75 }}>{op.sub}</p>
-                </button>
-              ))}
-            </div>
-            {maxSabores >= 2 && (
+          {/* Toggle: Simples | Com Tamanhos */}
+          <div className="p-1 rounded-xl flex gap-1" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+            <button onClick={() => setComTamanhos(false)} className="flex-1 py-2 rounded-lg text-sm font-semibold transition-all"
+              style={!comTamanhos ? { background: 'var(--accent)', color: '#fff' } : { background: 'transparent', color: 'var(--text-muted)' }}>
+              Simples (sabores diretos)
+            </button>
+            <button onClick={() => setComTamanhos(true)} className="flex-1 py-2 rounded-lg text-sm font-semibold transition-all"
+              style={comTamanhos ? { background: 'var(--accent)', color: '#fff' } : { background: 'transparent', color: 'var(--text-muted)' }}>
+              Com Tamanhos (P, M, G...)
+            </button>
+          </div>
+
+          {/* ── MODO SIMPLES ── */}
+          {!comTamanhos && (
+            <>
+              <div className="p-3 rounded-xl" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+                <SaboresConfig maxS={maxSabores} calcV={calcVariacao} onMaxS={setMaxSabores} onCalcV={setCalcVariacao} />
+              </div>
+
               <div>
-                <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>Preço ao combinar sabores:</p>
-                <div className="flex gap-2">
-                  {[{ id: 'maior', label: 'Maior preço' }, { id: 'media', label: 'Média dos preços' }].map(op => (
-                    <button key={op.id} onClick={() => setCalcVariacao(op.id)}
-                      className="flex-1 py-1.5 rounded-lg text-xs font-medium transition-all"
-                      style={calcVariacao === op.id
+                <label className="text-xs font-semibold mb-2 block" style={{ color: 'var(--text-muted)' }}>
+                  Receitas adicionadas ({variacoes.length})
+                </label>
+                {variacoes.length > 0 && (
+                  <div className="flex flex-col gap-1.5 mb-3">
+                    {variacoes.map((v, idx) => (
+                      <div key={v.id} className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                        style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+                        <span className="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold shrink-0"
+                          style={{ background: 'var(--accent-bg)', color: 'var(--accent)' }}>{idx + 1}</span>
+                        {v.foto && <img src={v.foto} alt={v.nome} style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{v.nome}</p>
+                        </div>
+                        <span className="text-sm font-bold shrink-0" style={{ color: 'var(--accent)' }}>
+                          {v.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+                        <button onClick={() => setVariacoes(prev => prev.filter(x => x.id !== v.id))}
+                          className="btn btn-ghost p-1 shrink-0" style={{ color: '#ef4444' }}><Trash2 size={13} /></button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <SeletorReceita variacoesJa={variacoes} onAdd={addVariacao} />
+              </div>
+            </>
+          )}
+
+          {/* ── MODO COM TAMANHOS ── */}
+          {comTamanhos && (
+            <div className="flex flex-col gap-3">
+              {/* Tabs dos tamanhos */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
+                    Tamanhos ({tamanhos.length})
+                  </label>
+                  <button onClick={adicionarTamanho} className="btn btn-primary text-xs px-3" style={{ gap: 4 }}>
+                    <Plus size={12} /> Novo Tamanho
+                  </button>
+                </div>
+                {tamanhos.length === 0 && (
+                  <div className="p-4 rounded-xl text-center" style={{ background: 'var(--bg-hover)', border: '1px dashed var(--border)' }}>
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Nenhum tamanho ainda.</p>
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Clique em "Novo Tamanho" para adicionar P, M, G etc.</p>
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {tamanhos.map(t => (
+                    <button key={t.id} onClick={() => selecionarTamanho(t.id)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all"
+                      style={tamanhoAtivoId === t.id
                         ? { background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)' }
-                        : { background: 'var(--bg-card)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
-                      {op.label}
+                        : { background: 'var(--bg-hover)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}>
+                      {t.nome || '(sem nome)'}
+                      {t.preco > 0 && <span style={{ opacity: 0.8, fontSize: 11 }}>R${t.preco.toFixed(0)}</span>}
+                      <span onClick={e => { e.stopPropagation(); removerTamanho(t.id) }}
+                        style={{ marginLeft: 2, opacity: 0.6, cursor: 'pointer', display: 'flex' }}>
+                        <X size={11} />
+                      </span>
                     </button>
                   ))}
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* Opções / Sabores */}
-          <div>
-            <label className="text-xs font-semibold mb-2 block" style={{ color: 'var(--text-muted)' }}>
-              Receitas adicionadas como opção ({variacoes.length})
-            </label>
+              {/* Editor do tamanho ativo */}
+              {tamanhoAtivo && (
+                <div className="flex flex-col gap-3 p-3 rounded-xl" style={{ background: 'var(--bg-hover)', border: '2px solid var(--accent)', borderOpacity: 0.4 }}>
+                  <p className="text-xs font-bold" style={{ color: 'var(--accent)' }}>✏️ Editando tamanho: {tamanhoAtivo.nome || '(novo)'}</p>
 
-            {variacoes.length > 0 && (
-              <div className="flex flex-col gap-1.5 mb-3">
-                {variacoes.map((v, idx) => (
-                  <div key={v.id} className="flex items-center gap-2 px-3 py-2 rounded-xl"
-                    style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
-                    <span className="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold shrink-0"
-                      style={{ background: 'var(--accent-bg)', color: 'var(--accent)' }}>{idx + 1}</span>
-                    {v.foto && <img src={v.foto} alt={v.nome} style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{v.nome}</p>
-                      {v.descricao && <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{v.descricao}</p>}
-                    </div>
-                    <span className="text-sm font-bold shrink-0" style={{ color: 'var(--accent)' }}>
-                      {v.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </span>
-                    <button onClick={() => setVariacoes(prev => prev.filter(x => x.id !== v.id))}
-                      className="btn btn-ghost p-1 shrink-0" style={{ color: '#ef4444' }}>
-                      <Trash2 size={13} />
-                    </button>
+                  {/* Nome + Preço */}
+                  <div className="flex gap-2">
+                    <input className="input text-sm flex-1" placeholder="Nome (ex: P, M, G, Grande...)"
+                      value={tamanhoAtivo.nome}
+                      onChange={e => atualizarTamanho(tamanhoAtivo.id, { nome: e.target.value })} />
+                    <input className="input text-sm" placeholder="R$ preço" type="number" min="0" step="0.01"
+                      style={{ width: 110 }}
+                      value={tamanhoAtivo.preco || ''}
+                      onChange={e => atualizarTamanho(tamanhoAtivo.id, { preco: Number(e.target.value) })} />
                   </div>
-                ))}
-              </div>
-            )}
 
-            {/* Selecionar receita */}
-            {receitasDisponiveis.length === 0 ? (
-              <div className="p-3 rounded-xl text-center" style={{ background: 'var(--bg-hover)', border: '1px dashed var(--border)' }}>
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Nenhuma receita cadastrada ainda.</p>
-                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Crie receitas em <strong>Receitas</strong> para usá-las aqui.</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2 p-3 rounded-xl" style={{ background: 'var(--bg-hover)', border: '1px dashed var(--border)' }}>
-                <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>Adicionar receita como sabor/opção</p>
-                <input className="input text-sm" placeholder="Buscar receita..."
-                  value={busca} onChange={e => { setBusca(e.target.value); setPratoSelecionadoId('') }} />
-
-                {busca && receitasFiltradas.length > 0 && !pratoSelecionado && (
-                  <div className="flex flex-col gap-1 max-h-40 overflow-y-auto rounded-lg" style={{ border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
-                    {receitasFiltradas.map(p => (
-                      <button key={p.id} onClick={() => { setPratoSelecionadoId(p.id); setBusca(p.nome); setPrecoOverride('') }}
-                        className="flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-opacity-80 transition-colors"
-                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-primary)' }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                        {p.foto && <img src={p.foto} alt={p.nome} style={{ width: 24, height: 24, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }} />}
-                        <span className="flex-1 font-medium">{p.nome}</span>
-                        <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: 12 }}>
-                          {p.precoVenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </span>
-                      </button>
-                    ))}
+                  {/* Quantos sabores para este tamanho */}
+                  <div className="p-2 rounded-lg" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                    <SaboresConfig
+                      maxS={tamanhoAtivo.maxSabores}
+                      calcV={tamanhoAtivo.calcVariacao}
+                      onMaxS={v => atualizarTamanho(tamanhoAtivo.id, { maxSabores: v })}
+                      onCalcV={v => atualizarTamanho(tamanhoAtivo.id, { calcVariacao: v })}
+                    />
                   </div>
-                )}
 
-                {pratoSelecionado && (
-                  <div className="flex items-center gap-2 p-2 rounded-lg" style={{ background: 'var(--accent-bg)', border: '1px solid var(--border-active)' }}>
-                    {pratoSelecionado.foto && <img src={pratoSelecionado.foto} alt={pratoSelecionado.nome} style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{pratoSelecionado.nome}</p>
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Preço original: {pratoSelecionado.precoVenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                  {/* Lista de receitas deste tamanho */}
+                  {tamanhoAtivo.variacoes.length > 0 && (
+                    <div className="flex flex-col gap-1.5">
+                      {tamanhoAtivo.variacoes.map((v, idx) => (
+                        <div key={v.id} className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                          style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                          <span className="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold shrink-0"
+                            style={{ background: 'var(--accent-bg)', color: 'var(--accent)' }}>{idx + 1}</span>
+                          {v.foto && <img src={v.foto} alt={v.nome} style={{ width: 24, height: 24, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }} />}
+                          <span className="flex-1 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{v.nome}</span>
+                          <span className="text-sm font-bold shrink-0" style={{ color: 'var(--accent)' }}>
+                            {v.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </span>
+                          <button onClick={() => atualizarTamanho(tamanhoAtivo.id, { variacoes: tamanhoAtivo.variacoes.filter(x => x.id !== v.id) })}
+                            className="btn btn-ghost p-1 shrink-0" style={{ color: '#ef4444' }}><Trash2 size={12} /></button>
+                        </div>
+                      ))}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <input className="input text-sm" style={{ width: 90 }} type="number" min="0" step="0.01"
-                        placeholder="R$ preço" value={precoOverride}
-                        onChange={e => setPrecoOverride(e.target.value)} />
-                      <button onClick={addVariacao} className="btn btn-primary text-sm px-3" style={{ gap: 4, whiteSpace: 'nowrap' }}>
-                        <Plus size={13} /> Add
-                      </button>
-                    </div>
-                  </div>
-                )}
+                  )}
 
-                {!busca && (
-                  <select className="input text-sm" value={pratoSelecionadoId}
-                    onChange={e => { setPratoSelecionadoId(e.target.value); if (e.target.value) setBusca(receitasDisponiveis.find(p => p.id === e.target.value)?.nome || '') }}>
-                    <option value="">— selecionar receita —</option>
-                    {receitasFiltradas.map(p => (
-                      <option key={p.id} value={p.id}>{p.nome} ({p.precoVenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})</option>
-                    ))}
-                  </select>
-                )}
-              </div>
-            )}
-          </div>
+                  {/* Seletor de receita para este tamanho */}
+                  <SeletorReceita variacoesJa={tamanhoAtivo.variacoes} onAdd={addVariacao} />
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Bordas */}
           <div className="p-3 rounded-xl" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
@@ -2233,7 +2371,7 @@ export default function Cardapio() {
                 <button onClick={() => setModalVariacao(true)}
                   className="btn btn-secondary text-xs shrink-0"
                   style={{ gap: 5, borderStyle: 'dashed', color: '#7c3aed', borderColor: '#7c3aed44', background: 'rgba(124,58,237,0.06)' }}>
-                  <Plus size={13} /> Produto com Variação
+                  <Plus size={13} /> Produto Customizável
                 </button>
                 <div className="flex gap-1.5 flex-wrap">
                   {categorias.map(cat => (

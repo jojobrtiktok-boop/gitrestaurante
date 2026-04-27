@@ -10,11 +10,17 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
   const accentCss = corStr || 'var(--accent)'
 
   const grupos = prato.grupos || []
-  const variacoes = prato.variacoes || []
-  const temVariacoes = variacoes.length > 0
-  const maxSabores = prato.maxSabores || (prato.meiaAMeia ? 2 : 1)
+  const temTamanhos = (prato.tamanhos || []).length > 0
   const gruposComplemento = grupos.filter(g => g.categoria !== 'adicional')
   const gruposAdicional = grupos.filter(g => g.categoria === 'adicional')
+
+  // Tamanho selecionado (quando produto tem tamanhos)
+  const [tamanhoSel, setTamanhoSel] = useState(null)
+
+  // Deriva variacoes e maxSabores do tamanho selecionado ou do produto diretamente
+  const variacoes = temTamanhos ? (tamanhoSel?.variacoes || []) : (prato.variacoes || [])
+  const maxSabores = temTamanhos ? (tamanhoSel?.maxSabores || 1) : (prato.maxSabores || (prato.meiaAMeia ? 2 : 1))
+  const temVariacoes = variacoes.length > 0
 
   const [selecoes, setSelecoes] = useState(() => {
     const init = {}
@@ -78,18 +84,26 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
     }, 0)
   }, 0)
 
-  // Preço baseado em variações selecionadas
+  // Preço baseado em tamanho ou variações selecionadas
   const precoVariacao = (() => {
+    if (temTamanhos) {
+      // Com tamanhos: preço = tamanho selecionado (fixo)
+      return tamanhoSel?.preco ?? prato.precoVenda ?? 0
+    }
     if (!temVariacoes || saboresSel.length === 0) return prato.precoVenda || 0
     const precos = saboresSel.map(v => v.preco ?? prato.precoVenda ?? 0)
     if (prato.calcVariacao === 'media') return precos.reduce((s, p) => s + p, 0) / precos.length
-    return Math.max(...precos) // padrão: maior preço
+    return Math.max(...precos)
   })()
 
   const precoUnitario = precoVariacao + extrasTotal + (bordaSel?.precoExtra || 0)
   const precoTotal = precoUnitario * quantidade
 
   function confirmar() {
+    if (temTamanhos && !tamanhoSel) {
+      setErro('Escolha um tamanho')
+      return
+    }
     if (temVariacoes && saboresSel.length < maxSabores) {
       setErro(`Escolha ${maxSabores === 2 ? '2 sabores (½+½)' : maxSabores === 3 ? '3 sabores (⅓+⅓+⅓)' : '1 opção'}`)
       return
@@ -212,8 +226,47 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
+          {/* ── Seleção de tamanho ── */}
+          {temTamanhos && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Tamanho</p>
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '2px 0 0' }}>Obrigatório</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {(prato.tamanhos || []).map(t => {
+                  const sel = tamanhoSel?.id === t.id
+                  return (
+                    <button key={t.id} onClick={() => { setTamanhoSel(t); setSaboresSel([]); setErro('') }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '10px 14px', borderRadius: 12, border: 'none',
+                        cursor: 'pointer',
+                        background: sel ? (corStr ? `${corStr}15` : 'var(--accent-bg)') : 'var(--bg-hover)',
+                        outline: sel ? `1.5px solid ${accentCss}` : '1px solid transparent',
+                        transition: 'all .12s', textAlign: 'left', width: '100%',
+                      }}>
+                      <div style={{
+                        width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                        border: sel ? `2px solid ${accentCss}` : '2px solid var(--border)',
+                        background: sel ? accentCss : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {sel && <Check size={11} color="#fff" />}
+                      </div>
+                      <span style={{ flex: 1, fontSize: 14, color: 'var(--text-primary)', fontWeight: sel ? 600 : 400 }}>{t.nome}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: accentCss }}>{formatarMoeda(t.preco || 0)}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {/* ── Seleção de sabores (½+½ ou ⅓+⅓+⅓) ── */}
-          {temVariacoes && (
+          {temVariacoes && (!temTamanhos || tamanhoSel) && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <div>

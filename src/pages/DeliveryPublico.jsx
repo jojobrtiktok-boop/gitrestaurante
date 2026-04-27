@@ -176,6 +176,7 @@ export default function DeliveryPublico() {
           calcVariacao: row.calc_variacao || 'maior',
           maxSabores: row.max_sabores || (row.meia_a_meia ? 2 : 1),
           bordas: row.bordas || [],
+          tamanhos: row.tamanhos || [],
           visivelIndividual: row.visivel_individual !== false,
           disponivel: row.disponivel !== false,
         })) : []
@@ -272,6 +273,7 @@ export default function DeliveryPublico() {
 
   // ── modal produto ──────────────────────────────────────────────────────────
   const [pratoDetalhe, setPratoDetalhe] = useState(null)
+  const [modalTamanho, setModalTamanho] = useState(null)     // tamanho selecionado (quando tem tamanhos)
   const [modalVariacoes, setModalVariacoes] = useState([])   // variacoes selecionadas (array)
   const [modalBorda, setModalBorda] = useState(null)         // borda selecionada ou null
   const [modalAdicionais, setModalAdicionais] = useState({}) // { itemId: qty }
@@ -373,6 +375,7 @@ export default function DeliveryPublico() {
   // ── modal helpers ──────────────────────────────────────────────────────────
   function abrirModal(prato) {
     setPratoDetalhe(prato)
+    setModalTamanho(null)
     setModalVariacoes([])
     setModalBorda(null)
     setModalAdicionais({})
@@ -382,13 +385,18 @@ export default function DeliveryPublico() {
 
   function fecharModal() {
     setPratoDetalhe(null)
+    setModalTamanho(null)
     setModalBorda(null)
   }
 
   function calcularTotalModal() {
     if (!pratoDetalhe) return 0
     let precoBase
-    if (modalVariacoes.length > 0) {
+    const temTamanhos = (pratoDetalhe.tamanhos || []).length > 0
+    if (temTamanhos) {
+      // Com tamanhos: preço é fixo pelo tamanho
+      precoBase = modalTamanho?.preco ?? pratoDetalhe.precoVenda ?? 0
+    } else if (modalVariacoes.length > 0) {
       const precos = modalVariacoes.map(v => v.preco ?? pratoDetalhe.precoVenda ?? 0)
       precoBase = pratoDetalhe.calcVariacao === 'media'
         ? precos.reduce((a, b) => a + b, 0) / precos.length
@@ -411,13 +419,19 @@ export default function DeliveryPublico() {
 
   function adicionarAoCarrinho() {
     if (!pratoDetalhe) return
-    const temVariacoes = (pratoDetalhe.variacoes || []).length > 0
-    const maxSabores = pratoDetalhe.maxSabores || (pratoDetalhe.meiaAMeia ? 2 : 1)
-    const qtdRequerida = maxSabores
-    if (temVariacoes && modalVariacoes.length < (maxSabores === 1 ? 1 : qtdRequerida)) return
+    const temTamanhos = (pratoDetalhe.tamanhos || []).length > 0
+    if (temTamanhos && !modalTamanho) return // tamanho obrigatório
+
+    // variacoes e maxSabores dependem do tamanho (se tiver)
+    const variacoesDisponiveis = temTamanhos ? (modalTamanho?.variacoes || []) : (pratoDetalhe.variacoes || [])
+    const maxSabores = temTamanhos ? (modalTamanho?.maxSabores || 1) : (pratoDetalhe.maxSabores || (pratoDetalhe.meiaAMeia ? 2 : 1))
+    const temVariacoes = variacoesDisponiveis.length > 0
+    if (temVariacoes && modalVariacoes.length < maxSabores) return
 
     let preco
-    if (modalVariacoes.length > 0) {
+    if (temTamanhos) {
+      preco = modalTamanho?.preco ?? pratoDetalhe.precoVenda ?? 0
+    } else if (modalVariacoes.length > 0) {
       const precos = modalVariacoes.map(v => v.preco ?? pratoDetalhe.precoVenda ?? 0)
       preco = pratoDetalhe.calcVariacao === 'media'
         ? precos.reduce((a, b) => a + b, 0) / precos.length
@@ -442,9 +456,10 @@ export default function DeliveryPublico() {
       }
     }
 
-    const nomeCompleto = modalVariacoes.length > 0
-      ? `${pratoDetalhe.nome} (${modalVariacoes.map(v => v.nome).join(' + ')})`
-      : pratoDetalhe.nome
+    const partesSabores = modalVariacoes.length > 0 ? `${modalVariacoes.map(v => v.nome).join(' + ')}` : ''
+    const parteTamanho = modalTamanho ? modalTamanho.nome : ''
+    const sufixo = [parteTamanho, partesSabores].filter(Boolean).join(' · ')
+    const nomeCompleto = sufixo ? `${pratoDetalhe.nome} (${sufixo})` : pratoDetalhe.nome
 
     const novoItem = {
       chave: gerarChave(),
@@ -453,6 +468,7 @@ export default function DeliveryPublico() {
       preco: preco + (modalBorda?.precoExtra || 0),
       qtd: modalQtd,
       foto: pratoDetalhe.foto || null,
+      tamanho: modalTamanho || null,
       variacoes: modalVariacoes.length > 0 ? modalVariacoes : null,
       borda: modalBorda || null,
       adicionaisEscolhidos,
@@ -641,9 +657,16 @@ export default function DeliveryPublico() {
   // ── modal produto ──────────────────────────────────────────────────────────
   const gruposComplemento = pratoDetalhe ? (pratoDetalhe.grupos || []).filter(g => g.categoria !== 'adicional') : []
   const gruposAdicional = pratoDetalhe ? (pratoDetalhe.grupos || []).filter(g => g.categoria === 'adicional') : []
-  const temVariacoesModal = pratoDetalhe && (pratoDetalhe.variacoes || []).length > 0
-  const maxSaboresModal = pratoDetalhe?.maxSabores || (pratoDetalhe?.meiaAMeia ? 2 : 1)
-  const podeConcluirModal = !temVariacoesModal || (maxSaboresModal === 1 ? modalVariacoes.length >= 1 : modalVariacoes.length === maxSaboresModal)
+  const temTamanhosModal = pratoDetalhe && (pratoDetalhe.tamanhos || []).length > 0
+  // variacoes e maxSabores dependem do tamanho selecionado (se tiver) ou do produto
+  const variacoesDoModal = temTamanhosModal ? (modalTamanho?.variacoes || []) : (pratoDetalhe?.variacoes || [])
+  const temVariacoesModal = variacoesDoModal.length > 0
+  const maxSaboresModal = temTamanhosModal
+    ? (modalTamanho?.maxSabores || 1)
+    : (pratoDetalhe?.maxSabores || (pratoDetalhe?.meiaAMeia ? 2 : 1))
+  const podeConcluirModal =
+    (!temTamanhosModal || modalTamanho) &&
+    (!temVariacoesModal || (maxSaboresModal === 1 ? modalVariacoes.length >= 1 : modalVariacoes.length === maxSaboresModal))
   const totalModal = calcularTotalModal()
 
   return (
@@ -995,8 +1018,39 @@ export default function DeliveryPublico() {
               </p>
             )}
 
+            {/* Tamanhos */}
+            {temTamanhosModal && (
+              <div style={{ marginBottom: 24 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: corTextoBase, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                  Tamanho <span style={{ color: '#ef4444' }}>*</span>
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {(pratoDetalhe.tamanhos || []).map(t => {
+                    const sel = modalTamanho?.id === t.id
+                    return (
+                      <label key={t.id} onClick={() => { setModalTamanho(t); setModalVariacoes([]) }} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '10px 14px', borderRadius: 12, cursor: 'pointer',
+                        border: '2px solid ' + (sel ? destaque : bordaCard),
+                        background: sel ? (modoClaro ? `${destaque}12` : `${destaque}22`) : (modoClaro ? '#f8f8f8' : 'rgba(255,255,255,0.06)'),
+                        transition: 'all 0.15s',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid ' + (sel ? destaque : corTextoSec), background: sel ? destaque : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {sel && <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff' }} />}
+                          </div>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: corTextoBase }}>{t.nome}</span>
+                        </div>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: corPreco }}>{formatarMoeda(t.preco || 0)}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Variações / Sabores */}
-            {temVariacoesModal && (
+            {temVariacoesModal && (!temTamanhosModal || modalTamanho) && (
               <div style={{ marginBottom: 24 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <p style={{ fontSize: 13, fontWeight: 700, color: corTextoBase, margin: 0, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
@@ -1010,7 +1064,7 @@ export default function DeliveryPublico() {
                   )}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {pratoDetalhe.variacoes.map(v => {
+                  {variacoesDoModal.map(v => {
                     const sel = modalVariacoes.some(x => x.id === v.id)
                     const bloqueado = !sel && modalVariacoes.length >= maxSaboresModal
                     return (

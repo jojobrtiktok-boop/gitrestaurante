@@ -391,6 +391,14 @@ export default function DeliveryPublico() {
     setModalBorda(null)
   }
 
+  function precoExibicao(prato) {
+    if ((prato.tamanhos || []).length > 0) {
+      const precos = prato.tamanhos.flatMap(t => (t.variacoes || []).map(v => v.preco || 0)).filter(p => p > 0)
+      if (precos.length > 0) return Math.min(...precos)
+    }
+    return prato.precoVenda ?? prato.preco ?? 0
+  }
+
   function calcularTotalModal() {
     if (!pratoDetalhe) return 0
     let precoBase
@@ -833,7 +841,7 @@ export default function DeliveryPublico() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, padding: '0 12px 16px' }}>
               {itensDestaques.map(prato => {
-                const preco = prato.precoVenda ?? prato.preco ?? 0
+                const preco = precoExibicao(prato)
                 return (
                   <div key={prato.id} onClick={() => abrirModal(prato)} style={{ cursor: 'pointer' }}>
                     <div style={{ position: 'relative', width: '100%', aspectRatio: '1', borderRadius: 10, overflow: 'hidden', background: '#f0f0f0' }}>
@@ -886,7 +894,7 @@ export default function DeliveryPublico() {
               {layoutGrade ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, padding: '0 12px' }}>
                   {itens.map(prato => {
-                    const preco = prato.precoVenda ?? prato.preco ?? 0
+                    const preco = precoExibicao(prato)
                     return (
                       <div key={prato.id} onClick={() => abrirModal(prato)}
                         style={{ borderRadius: 12, overflow: 'hidden', background: cardBg, border: '1px solid ' + bordaCard, cursor: 'pointer' }}>
@@ -911,7 +919,7 @@ export default function DeliveryPublico() {
               ) : modoIfood ? (
                 /* ── Modo iFood: lista estilo iFood ── */
                 itens.map((prato, idx) => {
-                  const preco = prato.precoVenda ?? prato.preco ?? 0
+                  const preco = precoExibicao(prato)
                   return (
                     <div key={prato.id} onClick={() => abrirModal(prato)} style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -946,7 +954,7 @@ export default function DeliveryPublico() {
               ) : (
                 /* ── Modo normal: lista padrão ── */
                 itens.map(prato => {
-                  const preco = prato.precoVenda ?? prato.preco ?? 0
+                  const preco = precoExibicao(prato)
                   return (
                     <div key={prato.id} onClick={() => abrirModal(prato)} style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -1033,7 +1041,7 @@ export default function DeliveryPublico() {
               {pratoDetalhe.nome}
             </h2>
             <p style={{ fontSize: 16, fontWeight: 700, color: corPreco, margin: '0 0 10px' }}>
-              {formatarMoeda(pratoDetalhe.precoVenda ?? pratoDetalhe.preco ?? 0)}
+              {(pratoDetalhe.tamanhos || []).length > 0 && <span style={{ fontSize: 13, fontWeight: 500 }}>a partir de </span>}{formatarMoeda(precoExibicao(pratoDetalhe))}
             </p>
             {pratoDetalhe.descricao && (
               <p style={{ fontSize: 14, color: corTextoSec, margin: '0 0 20px', lineHeight: 1.6 }}>
@@ -1406,7 +1414,7 @@ export default function DeliveryPublico() {
                   <p style={{ fontSize: 14, fontWeight: 800, color: corTextoBase, margin: '0 0 12px', paddingLeft: 20 }}>Peça também</p>
                   <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingLeft: 20, paddingRight: 20, paddingBottom: 4, scrollbarWidth: 'none' }}>
                     {sugeridos.map(prato => {
-                      const preco = prato.precoVenda ?? prato.preco ?? 0
+                      const preco = precoExibicao(prato)
                       return (
                         <div key={prato.id} onClick={() => { setCheckoutAberto(false); setTimeout(() => abrirModal(prato), 100) }}
                           style={{ flexShrink: 0, width: 130, borderRadius: 14, overflow: 'hidden', cursor: 'pointer',

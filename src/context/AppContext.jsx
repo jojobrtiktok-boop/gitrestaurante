@@ -1807,7 +1807,24 @@ export function AppProvider({ children }) {
       })
 
       // Baixar estoque dos ingredientes do prato
-      if (prato.ingredientes?.length) {
+      const variacoesDoPedido = item.variacoes || (item.variacao ? [item.variacao] : null)
+      if (variacoesDoPedido?.length) {
+        // Produto com variação (½+½ ou ⅓+⅓+⅓): deduz proporcional de cada sub-prato
+        const fator = 1 / variacoesDoPedido.length
+        variacoesDoPedido.forEach(vari => {
+          const subPrato = pratos.find(p => p.id === vari.pratoId)
+          if (!subPrato?.ingredientes?.length) return
+          setIngredientes(prev => prev.map(ing => {
+            const linha = subPrato.ingredientes.find(l => l.ingredienteId === ing.id)
+            if (!linha) return ing
+            const deduct = fromBase(linha.quantidade, ing.unidade) * item.quantidade * fator
+            const upd = { ...ing, quantidadeEstoque: ing.quantidadeEstoque - deduct }
+            if (uid) sbWrite(supabase.from('ingredientes').update({ quantidade_estoque: upd.quantidadeEstoque }).eq('id', ing.id))
+            return upd
+          }))
+        })
+      } else if (prato.ingredientes?.length) {
+        // Produto simples: deduz ingredientes normalmente
         setIngredientes(prev => prev.map(ing => {
           const linha = prato.ingredientes.find(l => l.ingredienteId === ing.id)
           if (!linha) return ing

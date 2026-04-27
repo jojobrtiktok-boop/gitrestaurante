@@ -265,7 +265,7 @@ export default function DeliveryPublico() {
 
   // ── modal produto ──────────────────────────────────────────────────────────
   const [pratoDetalhe, setPratoDetalhe] = useState(null)
-  const [modalVariacao, setModalVariacao] = useState(null)   // variacao selecionada
+  const [modalVariacoes, setModalVariacoes] = useState([])   // variacoes selecionadas (array)
   const [modalAdicionais, setModalAdicionais] = useState({}) // { itemId: qty }
   const [modalComplementos, setModalComplementos] = useState({}) // { groupId: itemId }
   const [modalQtd, setModalQtd] = useState(1)
@@ -365,7 +365,7 @@ export default function DeliveryPublico() {
   // ── modal helpers ──────────────────────────────────────────────────────────
   function abrirModal(prato) {
     setPratoDetalhe(prato)
-    setModalVariacao(null)
+    setModalVariacoes([])
     setModalAdicionais({})
     setModalComplementos({})
     setModalQtd(1)
@@ -377,12 +377,17 @@ export default function DeliveryPublico() {
 
   function calcularTotalModal() {
     if (!pratoDetalhe) return 0
-    const precoBase = modalVariacao
-      ? (modalVariacao.preco ?? pratoDetalhe.precoVenda ?? pratoDetalhe.preco ?? 0)
-      : (pratoDetalhe.precoVenda ?? pratoDetalhe.preco ?? 0)
+    let precoBase
+    if (modalVariacoes.length > 0) {
+      const precos = modalVariacoes.map(v => v.preco ?? pratoDetalhe.precoVenda ?? 0)
+      precoBase = pratoDetalhe.calcVariacao === 'media'
+        ? precos.reduce((a, b) => a + b, 0) / precos.length
+        : Math.max(...precos)
+    } else {
+      precoBase = pratoDetalhe.precoVenda ?? pratoDetalhe.preco ?? 0
+    }
     const extraAdicionais = Object.entries(modalAdicionais).reduce((sum, [itemId, qty]) => {
       if (qty <= 0) return sum
-      // find item across all adicional groups
       for (const g of (pratoDetalhe.grupos || [])) {
         if (g.categoria === 'adicional') {
           const item = (g.itens || []).find(it => it.id === itemId)
@@ -397,11 +402,19 @@ export default function DeliveryPublico() {
   function adicionarAoCarrinho() {
     if (!pratoDetalhe) return
     const temVariacoes = (pratoDetalhe.variacoes || []).length > 0
-    if (temVariacoes && !modalVariacao) return // must pick one
+    const maxSabores = pratoDetalhe.maxSabores || (pratoDetalhe.meiaAMeia ? 2 : 1)
+    const qtdRequerida = maxSabores
+    if (temVariacoes && modalVariacoes.length < (maxSabores === 1 ? 1 : qtdRequerida)) return
 
-    const preco = modalVariacao
-      ? (modalVariacao.preco ?? pratoDetalhe.precoVenda ?? pratoDetalhe.preco ?? 0)
-      : (pratoDetalhe.precoVenda ?? pratoDetalhe.preco ?? 0)
+    let preco
+    if (modalVariacoes.length > 0) {
+      const precos = modalVariacoes.map(v => v.preco ?? pratoDetalhe.precoVenda ?? 0)
+      preco = pratoDetalhe.calcVariacao === 'media'
+        ? precos.reduce((a, b) => a + b, 0) / precos.length
+        : Math.max(...precos)
+    } else {
+      preco = pratoDetalhe.precoVenda ?? pratoDetalhe.preco ?? 0
+    }
 
     const adicionaisEscolhidos = []
     for (const g of (pratoDetalhe.grupos || [])) {
@@ -419,14 +432,18 @@ export default function DeliveryPublico() {
       }
     }
 
+    const nomeCompleto = modalVariacoes.length > 0
+      ? `${pratoDetalhe.nome} (${modalVariacoes.map(v => v.nome).join(' + ')})`
+      : pratoDetalhe.nome
+
     const novoItem = {
       chave: gerarChave(),
       pratoId: pratoDetalhe.id,
-      nome: modalVariacao ? `${pratoDetalhe.nome} (${modalVariacao.nome})` : pratoDetalhe.nome,
+      nome: nomeCompleto,
       preco,
       qtd: modalQtd,
       foto: pratoDetalhe.foto || null,
-      variacao: modalVariacao || null,
+      variacoes: modalVariacoes.length > 0 ? modalVariacoes : null,
       adicionaisEscolhidos,
       obs: '',
     }
@@ -555,6 +572,7 @@ export default function DeliveryPublico() {
           quantidade: i.qtd,
           precoUnit: i.preco,
           opcoes: (i.adicionaisEscolhidos || []).map(a => ({ nome: a.nome, precoExtra: a.precoExtra || 0, qtd: a.qtd })),
+          variacoes: i.variacoes || null,
         }))
         const statusInicial = ['dinheiro', 'cartao', 'maquininha'].includes(pagamento) ? 'novo' : 'pendente'
         await supabase.from('pedidos').insert({
@@ -613,7 +631,8 @@ export default function DeliveryPublico() {
   const gruposComplemento = pratoDetalhe ? (pratoDetalhe.grupos || []).filter(g => g.categoria !== 'adicional') : []
   const gruposAdicional = pratoDetalhe ? (pratoDetalhe.grupos || []).filter(g => g.categoria === 'adicional') : []
   const temVariacoesModal = pratoDetalhe && (pratoDetalhe.variacoes || []).length > 0
-  const podeConcluirModal = !temVariacoesModal || modalVariacao !== null
+  const maxSaboresModal = pratoDetalhe?.maxSabores || (pratoDetalhe?.meiaAMeia ? 2 : 1)
+  const podeConcluirModal = !temVariacoesModal || (maxSaboresModal === 1 ? modalVariacoes.length >= 1 : modalVariacoes.length === maxSaboresModal)
   const totalModal = calcularTotalModal()
 
   return (
@@ -965,29 +984,54 @@ export default function DeliveryPublico() {
               </p>
             )}
 
-            {/* Variações */}
+            {/* Variações / Sabores */}
             {temVariacoesModal && (
               <div style={{ marginBottom: 24 }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: corTextoBase, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                  Escolha uma opção <span style={{ color: '#ef4444' }}>*</span>
-                </p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: corTextoBase, margin: 0, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                    {maxSaboresModal === 1 ? 'Escolha uma opção' : maxSaboresModal === 2 ? 'Escolha 2 sabores (½+½)' : 'Escolha 3 sabores (⅓+⅓+⅓)'}
+                    <span style={{ color: '#ef4444' }}> *</span>
+                  </p>
+                  {maxSaboresModal > 1 && (
+                    <span style={{ fontSize: 12, fontWeight: 700, color: modalVariacoes.length === maxSaboresModal ? '#16a34a' : destaque, background: modalVariacoes.length === maxSaboresModal ? 'rgba(22,163,74,0.1)' : `${destaque}18`, padding: '2px 8px', borderRadius: 20 }}>
+                      {modalVariacoes.length}/{maxSaboresModal}
+                    </span>
+                  )}
+                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {pratoDetalhe.variacoes.map(v => {
-                    const sel = modalVariacao?.id === v.id
+                    const sel = modalVariacoes.some(x => x.id === v.id)
+                    const bloqueado = !sel && modalVariacoes.length >= maxSaboresModal
                     return (
-                      <label key={v.id} onClick={() => setModalVariacao(v)} style={{
+                      <label key={v.id} onClick={() => {
+                        if (maxSaboresModal === 1) {
+                          setModalVariacoes([v])
+                        } else if (sel) {
+                          setModalVariacoes(prev => prev.filter(x => x.id !== v.id))
+                        } else if (!bloqueado) {
+                          setModalVariacoes(prev => [...prev, v])
+                        }
+                      }} style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '10px 14px', borderRadius: 12, cursor: 'pointer',
+                        padding: '10px 14px', borderRadius: 12,
+                        cursor: bloqueado ? 'not-allowed' : 'pointer',
                         border: '2px solid ' + (sel ? destaque : bordaCard),
-                        background: sel ? (modoClaro ? `${destaque}12` : `${destaque}22`) : (modoClaro ? '#f8f8f8' : 'rgba(255,255,255,0.06)'),
+                        background: sel ? (modoClaro ? `${destaque}12` : `${destaque}22`) : bloqueado ? (modoClaro ? '#f0f0f0' : 'rgba(255,255,255,0.03)') : (modoClaro ? '#f8f8f8' : 'rgba(255,255,255,0.06)'),
+                        opacity: bloqueado ? 0.45 : 1,
+                        transition: 'all 0.15s',
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div style={{
-                            width: 18, height: 18, borderRadius: '50%', border: '2px solid ' + (sel ? destaque : corTextoSec),
+                            width: 18, height: 18,
+                            borderRadius: maxSaboresModal === 1 ? '50%' : 4,
+                            border: '2px solid ' + (sel ? destaque : corTextoSec),
                             background: sel ? destaque : 'transparent', flexShrink: 0,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                           }}>
-                            {sel && <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff' }} />}
+                            {sel && (maxSaboresModal === 1
+                              ? <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff' }} />
+                              : <svg width="10" height="10" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            )}
                           </div>
                           <span style={{ fontSize: 14, fontWeight: 600, color: corTextoBase }}>{v.nome}</span>
                         </div>

@@ -206,8 +206,10 @@ function CardReceita({ prato, ingredientes, onClick }) {
         onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none' }}>
         <div style={{ width: '100%', aspectRatio: '4/3', borderRadius: 12, overflow: 'hidden', marginBottom: 12, background: 'var(--bg-hover)', flexShrink: 0, position: 'relative' }}>
           {prato.foto && <img src={prato.foto} alt={prato.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-          {prato.meiaAMeia && (
-            <span style={{ position: 'absolute', top: 6, right: 6, fontSize: 10, fontWeight: 800, color: '#7c3aed', background: 'rgba(124,58,237,0.15)', padding: '2px 7px', borderRadius: 20 }}>½+½</span>
+          {(prato.maxSabores >= 2 || prato.meiaAMeia) && (
+            <span style={{ position: 'absolute', top: 6, right: 6, fontSize: 10, fontWeight: 800, color: '#7c3aed', background: 'rgba(124,58,237,0.15)', padding: '2px 7px', borderRadius: 20 }}>
+              {(prato.maxSabores || 2) >= 3 ? '⅓+⅓+⅓' : '½+½'}
+            </span>
           )}
         </div>
         <p style={{ fontWeight: 800, fontSize: 15, color: 'var(--text-primary)', lineHeight: 1.25, marginBottom: 2, letterSpacing: '-0.3px' }}>{prato.nome}</p>
@@ -326,7 +328,10 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
   const [categoria, setCategoria] = useState(pratoEdit?.categoria || '')
   const [descricao, setDescricao] = useState(pratoEdit?.descricao || '')
   const [foto, setFoto] = useState(pratoEdit?.foto || null)
-  const [meiaAMeia, setMeiaAMeia] = useState(pratoEdit?.meiaAMeia ?? true)
+  const [maxSabores, setMaxSabores] = useState(() => {
+    if (pratoEdit?.maxSabores) return pratoEdit.maxSabores
+    return pratoEdit?.meiaAMeia ? 2 : 1
+  })
   const [calcVariacao, setCalcVariacao] = useState(pratoEdit?.calcVariacao || 'maior')
   const [variacoes, setVariacoes] = useState(pratoEdit?.variacoes || [])
 
@@ -369,7 +374,16 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
     if (!nome.trim()) return alert('Informe o nome do produto.')
     if (variacoes.length < 2) return alert('Adicione pelo menos 2 receitas/sabores.')
     const precos = variacoes.map(v => v.preco)
-    onSalvar({ nome: nome.trim(), categoria: categoria.trim(), descricao: descricao.trim(), foto, tipo: 'variacao', meiaAMeia, calcVariacao, variacoes, precoVenda: Math.min(...precos), ingredientes: [] })
+    onSalvar({
+      nome: nome.trim(), categoria: categoria.trim(), descricao: descricao.trim(), foto,
+      tipo: 'variacao',
+      meiaAMeia: maxSabores >= 2,
+      maxSabores,
+      calcVariacao,
+      variacoes,
+      precoVenda: Math.min(...precos),
+      ingredientes: [],
+    })
   }
 
   return (
@@ -401,15 +415,28 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
           </div>
           <input className="input" placeholder="Descrição (opcional)" value={descricao} onChange={e => setDescricao(e.target.value)} />
 
-          {/* Meia a meia */}
+          {/* Quantos sabores */}
           <div className="p-3 rounded-xl" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
-            <label className="flex items-center gap-2 cursor-pointer mb-3">
-              <input type="checkbox" checked={meiaAMeia} onChange={e => setMeiaAMeia(e.target.checked)} />
-              <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Permite Meia a Meia</span>
-            </label>
-            {meiaAMeia && (
+            <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Quantos sabores o cliente escolhe?</p>
+            <div className="flex gap-2 mb-3">
+              {[
+                { v: 1, label: '1 sabor', sub: 'Sabor único' },
+                { v: 2, label: '½ + ½', sub: 'Meia a meia' },
+                { v: 3, label: '⅓+⅓+⅓', sub: 'Três sabores' },
+              ].map(op => (
+                <button key={op.v} onClick={() => setMaxSabores(op.v)}
+                  className="flex-1 py-2 px-1 rounded-lg text-center transition-all"
+                  style={maxSabores === op.v
+                    ? { background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)' }
+                    : { background: 'var(--bg-card)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+                  <p className="text-sm font-bold">{op.label}</p>
+                  <p style={{ fontSize: 10, opacity: 0.75 }}>{op.sub}</p>
+                </button>
+              ))}
+            </div>
+            {maxSabores >= 2 && (
               <div>
-                <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>Critério de preço para meia a meia:</p>
+                <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>Preço ao combinar sabores:</p>
                 <div className="flex gap-2">
                   {[{ id: 'maior', label: 'Maior preço' }, { id: 'media', label: 'Média dos preços' }].map(op => (
                     <button key={op.id} onClick={() => setCalcVariacao(op.id)}
@@ -2034,6 +2061,7 @@ export default function Cardapio() {
   const [busca, setBusca] = useState('')
   const [pratoSelecionado, setPratoSelecionado] = useState(null)
   const [modalVariacao, setModalVariacao] = useState(false)
+  const [pratoVariacaoEditar, setPratoVariacaoEditar] = useState(null)
   const [mostrarOrdem, setMostrarOrdem] = useState(false)
 
   const todasCats = [...new Set(pratos.map(p => p.categoria).filter(Boolean))]
@@ -2056,8 +2084,13 @@ export default function Cardapio() {
   }
 
   function salvarVariacao(dados) {
-    adicionarPrato(dados)
+    if (pratoVariacaoEditar) {
+      editarPrato(pratoVariacaoEditar.id, { ...pratoVariacaoEditar, ...dados })
+    } else {
+      adicionarPrato(dados)
+    }
     setModalVariacao(false)
+    setPratoVariacaoEditar(null)
   }
 
   return (
@@ -2164,7 +2197,14 @@ export default function Cardapio() {
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                   {pratosFiltrados.map(prato => (
-                    <CardReceita key={prato.id} prato={prato} ingredientes={ingredientes} onClick={() => setPratoSelecionado(prato)} />
+                    <CardReceita key={prato.id} prato={prato} ingredientes={ingredientes} onClick={() => {
+                      if (prato.tipo === 'variacao') {
+                        setPratoVariacaoEditar(prato)
+                        setModalVariacao(true)
+                      } else {
+                        setPratoSelecionado(prato)
+                      }
+                    }} />
                   ))}
                 </div>
               )}
@@ -2177,7 +2217,11 @@ export default function Cardapio() {
         <ModalDetalhe prato={pratoSelecionado} onFechar={() => setPratoSelecionado(null)} onFotoChange={handleFotoChange} />
       )}
       {modalVariacao && (
-        <ModalVariacao pratoEdit={null} onFechar={() => setModalVariacao(false)} onSalvar={salvarVariacao} />
+        <ModalVariacao
+          pratoEdit={pratoVariacaoEditar}
+          onFechar={() => { setModalVariacao(false); setPratoVariacaoEditar(null) }}
+          onSalvar={salvarVariacao}
+        />
       )}
     </div>
   )

@@ -257,7 +257,6 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
                         {sel && <Check size={11} color="#fff" />}
                       </div>
                       <span style={{ flex: 1, fontSize: 14, color: 'var(--text-primary)', fontWeight: sel ? 600 : 400 }}>{t.nome}</span>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: accentCss }}>{formatarMoeda(t.preco || 0)}</span>
                     </button>
                   )
                 })}

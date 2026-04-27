@@ -833,7 +833,9 @@ export default function DeliveryPublico() {
                         </div>
                       )}
                     </div>
-                    <p style={{ fontWeight: 800, fontSize: 13, color: '#1a1a1a', margin: '6px 0 1px' }}>{formatarMoeda(preco)}</p>
+                    <p style={{ fontWeight: 800, fontSize: 13, color: '#1a1a1a', margin: '6px 0 1px' }}>
+                      {prato.tamanhos?.length > 0 && <span style={{ fontSize: 10, fontWeight: 500 }}>a partir de </span>}{formatarMoeda(preco)}
+                    </p>
                     <p style={{ fontSize: 11, color: '#717171', margin: 0, lineHeight: 1.3 }}>{prato.nome}</p>
                   </div>
                 )
@@ -885,7 +887,9 @@ export default function DeliveryPublico() {
                             fontWeight: 600, fontSize: 11, color: corTextoBase, margin: '0 0 3px', lineHeight: 1.35,
                             display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                           }}>{prato.nome}</p>
-                          <p style={{ fontWeight: 800, fontSize: 12, color: corPreco, margin: 0 }}>{formatarMoeda(preco)}</p>
+                          <p style={{ fontWeight: 800, fontSize: 12, color: corPreco, margin: 0 }}>
+                            {prato.tamanhos?.length > 0 && <span style={{ fontSize: 10, fontWeight: 500 }}>a partir de </span>}{formatarMoeda(preco)}
+                          </p>
                         </div>
                       </div>
                     )
@@ -907,7 +911,9 @@ export default function DeliveryPublico() {
                           <p style={{ fontSize: 12, color: '#717171', margin: '0 0 4px', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{prato.descricao}</p>
                         )}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <p style={{ fontWeight: 700, fontSize: 14, color: '#1a1a1a', margin: 0 }}>{formatarMoeda(preco)}</p>
+                          <p style={{ fontWeight: 700, fontSize: 14, color: '#1a1a1a', margin: 0 }}>
+                            {prato.tamanhos?.length > 0 && <span style={{ fontSize: 11, fontWeight: 500 }}>a partir de </span>}{formatarMoeda(preco)}
+                          </p>
                           {prato.maisPedido && (
                             <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', background: destaque, borderRadius: 4, padding: '2px 6px' }}>Mais pedido</span>
                           )}
@@ -941,7 +947,9 @@ export default function DeliveryPublico() {
                             display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                           }}>{prato.descricao}</p>
                         )}
-                        <p style={{ fontWeight: 800, fontSize: 14, color: corPreco, margin: 0 }}>{formatarMoeda(preco)}</p>
+                        <p style={{ fontWeight: 800, fontSize: 14, color: corPreco, margin: 0 }}>
+                          {prato.tamanhos?.length > 0 && <span style={{ fontSize: 11, fontWeight: 500 }}>a partir de </span>}{formatarMoeda(preco)}
+                        </p>
                       </div>
                       {prato.foto && (
                         <div style={{ width: 88, height: 88, borderRadius: 12, overflow: 'hidden', flexShrink: 0 }}>
@@ -1043,7 +1051,6 @@ export default function DeliveryPublico() {
                           </div>
                           <span style={{ fontSize: 14, fontWeight: 600, color: corTextoBase }}>{t.nome}</span>
                         </div>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: corPreco }}>{formatarMoeda(t.preco || 0)}</span>
                       </label>
                     )
                   })}
@@ -1398,7 +1405,9 @@ export default function DeliveryPublico() {
                           }
                           <div style={{ padding: '8px 10px' }}>
                             <p style={{ fontSize: 12, fontWeight: 700, color: corTextoBase, margin: '0 0 3px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{prato.nome}</p>
-                            <p style={{ fontSize: 12, fontWeight: 700, color: corPreco, margin: 0 }}>{formatarMoeda(preco)}</p>
+                            <p style={{ fontSize: 12, fontWeight: 700, color: corPreco, margin: 0 }}>
+                              {prato.tamanhos?.length > 0 && <span style={{ fontSize: 10, fontWeight: 500 }}>a partir de </span>}{formatarMoeda(preco)}
+                            </p>
                             <div style={{ marginTop: 6, display: 'flex', justifyContent: 'flex-end' }}>
                               <div style={{ width: 24, height: 24, borderRadius: '50%', background: destaque, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
                                 <IcoPlus size={13} />

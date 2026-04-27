@@ -106,6 +106,20 @@ function CardCozinha({ pedido, coluna, pratos, garcons, mesas, onAvancar, cfg })
                 }}>×{item.quantidade}</span>
                 <span style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>{p.nome}</span>
               </div>
+              {/* Sabores meia a meia / terço */}
+              {item.variacoes?.length > 0 && (
+                <div style={{ paddingLeft: 44, marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {item.variacoes.map((v, i) => (
+                    <span key={i} style={{
+                      fontSize: 12, fontWeight: 700, color: coluna.cor,
+                      background: `${coluna.cor}18`, padding: '2px 8px', borderRadius: 20,
+                      border: `1px solid ${coluna.cor}44`,
+                    }}>
+                      {item.variacoes.length === 2 ? '½' : '⅓'} {v.nome}
+                    </span>
+                  ))}
+                </div>
+              )}
               {item.opcoes?.length > 0 && (
                 <div style={{ paddingLeft: 44, marginTop: 3 }}>
                   {item.opcoes.map((o, i) => (

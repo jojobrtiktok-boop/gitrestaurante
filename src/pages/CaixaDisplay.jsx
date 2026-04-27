@@ -108,10 +108,24 @@ function CardCaixa({ pedido, coluna, pratos, garcons, mesas, onAvancar, onPagar,
                 <span style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>×{item.quantidade} {p.nome}</span>
                 {cfg.caixaMostrarPrecos && (
                   <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                    {((p.precoVenda + extras) * item.quantidade).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    {((item.precoUnit || p.precoVenda + extras) * item.quantidade).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </span>
                 )}
               </div>
+              {/* Sabores meia a meia / terço */}
+              {item.variacoes?.length > 0 && (
+                <div style={{ paddingLeft: 12, marginTop: 3, display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                  {item.variacoes.map((v, i) => (
+                    <span key={i} style={{
+                      fontSize: 10, fontWeight: 700, color: '#7c3aed',
+                      background: 'rgba(124,58,237,0.1)', padding: '1px 7px', borderRadius: 20,
+                      border: '1px solid rgba(124,58,237,0.25)',
+                    }}>
+                      {item.variacoes.length === 2 ? '½' : '⅓'} {v.nome}
+                    </span>
+                  ))}
+                </div>
+              )}
               {item.opcoes?.length > 0 && (
                 <div style={{ paddingLeft: 12 }}>
                   {item.opcoes.map((o, i) => (

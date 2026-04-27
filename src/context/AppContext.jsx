@@ -141,6 +141,8 @@ function pratoToRow(p, uid) {
     max_sabores: p.maxSabores || (p.meiaAMeia ? 2 : 1),
     bordas: p.bordas || [],
     tamanhos: p.tamanhos || [],
+    label_sabores: p.labelSabores || null,
+    label_bordas: p.labelBordas || null,
     visivel_individual: p.visivelIndividual !== false,
   }
 }
@@ -163,6 +165,8 @@ function rowToPrato(row) {
     maxSabores: row.max_sabores || (row.meia_a_meia ? 2 : 1),
     bordas: row.bordas || [],
     tamanhos: row.tamanhos || [],
+    labelSabores: row.label_sabores || null,
+    labelBordas: row.label_bordas || null,
     visivelIndividual: row.visivel_individual !== false,
   }
 }

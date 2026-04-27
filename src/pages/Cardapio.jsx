@@ -367,6 +367,10 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
   const [tamanhoAtivoId, setTamanhoAtivoId] = useState(null)
   const tamanhoAtivo = tamanhos.find(t => t.id === tamanhoAtivoId) || null
 
+  // Labels customizáveis das seções
+  const [labelSabores, setLabelSabores] = useState(pratoEdit?.labelSabores || '')
+  const [labelBordas, setLabelBordas] = useState(pratoEdit?.labelBordas || '')
+
   // Bordas
   const [bordas, setBordas] = useState(pratoEdit?.bordas || [])
   const [novaBordaNome, setNovaBordaNome] = useState('')
@@ -470,6 +474,8 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
       calcVariacao: comTamanhos ? 'maior' : calcVariacao,
       variacoes: comTamanhos ? [] : variacoes,
       tamanhos: comTamanhos ? tamanhos : [],
+      labelSabores: labelSabores.trim() || null,
+      labelBordas: labelBordas.trim() || null,
       bordas,
       precoVenda,
       ingredientes: [],
@@ -608,9 +614,13 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
               </div>
 
               <div>
-                <label className="text-xs font-semibold mb-2 block" style={{ color: 'var(--text-muted)' }}>
-                  Receitas adicionadas ({variacoes.length})
-                </label>
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="text-xs font-semibold shrink-0" style={{ color: 'var(--text-muted)' }}>
+                    Receitas adicionadas ({variacoes.length})
+                  </label>
+                  <input className="input text-xs flex-1" placeholder="Título da seção (ex: Sabores de Pizza)"
+                    value={labelSabores} onChange={e => setLabelSabores(e.target.value)} style={{ height: 28, padding: '0 8px' }} />
+                </div>
                 {variacoes.length > 0 && (
                   <div className="flex flex-col gap-1.5 mb-3">
                     {variacoes.map((v, idx) => (
@@ -728,7 +738,11 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
 
           {/* Bordas */}
           <div className="p-3 rounded-xl" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
-            <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>🍕 Bordas disponíveis (opcional)</p>
+            <div className="flex items-center gap-2 mb-2">
+              <p className="text-xs font-semibold shrink-0" style={{ color: 'var(--text-muted)' }}>🍕 Bordas (opcional)</p>
+              <input className="input text-xs flex-1" placeholder="Título da seção (ex: Escolha a Borda)"
+                value={labelBordas} onChange={e => setLabelBordas(e.target.value)} style={{ height: 28, padding: '0 8px' }} />
+            </div>
             {bordas.length > 0 && (
               <div className="flex flex-col gap-1.5 mb-2">
                 {bordas.map(b => (

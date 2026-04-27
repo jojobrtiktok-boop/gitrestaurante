@@ -177,6 +177,8 @@ export default function DeliveryPublico() {
           maxSabores: row.max_sabores || (row.meia_a_meia ? 2 : 1),
           bordas: row.bordas || [],
           tamanhos: row.tamanhos || [],
+          labelSabores: row.label_sabores || null,
+          labelBordas: row.label_bordas || null,
           visivelIndividual: row.visivel_individual !== false,
           disponivel: row.disponivel !== false,
         })) : []
@@ -1054,7 +1056,7 @@ export default function DeliveryPublico() {
               <div style={{ marginBottom: 24 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <p style={{ fontSize: 13, fontWeight: 700, color: corTextoBase, margin: 0, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                    {maxSaboresModal === 1 ? 'Escolha uma opção' : maxSaboresModal === 2 ? 'Escolha 2 sabores (½+½)' : 'Escolha 3 sabores (⅓+⅓+⅓)'}
+                    {pratoDetalhe.labelSabores || (maxSaboresModal === 1 ? 'Escolha uma opção' : maxSaboresModal === 2 ? 'Escolha 2 sabores (½+½)' : 'Escolha 3 sabores (⅓+⅓+⅓)')}
                     <span style={{ color: '#ef4444' }}> *</span>
                   </p>
                   {maxSaboresModal > 1 && (
@@ -1114,7 +1116,7 @@ export default function DeliveryPublico() {
             {temVariacoesModal && (pratoDetalhe.bordas || []).length > 0 && (
               <div style={{ marginBottom: 24 }}>
                 <p style={{ fontSize: 13, fontWeight: 700, color: corTextoBase, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                  🍕 Borda <span style={{ fontSize: 11, fontWeight: 500, textTransform: 'none', color: corTextoSec }}>(opcional)</span>
+                  {pratoDetalhe.labelBordas || '🍕 Borda'} <span style={{ fontSize: 11, fontWeight: 500, textTransform: 'none', color: corTextoSec }}>(opcional)</span>
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {/* Opção "Sem borda" */}

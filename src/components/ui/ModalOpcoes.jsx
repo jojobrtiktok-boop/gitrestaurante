@@ -271,7 +271,7 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <div>
                   <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                    {maxSabores === 1 ? 'Escolha uma opção' : maxSabores === 2 ? '½+½ — Escolha 2 sabores' : '⅓+⅓+⅓ — Escolha 3 sabores'}
+                    {prato.labelSabores || (maxSabores === 1 ? 'Escolha uma opção' : maxSabores === 2 ? '½+½ — Escolha 2 sabores' : '⅓+⅓+⅓ — Escolha 3 sabores')}
                   </p>
                   <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '2px 0 0' }}>Obrigatório</p>
                 </div>
@@ -327,7 +327,7 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <div>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>🍕 Borda</p>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{prato.labelBordas || '🍕 Borda'}</p>
                   <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '2px 0 0' }}>Opcional · escolha 1</p>
                 </div>
                 {bordaSel && (

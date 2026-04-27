@@ -130,7 +130,7 @@ export default function ComandaDigital() {
     const p = pratos.find(x => x.id === i.pratoId)
     if (!p) return s
     const extras = (i.opcoes || []).reduce((ss, o) => ss + (o.precoExtra || 0), 0)
-    return s + (p.precoVenda + extras) * i.quantidade
+    return s + (i.precoUnit != null ? i.precoUnit : p.precoVenda + extras) * i.quantidade
   }, 0)
 
   function qtdNoCarrinho(pratoId) {
@@ -346,7 +346,10 @@ export default function ComandaDigital() {
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
                   {config.mostrarPrecos && (
                     <span style={{ fontWeight: 800, fontSize: 14, color: destaque }}>
-                      {prato.precoVenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      {prato.tamanhos?.length > 0 ? (() => {
+                        const ps = prato.tamanhos.flatMap(t => (t.variacoes || []).map(v => v.preco || 0)).filter(x => x > 0)
+                        return ps.length > 0 ? 'a partir de ' + Math.min(...ps).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : ''
+                      })() : prato.precoVenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </span>
                   )}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -452,19 +455,20 @@ export default function ComandaDigital() {
                 if (!p) return null
                 const extras = (item.opcoes || []).reduce((s, o) => s + (o.precoExtra || 0), 0)
                 const precoUnit = item.precoUnit != null ? item.precoUnit : p.precoVenda + extras
+                const temTamanho = !!item.tamanho
                 return (
                   <div key={item.uid} style={{ background: bgHover, borderRadius: 10, padding: '8px 10px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{ flex: 1 }}>
                         <p style={{ fontWeight: 600, fontSize: 14, color: textoPrimario, margin: 0 }}>{p.nome}</p>
-                        {config.mostrarPrecos && <p style={{ fontSize: 12, color: textoSecundario, margin: 0 }}>{precoUnit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} cada</p>}
+                        {config.mostrarPrecos && !temTamanho && <p style={{ fontSize: 12, color: textoSecundario, margin: 0 }}>{precoUnit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} cada</p>}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <button onClick={() => removerItemCarrinho(item.uid, -1)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${destaque}`, background: 'transparent', color: destaque, cursor: 'pointer', fontWeight: 700 }}>−</button>
                         <span style={{ fontWeight: 700, fontSize: 15, color: textoPrimario, minWidth: 20, textAlign: 'center' }}>{item.quantidade}</span>
                         <button onClick={() => p.grupos?.length ? adicionarComOpcoes(p) : removerItemCarrinho(item.uid, 1)} style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: destaque, color: '#fff', cursor: 'pointer', fontWeight: 700 }}>+</button>
                       </div>
-                      {config.mostrarPrecos && (
+                      {config.mostrarPrecos && !temTamanho && (
                         <span style={{ fontWeight: 700, color: destaque, width: 70, textAlign: 'right', fontSize: 14 }}>
                           {(precoUnit * item.quantidade).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </span>

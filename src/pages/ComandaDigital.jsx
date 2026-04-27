@@ -152,10 +152,12 @@ export default function ComandaDigital() {
     setCarrinhoAberto(false)
   }
 
-  function confirmarOpcoes(opcoes, quantidade, variacoes, borda) {
+  function confirmarOpcoes(opcoes, quantidade, variacoes, borda, tamanho) {
     const prato = pratoOpcoes
     let precoUnit = prato.precoVenda || 0
-    if (variacoes?.length) {
+    if (tamanho) {
+      precoUnit = tamanho.preco ?? prato.precoVenda ?? 0
+    } else if (variacoes?.length) {
       const precos = variacoes.map(v => v.preco ?? prato.precoVenda ?? 0)
       precoUnit = prato.calcVariacao === 'media'
         ? precos.reduce((s, p) => s + p, 0) / precos.length
@@ -165,7 +167,7 @@ export default function ComandaDigital() {
     precoUnit += borda?.precoExtra || 0
     setCarrinho(prev => [...prev, {
       uid: crypto.randomUUID(), pratoId: prato.id, quantidade, opcoes,
-      variacoes: variacoes || null, borda: borda || null, precoUnit,
+      variacoes: variacoes || null, borda: borda || null, tamanho: tamanho || null, precoUnit,
     }])
     setPratoOpcoes(null)
   }
@@ -341,7 +343,7 @@ export default function ComandaDigital() {
                     </span>
                   )}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {qtd > 0 && !prato.grupos?.length && !prato.variacoes?.length && (
+                    {qtd > 0 && !prato.grupos?.length && !prato.variacoes?.length && !prato.tamanhos?.length && (
                       <button onClick={() => adicionarPratoSimples(prato.id, -1)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${destaque}`, background: 'transparent', color: destaque, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700 }}>
                         <Minus size={13} />
                       </button>
@@ -350,7 +352,7 @@ export default function ComandaDigital() {
                       <span style={{ fontWeight: 700, fontSize: 14, color: textoPrimario, minWidth: 20, textAlign: 'center' }}>{qtd}</span>
                     )}
                     <button
-                      onClick={() => (prato.grupos?.length || prato.variacoes?.length) ? adicionarComOpcoes(prato) : adicionarPratoSimples(prato.id, 1)}
+                      onClick={() => (prato.grupos?.length || prato.variacoes?.length || prato.tamanhos?.length) ? adicionarComOpcoes(prato) : adicionarPratoSimples(prato.id, 1)}
                       style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: destaque, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                       <Plus size={13} />

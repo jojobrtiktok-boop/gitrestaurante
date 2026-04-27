@@ -98,7 +98,7 @@ export default function PDV() {
 
   useEffect(() => { if (busca) setCatSelecionada(null) }, [busca])
 
-  function temModal(p) { return p.grupos?.length > 0 || p.variacoes?.length > 0 }
+  function temModal(p) { return p.grupos?.length > 0 || p.variacoes?.length > 0 || p.tamanhos?.length > 0 }
   function qtdNoCarrinho(pratoId) {
     return carrinho.filter(c => c.pratoId === pratoId).reduce((s, c) => s + c.quantidade, 0)
   }
@@ -118,10 +118,12 @@ export default function PDV() {
       return prev.map(c => c.uid === ex.uid ? { ...c, quantidade: c.quantidade - 1 } : c)
     })
   }
-  function confirmarOpcoes(opcoes, quantidade, variacoes, borda) {
+  function confirmarOpcoes(opcoes, quantidade, variacoes, borda, tamanho) {
     const prato = pratoOpcoes
     let precoUnit = prato.precoVenda || 0
-    if (variacoes?.length) {
+    if (tamanho) {
+      precoUnit = tamanho.preco ?? prato.precoVenda ?? 0
+    } else if (variacoes?.length) {
       const precos = variacoes.map(v => v.preco ?? prato.precoVenda ?? 0)
       precoUnit = prato.calcVariacao === 'media'
         ? precos.reduce((s, p) => s + p, 0) / precos.length
@@ -131,7 +133,7 @@ export default function PDV() {
     precoUnit += borda?.precoExtra || 0
     setCarrinho(prev => [...prev, {
       uid: crypto.randomUUID(), pratoId: prato.id, quantidade, opcoes,
-      variacoes: variacoes || null, borda: borda || null, precoUnit,
+      variacoes: variacoes || null, borda: borda || null, tamanho: tamanho || null, precoUnit,
     }])
     setPratoOpcoes(null)
   }

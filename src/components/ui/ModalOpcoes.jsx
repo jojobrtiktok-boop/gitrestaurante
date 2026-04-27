@@ -128,7 +128,7 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
         }
       })
     )
-    onConfirmar(opcoes, quantidade, temVariacoes ? saboresSel : null, bordaSel || null)
+    onConfirmar(opcoes, quantidade, temVariacoes ? saboresSel : null, bordaSel || null, tamanhoSel || null)
   }
 
   function renderGrupo(grupo) {

@@ -135,6 +135,10 @@ function pratoToRow(p, uid) {
     grupos: p.grupos || [],
     variacoes: p.variacoes || [],
     criado_em: p.criadoEm || new Date().toISOString(),
+    tipo: p.tipo || 'normal',
+    meia_a_meia: p.meiaAMeia || false,
+    calc_variacao: p.calcVariacao || 'maior',
+    max_sabores: p.maxSabores || (p.meiaAMeia ? 2 : 1),
   }
 }
 function rowToPrato(row) {
@@ -150,6 +154,10 @@ function rowToPrato(row) {
     grupos: row.grupos || [],
     variacoes: row.variacoes || [],
     criadoEm: row.criado_em,
+    tipo: row.tipo || ((row.variacoes?.length > 0) ? 'variacao' : 'normal'),
+    meiaAMeia: row.meia_a_meia || false,
+    calcVariacao: row.calc_variacao || 'maior',
+    maxSabores: row.max_sabores || (row.meia_a_meia ? 2 : 1),
   }
 }
 
@@ -1665,6 +1673,25 @@ export function AppProvider({ children }) {
         return updated
       }))
     })
+
+    // Baixar estoque proporcional para produtos com variação (½, ⅓)
+    itensComCusto.forEach(({ pratoId, quantidade, variacoes }) => {
+      if (!variacoes?.length) return
+      const fator = 1 / variacoes.length // ½ para 2 sabores, ⅓ para 3
+      variacoes.forEach(v => {
+        const subPrato = pratos.find(p => p.id === v.pratoId)
+        if (!subPrato?.ingredientes?.length) return
+        setIngredientes(prev => prev.map(ing => {
+          const linha = subPrato.ingredientes.find(l => l.ingredienteId === ing.id)
+          if (!linha) return ing
+          const deduct = fromBase(linha.quantidade, ing.unidade) * quantidade * fator
+          const upd = { ...ing, quantidadeEstoque: ing.quantidadeEstoque - deduct }
+          if (uid) sbWrite(supabase.from('ingredientes').update({ quantidade_estoque: upd.quantidadeEstoque }).eq('id', ing.id))
+          return upd
+        }))
+      })
+    })
+
     return pedido
   }
 

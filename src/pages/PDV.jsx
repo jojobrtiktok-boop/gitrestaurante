@@ -97,7 +97,7 @@ export default function PDV() {
 
   useEffect(() => { if (busca) setCatSelecionada(null) }, [busca])
 
-  function temGrupos(p) { return p.grupos?.length > 0 }
+  function temModal(p) { return p.grupos?.length > 0 || p.variacoes?.length > 0 }
   function qtdNoCarrinho(pratoId) {
     return carrinho.filter(c => c.pratoId === pratoId).reduce((s, c) => s + c.quantidade, 0)
   }
@@ -117,8 +117,20 @@ export default function PDV() {
       return prev.map(c => c.uid === ex.uid ? { ...c, quantidade: c.quantidade - 1 } : c)
     })
   }
-  function confirmarOpcoes(opcoes, quantidade) {
-    setCarrinho(prev => [...prev, { uid: crypto.randomUUID(), pratoId: pratoOpcoes.id, quantidade, opcoes }])
+  function confirmarOpcoes(opcoes, quantidade, variacoes) {
+    const prato = pratoOpcoes
+    let precoUnit = prato.precoVenda || 0
+    if (variacoes?.length) {
+      const precos = variacoes.map(v => v.preco ?? prato.precoVenda ?? 0)
+      precoUnit = prato.calcVariacao === 'media'
+        ? precos.reduce((s, p) => s + p, 0) / precos.length
+        : Math.max(...precos)
+    }
+    precoUnit += (opcoes || []).reduce((s, o) => s + (o.precoExtra || 0), 0)
+    setCarrinho(prev => [...prev, {
+      uid: crypto.randomUUID(), pratoId: prato.id, quantidade, opcoes,
+      variacoes: variacoes || null, precoUnit,
+    }])
     setPratoOpcoes(null)
   }
   function excluirItem(uid) { setCarrinho(prev => prev.filter(c => c.uid !== uid)) }
@@ -132,6 +144,7 @@ export default function PDV() {
   }
 
   function precoItem(item) {
+    if (item.precoUnit != null) return item.precoUnit * item.quantidade
     const prato = pratos.find(x => x.id === item.pratoId)
     if (!prato) return 0
     const extras = (item.opcoes || []).reduce((s, o) => s + (o.precoExtra || 0), 0)
@@ -219,7 +232,7 @@ export default function PDV() {
             <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fill, minmax(152px, 1fr))' }}>
               {pratosFiltrados.map(prato => (
                 <CardProduto key={prato.id} prato={prato} qtd={qtdNoCarrinho(prato.id)}
-                  comGrupos={temGrupos(prato)} onAdd={adicionarSimples} onRemove={removerSimples} onOpcoes={p => setPratoOpcoes(p)} />
+                  comGrupos={temModal(prato)} onAdd={adicionarSimples} onRemove={removerSimples} onOpcoes={p => setPratoOpcoes(p)} />
               ))}
             </div>
           ) : (
@@ -237,7 +250,7 @@ export default function PDV() {
                   <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fill, minmax(152px, 1fr))' }}>
                     {itens.map(prato => (
                       <CardProduto key={prato.id} prato={prato} qtd={qtdNoCarrinho(prato.id)}
-                        comGrupos={temGrupos(prato)} onAdd={adicionarSimples} onRemove={removerSimples} onOpcoes={p => setPratoOpcoes(p)} />
+                        comGrupos={temModal(prato)} onAdd={adicionarSimples} onRemove={removerSimples} onOpcoes={p => setPratoOpcoes(p)} />
                     ))}
                   </div>
                 </div>

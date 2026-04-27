@@ -7,8 +7,12 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
   const { ingredientes } = useApp()
   const cor = corDestaque || 'var(--accent)'
   const corStr = cor === 'var(--accent)' ? null : cor
+  const accentCss = corStr || 'var(--accent)'
 
   const grupos = prato.grupos || []
+  const variacoes = prato.variacoes || []
+  const temVariacoes = variacoes.length > 0
+  const maxSabores = prato.maxSabores || (prato.meiaAMeia ? 2 : 1)
   const gruposComplemento = grupos.filter(g => g.categoria !== 'adicional')
   const gruposAdicional = grupos.filter(g => g.categoria === 'adicional')
 
@@ -17,7 +21,6 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
     for (const g of grupos) {
       init[g.id] = new Set()
       if (g.minimo > 0 && g.tipo === 'unico' && g.itens.length > 0) {
-        // Pre-seleciona primeiro item disponível
         const primeiro = g.itens.find(it => {
           if (!it.ingredienteId || !it.quantidadeUsada) return true
           const ing = ingredientes.find(i => i.id === it.ingredienteId)
@@ -28,6 +31,7 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
     }
     return init
   })
+  const [saboresSel, setSaboresSel] = useState([]) // array de variacao objects
   const [erro, setErro] = useState('')
   const [quantidade, setQuantidade] = useState(1)
 
@@ -35,6 +39,17 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
     if (!item.ingredienteId || !item.quantidadeUsada) return false
     const ing = ingredientes.find(i => i.id === item.ingredienteId)
     return ing && ing.quantidadeEstoque < item.quantidadeUsada
+  }
+
+  function toggleSabor(v) {
+    setErro('')
+    setSaboresSel(prev => {
+      const jaSel = prev.some(x => x.id === v.id)
+      if (maxSabores === 1) return [v]
+      if (jaSel) return prev.filter(x => x.id !== v.id)
+      if (prev.length >= maxSabores) return prev
+      return [...prev, v]
+    })
   }
 
   function toggleItem(grupo, itemId) {
@@ -62,10 +77,22 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
     }, 0)
   }, 0)
 
-  const precoUnitario = prato.precoVenda + extrasTotal
+  // Preço baseado em variações selecionadas
+  const precoVariacao = (() => {
+    if (!temVariacoes || saboresSel.length === 0) return prato.precoVenda || 0
+    const precos = saboresSel.map(v => v.preco ?? prato.precoVenda ?? 0)
+    if (prato.calcVariacao === 'media') return precos.reduce((s, p) => s + p, 0) / precos.length
+    return Math.max(...precos) // padrão: maior preço
+  })()
+
+  const precoUnitario = precoVariacao + extrasTotal
   const precoTotal = precoUnitario * quantidade
 
   function confirmar() {
+    if (temVariacoes && saboresSel.length < maxSabores) {
+      setErro(`Escolha ${maxSabores === 2 ? '2 sabores (½+½)' : maxSabores === 3 ? '3 sabores (⅓+⅓+⅓)' : '1 opção'}`)
+      return
+    }
     for (const grupo of grupos) {
       const sel = selecoes[grupo.id]?.size || 0
       if (sel < grupo.minimo) {
@@ -86,7 +113,7 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
         }
       })
     )
-    onConfirmar(opcoes, quantidade)
+    onConfirmar(opcoes, quantidade, temVariacoes ? saboresSel : null)
   }
 
   function renderGrupo(grupo) {
@@ -115,27 +142,22 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
             {grupo.minimo > 0 ? 'Obrigatório' : 'Opcional'}
           </span>
         </div>
-
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {grupo.itens.map(item => {
             const selected = selecoes[grupo.id]?.has(item.id)
             const bloqueado = semEstoque(item)
             const disabled = bloqueado || (!selected && noLimite)
-            const accentCss = corStr ? corStr : 'var(--accent)'
             return (
-              <button
-                key={item.id}
-                onClick={() => !disabled && toggleItem(grupo, item.id)}
+              <button key={item.id} onClick={() => !disabled && toggleItem(grupo, item.id)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '10px 14px', borderRadius: 12, border: 'none',
                   cursor: disabled ? 'not-allowed' : 'pointer',
-                  background: selected ? (corStr ? `${corStr}15` : 'var(--accent-bg)') : bloqueado ? 'var(--bg-hover)' : 'var(--bg-hover)',
+                  background: selected ? (corStr ? `${corStr}15` : 'var(--accent-bg)') : 'var(--bg-hover)',
                   outline: selected ? `1.5px solid ${accentCss}` : '1px solid transparent',
                   opacity: bloqueado ? 0.45 : disabled ? 0.5 : 1,
                   transition: 'all .12s', textAlign: 'left',
-                }}
-              >
+                }}>
                 <div style={{
                   width: 20, height: 20, borderRadius: grupo.tipo === 'unico' ? '50%' : 6, flexShrink: 0,
                   border: selected ? `2px solid ${accentCss}` : '2px solid var(--border)',
@@ -160,7 +182,6 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
             )
           })}
         </div>
-
         {grupo.tipo === 'multiplo' && grupo.maximo > 1 && (
           <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, marginLeft: 2 }}>
             {selQtd}/{grupo.maximo} selecionado{selQtd !== 1 ? 's' : ''}
@@ -188,9 +209,71 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
           </button>
         </div>
 
-        {/* Grupos */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Seção complementos */}
+
+          {/* ── Seleção de sabores (½+½ ou ⅓+⅓+⅓) ── */}
+          {temVariacoes && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                    {maxSabores === 1 ? 'Escolha uma opção' : maxSabores === 2 ? '½+½ — Escolha 2 sabores' : '⅓+⅓+⅓ — Escolha 3 sabores'}
+                  </p>
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '2px 0 0' }}>Obrigatório</p>
+                </div>
+                {maxSabores > 1 && (
+                  <span style={{
+                    fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+                    background: saboresSel.length === maxSabores ? 'rgba(22,163,74,0.12)' : `${accentCss}18`,
+                    color: saboresSel.length === maxSabores ? '#16a34a' : accentCss,
+                    border: `1px solid ${saboresSel.length === maxSabores ? 'rgba(22,163,74,0.3)' : `${accentCss}44`}`,
+                  }}>
+                    {saboresSel.length}/{maxSabores}
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {variacoes.map(v => {
+                  const sel = saboresSel.some(x => x.id === v.id)
+                  const bloqueado = !sel && saboresSel.length >= maxSabores
+                  return (
+                    <button key={v.id} onClick={() => toggleSabor(v)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '10px 14px', borderRadius: 12, border: 'none',
+                        cursor: bloqueado ? 'not-allowed' : 'pointer',
+                        background: sel ? (corStr ? `${corStr}15` : 'var(--accent-bg)') : 'var(--bg-hover)',
+                        outline: sel ? `1.5px solid ${accentCss}` : '1px solid transparent',
+                        opacity: bloqueado ? 0.4 : 1,
+                        transition: 'all .12s', textAlign: 'left', width: '100%',
+                      }}>
+                      <div style={{
+                        width: 20, height: 20, borderRadius: maxSabores === 1 ? '50%' : 6, flexShrink: 0,
+                        border: sel ? `2px solid ${accentCss}` : '2px solid var(--border)',
+                        background: sel ? accentCss : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {sel && <Check size={11} color="#fff" />}
+                      </div>
+                      <span style={{ flex: 1, fontSize: 14, color: 'var(--text-primary)', fontWeight: sel ? 600 : 400 }}>
+                        {v.nome}
+                      </span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: accentCss }}>
+                        {formatarMoeda(v.preco ?? prato.precoVenda ?? 0)}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Separador */}
+          {temVariacoes && grupos.length > 0 && (
+            <div style={{ height: 1, background: 'var(--border)' }} />
+          )}
+
+          {/* Grupos complemento */}
           {gruposComplemento.length > 0 && (
             <div>
               {gruposComplemento.length > 0 && gruposAdicional.length > 0 && (
@@ -208,7 +291,7 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
             </div>
           )}
 
-          {/* Seção adicionais */}
+          {/* Grupos adicionais */}
           {gruposAdicional.length > 0 && (
             <div>
               {gruposComplemento.length > 0 && (
@@ -229,7 +312,6 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
 
         {/* Rodapé */}
         <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* Resumo de adicionais selecionados */}
           {extrasTotal > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 10, background: accentBg, border: `1px solid ${accentBorder}` }}>
               <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Adicionais: +{formatarMoeda(extrasTotal)}</span>
@@ -239,7 +321,6 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
 
           {erro && <p style={{ fontSize: 12, color: '#ef4444', textAlign: 'center', margin: 0 }}>{erro}</p>}
 
-          {/* Quantidade */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ fontSize: 13, color: 'var(--text-muted)', flex: 1 }}>Quantidade</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

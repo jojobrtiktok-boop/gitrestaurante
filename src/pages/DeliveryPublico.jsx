@@ -171,6 +171,10 @@ export default function DeliveryPublico() {
           ingredientes: row.ingredientes || [],
           grupos: row.grupos || [],
           variacoes: row.variacoes || [],
+          tipo: row.tipo || ((row.variacoes?.length > 0) ? 'variacao' : 'normal'),
+          meiaAMeia: row.meia_a_meia || false,
+          calcVariacao: row.calc_variacao || 'maior',
+          maxSabores: row.max_sabores || (row.meia_a_meia ? 2 : 1),
         })) : []
         const cfg = cfgData?.config || {}
         const cd = cdData ? {

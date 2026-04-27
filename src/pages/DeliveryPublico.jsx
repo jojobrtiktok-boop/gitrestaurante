@@ -175,6 +175,9 @@ export default function DeliveryPublico() {
           meiaAMeia: row.meia_a_meia || false,
           calcVariacao: row.calc_variacao || 'maior',
           maxSabores: row.max_sabores || (row.meia_a_meia ? 2 : 1),
+          bordas: row.bordas || [],
+          visivelIndividual: row.visivel_individual !== false,
+          disponivel: row.disponivel !== false,
         })) : []
         const cfg = cfgData?.config || {}
         const cd = cdData ? {

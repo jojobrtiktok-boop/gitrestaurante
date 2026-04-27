@@ -342,7 +342,7 @@ function CardReceita({ prato, ingredientes, onClick, onToggleVisivel }) {
 
 /* ─── Modal Variação (Meia a Meia) ───────────────── */
 function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
-  const { pratos: todosPrecos } = useApp()
+  const { pratos: todosPrecos, ingredientes: todosInsumos } = useApp()
   // Receitas disponíveis (excluindo variações já criadas)
   const receitasDisponiveis = todosPrecos.filter(p => p.tipo !== 'variacao')
 
@@ -360,6 +360,8 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
   const [bordas, setBordas] = useState(pratoEdit?.bordas || [])
   const [novaBordaNome, setNovaBordaNome] = useState('')
   const [novaBordaPreco, setNovaBordaPreco] = useState('')
+  const [novaBordaInsumoId, setNovaBordaInsumoId] = useState('')
+  const [novaBordaInsumoQtd, setNovaBordaInsumoQtd] = useState('')
 
   // Seleção de receita para adicionar
   const [pratoSelecionadoId, setPratoSelecionadoId] = useState('')
@@ -398,8 +400,18 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
 
   function adicionarBorda() {
     if (!novaBordaNome.trim()) return
-    setBordas(prev => [...prev, { id: crypto.randomUUID(), nome: novaBordaNome.trim(), precoExtra: Number(novaBordaPreco) || 0 }])
+    const insumo = todosInsumos.find(i => i.id === novaBordaInsumoId)
+    setBordas(prev => [...prev, {
+      id: crypto.randomUUID(),
+      nome: novaBordaNome.trim(),
+      precoExtra: Number(novaBordaPreco) || 0,
+      ingredienteId: insumo ? insumo.id : null,
+      ingredienteNome: insumo ? insumo.nome : null,
+      ingredienteUnidade: insumo ? insumo.unidade : null,
+      ingredienteQtd: novaBordaInsumoQtd !== '' ? Number(novaBordaInsumoQtd) : 0,
+    }])
     setNovaBordaNome(''); setNovaBordaPreco('')
+    setNovaBordaInsumoId(''); setNovaBordaInsumoQtd('')
   }
 
   function salvar() {
@@ -583,17 +595,39 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
               <div className="flex flex-col gap-1.5 mb-2">
                 {bordas.map(b => (
                   <div key={b.id} className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                    <span className="flex-1 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{b.nome}</span>
-                    <span className="text-sm font-bold" style={{ color: '#16a34a' }}>+{b.precoExtra.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                    <button onClick={() => setBordas(prev => prev.filter(x => x.id !== b.id))} className="btn btn-ghost p-1" style={{ color: '#ef4444' }}><Trash2 size={12} /></button>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{b.nome}</span>
+                      {b.ingredienteNome && (
+                        <span className="text-xs ml-2" style={{ color: 'var(--text-muted)' }}>
+                          — {b.ingredienteQtd} {b.ingredienteUnidade} {b.ingredienteNome}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-sm font-bold shrink-0" style={{ color: '#16a34a' }}>+{b.precoExtra.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                    <button onClick={() => setBordas(prev => prev.filter(x => x.id !== b.id))} className="btn btn-ghost p-1 shrink-0" style={{ color: '#ef4444' }}><Trash2 size={12} /></button>
                   </div>
                 ))}
               </div>
             )}
-            <div className="flex gap-2">
-              <input className="input text-sm flex-1" placeholder="Nome da borda (ex: Catupiry)" value={novaBordaNome} onChange={e => setNovaBordaNome(e.target.value)} onKeyDown={e => e.key === 'Enter' && adicionarBorda()} />
-              <input className="input text-sm" placeholder="R$ extra" type="number" min="0" step="0.01" value={novaBordaPreco} onChange={e => setNovaBordaPreco(e.target.value)} style={{ width: 90 }} onKeyDown={e => e.key === 'Enter' && adicionarBorda()} />
-              <button onClick={adicionarBorda} className="btn btn-primary px-3"><Plus size={14} /></button>
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <input className="input text-sm flex-1" placeholder="Nome da borda (ex: Catupiry)" value={novaBordaNome} onChange={e => setNovaBordaNome(e.target.value)} />
+                <input className="input text-sm" placeholder="R$ extra" type="number" min="0" step="0.01" value={novaBordaPreco} onChange={e => setNovaBordaPreco(e.target.value)} style={{ width: 90 }} />
+              </div>
+              <div className="flex gap-2">
+                <select className="input text-sm flex-1" value={novaBordaInsumoId} onChange={e => setNovaBordaInsumoId(e.target.value)}>
+                  <option value="">— insumo consumido (opcional) —</option>
+                  {todosInsumos.map(i => (
+                    <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>
+                  ))}
+                </select>
+                {novaBordaInsumoId && (
+                  <input className="input text-sm" placeholder="Qtd" type="number" min="0" step="0.01"
+                    value={novaBordaInsumoQtd} onChange={e => setNovaBordaInsumoQtd(e.target.value)}
+                    style={{ width: 80 }} />
+                )}
+                <button onClick={adicionarBorda} className="btn btn-primary px-3"><Plus size={14} /></button>
+              </div>
             </div>
           </div>
         </div>

@@ -1679,21 +1679,32 @@ export function AppProvider({ children }) {
     })
 
     // Baixar estoque proporcional para produtos com variação (½, ⅓)
-    itensComCusto.forEach(({ pratoId, quantidade, variacoes }) => {
-      if (!variacoes?.length) return
-      const fator = 1 / variacoes.length // ½ para 2 sabores, ⅓ para 3
-      variacoes.forEach(v => {
-        const subPrato = pratos.find(p => p.id === v.pratoId)
-        if (!subPrato?.ingredientes?.length) return
+    itensComCusto.forEach(({ pratoId, quantidade, variacoes, borda }) => {
+      if (variacoes?.length) {
+        const fator = 1 / variacoes.length // ½ para 2 sabores, ⅓ para 3
+        variacoes.forEach(v => {
+          const subPrato = pratos.find(p => p.id === v.pratoId)
+          if (!subPrato?.ingredientes?.length) return
+          setIngredientes(prev => prev.map(ing => {
+            const linha = subPrato.ingredientes.find(l => l.ingredienteId === ing.id)
+            if (!linha) return ing
+            const deduct = fromBase(linha.quantidade, ing.unidade) * quantidade * fator
+            const upd = { ...ing, quantidadeEstoque: ing.quantidadeEstoque - deduct }
+            if (uid) sbWrite(supabase.from('ingredientes').update({ quantidade_estoque: upd.quantidadeEstoque }).eq('id', ing.id))
+            return upd
+          }))
+        })
+      }
+      // Deduzir insumo da borda (se configurado)
+      if (borda?.ingredienteId && borda.ingredienteQtd > 0) {
         setIngredientes(prev => prev.map(ing => {
-          const linha = subPrato.ingredientes.find(l => l.ingredienteId === ing.id)
-          if (!linha) return ing
-          const deduct = fromBase(linha.quantidade, ing.unidade) * quantidade * fator
+          if (ing.id !== borda.ingredienteId) return ing
+          const deduct = borda.ingredienteQtd * quantidade
           const upd = { ...ing, quantidadeEstoque: ing.quantidadeEstoque - deduct }
           if (uid) sbWrite(supabase.from('ingredientes').update({ quantidade_estoque: upd.quantidadeEstoque }).eq('id', ing.id))
           return upd
         }))
-      })
+      }
     })
 
     return pedido
@@ -1860,6 +1871,17 @@ export function AppProvider({ children }) {
           const linha = prato.ingredientes.find(l => l.ingredienteId === ing.id)
           if (!linha) return ing
           const deduct = fromBase(linha.quantidade, ing.unidade) * item.quantidade
+          const upd = { ...ing, quantidadeEstoque: ing.quantidadeEstoque - deduct }
+          if (uid) sbWrite(supabase.from('ingredientes').update({ quantidade_estoque: upd.quantidadeEstoque }).eq('id', ing.id))
+          return upd
+        }))
+      }
+
+      // Deduzir insumo da borda selecionada (se tiver ingrediente configurado)
+      if (item.borda?.ingredienteId && item.borda.ingredienteQtd > 0) {
+        setIngredientes(prev => prev.map(ing => {
+          if (ing.id !== item.borda.ingredienteId) return ing
+          const deduct = item.borda.ingredienteQtd * item.quantidade
           const upd = { ...ing, quantidadeEstoque: ing.quantidadeEstoque - deduct }
           if (uid) sbWrite(supabase.from('ingredientes').update({ quantidade_estoque: upd.quantidadeEstoque }).eq('id', ing.id))
           return upd

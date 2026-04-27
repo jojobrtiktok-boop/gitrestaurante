@@ -1652,7 +1652,7 @@ export function AppProvider({ children }) {
     setPedidos(prev => [...prev, pedido])
     if (uid) sbWrite(supabase.from('pedidos').insert(pedidoToRow(pedido, uid)))
 
-    itensComCusto.forEach(({ pratoId, quantidade, opcoes }) => {
+    itensComCusto.forEach(({ pratoId, quantidade, opcoes, precoUnit }) => {
       const extrasUnit = (opcoes || []).reduce((s, o) => s + (o.precoExtra || 0), 0)
       const extrasCustoUnit = custoOpcoes(opcoes || [], ingredientes)
       const prato = pratos.find(p => p.id === pratoId)
@@ -1666,7 +1666,7 @@ export function AppProvider({ children }) {
         : null
       const atual = registrosVendas.find(r => r.pratoId === pratoId && r.data === dataAtual)
       registrarVendas(pratoId, dataAtual, (atual?.quantidade || 0) + quantidade)
-      const precoVendaUnit = prato ? (prato.precoVenda || 0) : 0
+      const precoVendaUnit = precoUnit || (prato ? (prato.precoVenda || 0) : 0)
       adicionarEntradaVenda(pratoId, quantidade, garconId, extrasUnit, extrasCustoUnit, custoPratoUnit, ingredientesSnapshot, precoVendaUnit)
     })
 
@@ -1746,7 +1746,7 @@ export function AppProvider({ children }) {
         .reduce((s, p) => s + (p.itens || []).reduce((ss, item) => {
           const pr = pratos.find(x => x.id === item.pratoId)
           const extras = (item.opcoes || []).reduce((e, o) => e + (o.precoExtra || 0), 0)
-          return ss + ((pr?.precoVenda || 0) + extras) * item.quantidade
+          return ss + (item.precoUnit != null ? item.precoUnit : (pr?.precoVenda || 0) + extras) * item.quantidade
         }, 0), 0)
       const sessao = {
         id: crypto.randomUUID(),

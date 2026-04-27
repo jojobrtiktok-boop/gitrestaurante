@@ -43,7 +43,7 @@ function CardCaixa({ pedido, coluna, pratos, garcons, mesas, onAvancar, onPagar,
     const p = pratos.find(x => x.id === i.pratoId)
     if (!p) return s
     const extras = (i.opcoes || []).reduce((ss, o) => ss + (Number(o.precoExtra) || 0), 0)
-    return s + (p.precoVenda + extras) * i.quantidade
+    return s + (i.precoUnit != null ? i.precoUnit : p.precoVenda + extras) * i.quantidade
   }, 0) || 0
 
   const ts = pedido.timestamps || {}
@@ -225,7 +225,7 @@ function valorPedidoCalc(pedido, pratos) {
     const p = pratos.find(x => x.id === i.pratoId)
     if (!p) return s
     const extras = (i.opcoes || []).reduce((e, o) => e + (Number(o.precoExtra) || 0), 0)
-    return s + (p.precoVenda + extras) * i.quantidade
+    return s + (i.precoUnit != null ? i.precoUnit : p.precoVenda + extras) * i.quantidade
   }, 0)
 }
 
@@ -534,7 +534,7 @@ export default function CaixaDisplay() {
       const pr = pratos.find(x => x.id === i.pratoId)
       if (!pr) return s
       const extras = (i.opcoes || []).reduce((ss, o) => ss + (Number(o.precoExtra) || 0), 0)
-      return s + (pr.precoVenda + extras) * i.quantidade
+      return s + (i.precoUnit != null ? i.precoUnit : pr.precoVenda + extras) * i.quantidade
     }, 0)
   }
 
@@ -647,7 +647,7 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
     const pr = pratos.find(x => x.id === i.pratoId)
     if (!pr) return ss
     const extras = (i.opcoes || []).reduce((e, o) => e + (Number(o.precoExtra) || 0), 0)
-    return ss + (pr.precoVenda + extras) * i.quantidade
+    return ss + (i.precoUnit != null ? i.precoUnit : pr.precoVenda + extras) * i.quantidade
   }, 0), 0)
 
   // Intercepta avanço de delivery pronto→saindo para mostrar seletor de motoboy
@@ -841,7 +841,7 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
                                 </div>
                                 {cfg.caixaMostrarPrecos && (
                                   <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                                    {((p.precoVenda + extras) * item.quantidade).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                    {((item.precoUnit != null ? item.precoUnit : p.precoVenda + extras) * item.quantidade).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                   </span>
                                 )}
                               </div>

@@ -28,7 +28,7 @@ async function comprimirImagem(file, maxW = 1200, maxH = 1200, quality = 0.85) {
 }
 
 export async function uploadImagem(file, pasta = 'geral', nomeFixo = null, opcoes = {}) {
-  const { maxW = 1200, maxH = 1200, quality = 0.85 } = opcoes
+  const { maxW = 800, maxH = 800, quality = 0.82 } = opcoes
   const compressed = await comprimirImagem(file, maxW, maxH, quality)
   const nome = nomeFixo
     ? `${pasta}/${nomeFixo}.webp`

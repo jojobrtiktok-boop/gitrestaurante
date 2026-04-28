@@ -846,7 +846,7 @@ export default function DeliveryPublico() {
                   <div key={prato.id} onClick={() => abrirModal(prato)} style={{ cursor: 'pointer' }}>
                     <div style={{ position: 'relative', width: '100%', aspectRatio: '1', borderRadius: 10, overflow: 'hidden', background: '#f0f0f0' }}>
                       {prato.foto
-                        ? <img src={prato.foto} alt={prato.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        ? <img src={prato.foto} alt={prato.nome} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                         : <FotoPlaceholder />}
                       {prato.maisPedido && (
                         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.62)', padding: '4px 7px' }}>
@@ -900,7 +900,7 @@ export default function DeliveryPublico() {
                         style={{ borderRadius: 12, overflow: 'hidden', background: cardBg, border: '1px solid ' + bordaCard, cursor: 'pointer' }}>
                         <div style={{ width: '100%', aspectRatio: '1', background: modoClaro ? '#f0f0f0' : 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
                           {prato.foto
-                            ? <img src={prato.foto} alt={prato.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                            ? <img src={prato.foto} alt={prato.nome} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                             : <FotoPlaceholder />}
                         </div>
                         <div style={{ padding: '6px 8px 9px' }}>
@@ -942,7 +942,7 @@ export default function DeliveryPublico() {
                       </div>
                       {prato.foto
                         ? <div style={{ width: 88, height: 88, borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
-                            <img src={prato.foto} alt={prato.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <img src={prato.foto} alt={prato.nome} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           </div>
                         : <div style={{ width: 88, height: 88, borderRadius: 8, background: '#f5f5f5', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <IcoUtensils />

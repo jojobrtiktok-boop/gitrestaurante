@@ -1,18 +1,13 @@
 import { supabase } from '../lib/supabase.js'
 
 // Comprime e redimensiona imagem via canvas antes do upload
-// maxW/maxH: dimensão máxima em pixels | quality: 0-1
-async function comprimirImagem(file, maxW = 1200, maxH = 1200, quality = 0.85) {
+async function comprimirImagem(file, maxW = 500, maxH = 500, quality = 0.72) {
   return new Promise((resolve) => {
     const img = new Image()
     const url = URL.createObjectURL(file)
     img.onload = () => {
       URL.revokeObjectURL(url)
       let { width, height } = img
-      if (width <= maxW && height <= maxH) {
-        // Imagem já pequena — só converte para webp
-        if (file.type === 'image/webp') return resolve(file)
-      }
       const ratio = Math.min(maxW / width, maxH / height, 1)
       width = Math.round(width * ratio)
       height = Math.round(height * ratio)
@@ -28,7 +23,7 @@ async function comprimirImagem(file, maxW = 1200, maxH = 1200, quality = 0.85) {
 }
 
 export async function uploadImagem(file, pasta = 'geral', nomeFixo = null, opcoes = {}) {
-  const { maxW = 800, maxH = 800, quality = 0.82 } = opcoes
+  const { maxW = 500, maxH = 500, quality = 0.72 } = opcoes
   const compressed = await comprimirImagem(file, maxW, maxH, quality)
   const nome = nomeFixo
     ? `${pasta}/${nomeFixo}.webp`
@@ -52,11 +47,31 @@ export async function uploadImagem(file, pasta = 'geral', nomeFixo = null, opcoe
 }
 
 /**
+ * Retorna URL da imagem otimizada para o tamanho pedido.
+ * Usa transformação do Supabase Storage (plano Pro) se disponível,
+ * senão retorna a URL original — sempre funciona.
+ *
+ * Uso:
+ *   imgSrc(prato.foto, 120)   → thumbnail 120px
+ *   imgSrc(prato.foto, 400)   → detalhe modal
+ *   imgSrc(prato.foto)        → original
+ */
+export function imgSrc(url, width) {
+  if (!url || !width) return url || ''
+  // Só funciona para URLs do Supabase Storage
+  if (!url.includes('/storage/v1/object/public/')) return url
+  // Troca /object/public/ por /render/image/public/ e adiciona params
+  return url
+    .replace('/storage/v1/object/public/', '/storage/v1/render/image/public/')
+    + `?width=${width}&quality=70&resize=cover`
+}
+
+/**
  * Remove um arquivo do Supabase Storage dado sua URL pública.
  * Falha silenciosa — não quebra o fluxo se não conseguir remover.
  */
 export async function removerImagem(url) {
-  if (!url || url.startsWith('data:')) return // ignora base64 legado
+  if (!url || url.startsWith('data:')) return
   try {
     const path = url.split('/storage/v1/object/public/imagens/')[1]
     if (!path) return

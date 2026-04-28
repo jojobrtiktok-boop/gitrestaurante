@@ -5,6 +5,7 @@ import { useApp } from '../context/AppContext.jsx'
 import ModalOpcoes from '../components/ui/ModalOpcoes.jsx'
 import SeletorCliente from '../components/ui/SeletorCliente.jsx'
 import { hoje } from '../utils/formatacao.js'
+import { imgSrc } from '../utils/storage.js'
 
 function tocarBeep() {
   try {
@@ -337,7 +338,7 @@ export default function ComandaDigital() {
             return (
               <div key={prato.id} style={{ display: 'flex', gap: 12, alignItems: 'center', background: bgCard, border: `1px solid ${qtd > 0 ? destaque : border}`, borderRadius: 14, padding: 12, transition: 'border-color .15s' }}>
                 <div style={{ width: 60, height: 60, borderRadius: 10, overflow: 'hidden', flexShrink: 0, background: bgHover }}>
-                  {prato.foto && <img src={prato.foto} alt={prato.nome} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                  {prato.foto && <img src={imgSrc(prato.foto, 120)} alt={prato.nome} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontWeight: 700, fontSize: 14, color: textoPrimario, marginBottom: 2 }}>{prato.nome}</p>

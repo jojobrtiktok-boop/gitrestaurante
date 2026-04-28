@@ -10,6 +10,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Cheffya" />
     <link rel="manifest" href="/manifest.json" />
+    <!-- Conexão antecipada ao servidor Supabase (reduz latência da 1ª query) -->
+    <link rel="preconnect" href="https://api.cheffya.com.br" crossorigin />
+    <link rel="dns-prefetch" href="https://api.cheffya.com.br" />
     <title>Cheffya</title>
   </head>
   <body>

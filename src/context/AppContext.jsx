@@ -633,9 +633,51 @@ export function AppProvider({ children }) {
   useEffect(() => { pedidosRef.current = pedidos }, [pedidos])
   useEffect(() => { configuracaoGeralRef.current = configuracaoGeral }, [configuracaoGeral])
 
+  // ── Cache local para páginas display (token-based) ───────────────────
+  function _dspCacheKey(token) { return `rd_dsp_${token}` }
+  function _saveDspCache(token, d) {
+    try { localStorage.setItem(_dspCacheKey(token), JSON.stringify({ t: Date.now(), d })) } catch {}
+  }
+  function _loadDspCache(token) {
+    try {
+      const raw = localStorage.getItem(_dspCacheKey(token))
+      if (!raw) return null
+      const { t, d } = JSON.parse(raw)
+      if (Date.now() - t > 30 * 60 * 1000) return null // 30 min TTL (cardápio não muda a todo momento)
+      return d
+    } catch { return null }
+  }
+
+  // Aplica dados cacheados nos states (sem marcar displayReady — chamado antes do fetch)
+  function _aplicarDadosDsp(d, kbcConfig) {
+    if (kbcConfig) setKanbanConfig(migrateKanbanConfig({ ...KANBAN_CONFIG_PADRAO, ...kbcConfig }))
+    if (d.prts) setPratos(d.prts.map ? d.prts.map(rowToPrato) : d.prts)
+    if (d.gars) setGarcons(d.gars.map ? d.gars.map(rowToGarcon) : d.gars)
+    if (d.mss)  setMesas(d.mss.map ? d.mss.map(rowToMesa) : d.mss)
+    if (d.pds)  setPedidos(d.pds.map ? d.pds.map(rowToPedido) : d.pds)
+    if (d.ccs)  setCardapioConfig(rowToCardapioConfig(d.ccs))
+    if (d.clis) setClientes(d.clis.map ? d.clis.map(rowToCliente) : d.clis)
+    if (d.mbs)  setMotoboys(d.mbs.map ? d.mbs.map(rowToMotoboy) : d.mbs)
+  }
+
+  // Inicia realtime + polling para dados ao vivo (pedidos e mesas)
+  function _iniciarRealtimeDsp(token, uid, fetchFn) {
+    const ch = supabase.channel(`dsp-${token}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, p => {
+        if (p.new?.user_id === uid || p.old?.user_id === uid) fetchFn()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas' }, p => {
+        if (p.new?.user_id === uid || p.old?.user_id === uid) fetchFn()
+      })
+      .subscribe(s => { if (s === 'CHANNEL_ERROR') setTimeout(() => ch.subscribe(), 3000) })
+    const pollId = setInterval(fetchFn, 3000)
+    window._displayCleanup = () => { supabase.removeChannel(ch); clearInterval(pollId) }
+  }
+
   // ── Display sem auth: carrega dados pelo token da URL ─────────────────
   useEffect(() => {
     const path = window.location.pathname
+    const desde = () => new Date(Date.now() - 86400000).toISOString().slice(0, 10)
 
     // ── Comanda do garçom (token direto na tabela garcons) ──
     const matchComanda = path.match(/^\/comanda\/(.+)$/)
@@ -643,50 +685,44 @@ export function AppProvider({ children }) {
       const token = matchComanda[1]
       async function carregarPorTokenGarcon() {
         setAuthLoading(false)
+
+        // Mostra cache imediatamente se existir
+        const cached = _loadDspCache(token)
+        if (cached) {
+          _aplicarDadosDsp(cached, cached.kbc)
+          setDisplayUserId(cached.uid)
+          setDisplayReady(true)
+        }
+
+        // Busca uid do garçom
         const { data: garconRow } = await supabase
-          .from('garcons')
-          .select('id, user_id, nome, token')
-          .eq('token', token)
-          .maybeSingle()
+          .from('garcons').select('id, user_id').eq('token', token).maybeSingle()
         if (!garconRow) { setDisplayReady(true); return }
         const uid = garconRow.user_id
         setDisplayUserId(uid)
+
         const [{ data: prtsRaw }, { data: garsRaw }, { data: mssRaw }, { data: pdsRaw }, { data: ccsRaw }, { data: clisRaw }, { data: kbcRaw }] = await Promise.all([
           supabase.from('pratos').select('*').eq('user_id', uid),
           supabase.from('garcons').select('*').eq('user_id', uid),
           supabase.from('mesas').select('*').eq('user_id', uid),
-          supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', new Date(Date.now() - 86400000).toISOString().slice(0, 10)),
+          supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', desde()),
           supabase.from('cardapio_config').select('*').eq('user_id', uid).maybeSingle(),
           supabase.from('clientes').select('*').eq('user_id', uid),
           supabase.from('kanban_config').select('config').eq('user_id', uid).maybeSingle(),
         ])
-        if (kbcRaw?.config) setKanbanConfig(migrateKanbanConfig({ ...KANBAN_CONFIG_PADRAO, ...(kbcRaw.config || {}) }))
-        setPratos((prtsRaw || []).map(rowToPrato))
-        setGarcons((garsRaw || []).map(rowToGarcon))
-        setMesas((mssRaw || []).map(rowToMesa))
-        setPedidos((pdsRaw || []).map(rowToPedido))
-        setCardapioConfig(rowToCardapioConfig(ccsRaw))
-        setClientes((clisRaw || []).map(rowToCliente))
+        const raw = { prts: prtsRaw || [], gars: garsRaw || [], mss: mssRaw || [],
+          pds: pdsRaw || [], ccs: ccsRaw, clis: clisRaw || [], kbc: kbcRaw?.config, uid }
+        _aplicarDadosDsp(raw, kbcRaw?.config)
         setDisplayReady(true)
+        _saveDspCache(token, raw)
 
-        // Realtime + polling para pedidos e mesas
-        const desde = () => new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-        const fetchComanda = () => {
+        const fetchFn = () => {
           supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', desde())
             .then(({ data }) => data && setPedidos(data.map(rowToPedido)))
           supabase.from('mesas').select('*').eq('user_id', uid)
             .then(({ data }) => data && setMesas(data.map(rowToMesa)))
         }
-        const ch = supabase.channel(`comanda-${token}`)
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, payload => {
-            if (payload.new?.user_id === uid || payload.old?.user_id === uid) fetchComanda()
-          })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas' }, payload => {
-            if (payload.new?.user_id === uid || payload.old?.user_id === uid) fetchComanda()
-          })
-          .subscribe(status => { if (status === 'CHANNEL_ERROR') setTimeout(() => ch.subscribe(), 3000) })
-        const cpollId = setInterval(fetchComanda, 3000)
-        window._displayCleanup = () => { supabase.removeChannel(ch); clearInterval(cpollId) }
+        _iniciarRealtimeDsp(token, uid, fetchFn)
       }
       carregarPorTokenGarcon()
       return
@@ -700,58 +736,45 @@ export function AppProvider({ children }) {
 
     async function carregarPorToken() {
       setAuthLoading(false)
+
+      // Mostra cache imediatamente se existir
+      const cached = _loadDspCache(token)
+      if (cached) {
+        _aplicarDadosDsp(cached, cached.kbc)
+        setDisplayUserId(cached.uid)
+        setDisplayReady(true)
+      }
+
       const { data: kbcRow } = await supabase
-        .from('kanban_config')
-        .select('user_id, config')
-        .eq(`config->>${campoToken}`, token)
-        .maybeSingle()
+        .from('kanban_config').select('user_id, config')
+        .eq(`config->>${campoToken}`, token).maybeSingle()
       if (!kbcRow) { setDisplayReady(true); return }
       const uid = kbcRow.user_id
       setDisplayUserId(uid)
+
       const [{ data: prtsRaw }, { data: garsRaw }, { data: mssRaw }, { data: pdsRaw }, { data: ccsRaw }, { data: clisRaw }, { data: motoboysRaw }] = await Promise.all([
         supabase.from('pratos').select('*').eq('user_id', uid),
         supabase.from('garcons').select('*').eq('user_id', uid),
         supabase.from('mesas').select('*').eq('user_id', uid),
-        supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', new Date(Date.now() - 86400000).toISOString().slice(0, 10)),
+        supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', desde()),
         supabase.from('cardapio_config').select('*').eq('user_id', uid).maybeSingle(),
         supabase.from('clientes').select('*').eq('user_id', uid),
         supabase.from('motoboys').select('*').eq('user_id', uid),
       ])
-      setKanbanConfig(migrateKanbanConfig({ ...KANBAN_CONFIG_PADRAO, ...(kbcRow.config || {}) }))
-      setPratos((prtsRaw || []).map(rowToPrato))
-      setGarcons((garsRaw || []).map(rowToGarcon))
-      setMesas((mssRaw || []).map(rowToMesa))
-      setPedidos((pdsRaw || []).map(rowToPedido))
-      setCardapioConfig(rowToCardapioConfig(ccsRaw))
-      setClientes((clisRaw || []).map(rowToCliente))
-      setMotoboys((motoboysRaw || []).map(rowToMotoboy))
+      const raw = { prts: prtsRaw || [], gars: garsRaw || [], mss: mssRaw || [],
+        pds: pdsRaw || [], ccs: ccsRaw, clis: clisRaw || [], mbs: motoboysRaw || [],
+        kbc: kbcRow.config, uid }
+      _aplicarDadosDsp(raw, kbcRow.config)
       setDisplayReady(true)
+      _saveDspCache(token, raw)
 
-      // Realtime + polling para pedidos e mesas
-      const desde = () => new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-      const fetchDisplay = () => {
+      const fetchFn = () => {
         supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', desde())
           .then(({ data }) => data && setPedidos(data.map(rowToPedido)))
         supabase.from('mesas').select('*').eq('user_id', uid)
           .then(({ data }) => data && setMesas(data.map(rowToMesa)))
       }
-      // Sem filter no channel — anon+RLS não suporta filter no realtime
-      const ch = supabase.channel(`display-${token}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, payload => {
-          if (payload.new?.user_id === uid || payload.old?.user_id === uid) fetchDisplay()
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas' }, payload => {
-          if (payload.new?.user_id === uid || payload.old?.user_id === uid) fetchDisplay()
-        })
-        .subscribe(status => {
-          if (status === 'CHANNEL_ERROR') {
-            setTimeout(() => ch.subscribe(), 3000)
-          }
-        })
-      // Polling fallback a cada 3s
-      const dpollId = setInterval(fetchDisplay, 3000)
-      // Cleanup ao desmontar (se algum dia o componente desmontar)
-      window._displayCleanup = () => { supabase.removeChannel(ch); clearInterval(dpollId) }
+      _iniciarRealtimeDsp(token, uid, fetchFn)
     }
     carregarPorToken()
   }, [])

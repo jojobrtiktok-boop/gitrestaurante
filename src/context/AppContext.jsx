@@ -636,6 +636,62 @@ export function AppProvider({ children }) {
   // ── Display sem auth: carrega dados pelo token da URL ─────────────────
   useEffect(() => {
     const path = window.location.pathname
+
+    // ── Comanda do garçom (token direto na tabela garcons) ──
+    const matchComanda = path.match(/^\/comanda\/(.+)$/)
+    if (matchComanda) {
+      const token = matchComanda[1]
+      async function carregarPorTokenGarcon() {
+        setAuthLoading(false)
+        const { data: garconRow } = await supabase
+          .from('garcons')
+          .select('id, user_id, nome, token')
+          .eq('token', token)
+          .maybeSingle()
+        if (!garconRow) { setDisplayReady(true); return }
+        const uid = garconRow.user_id
+        setDisplayUserId(uid)
+        const [{ data: prtsRaw }, { data: garsRaw }, { data: mssRaw }, { data: pdsRaw }, { data: ccsRaw }, { data: clisRaw }, { data: kbcRaw }] = await Promise.all([
+          supabase.from('pratos').select('*').eq('user_id', uid),
+          supabase.from('garcons').select('*').eq('user_id', uid),
+          supabase.from('mesas').select('*').eq('user_id', uid),
+          supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', new Date(Date.now() - 86400000).toISOString().slice(0, 10)),
+          supabase.from('cardapio_config').select('*').eq('user_id', uid).maybeSingle(),
+          supabase.from('clientes').select('*').eq('user_id', uid),
+          supabase.from('kanban_config').select('config').eq('user_id', uid).maybeSingle(),
+        ])
+        if (kbcRaw?.config) setKanbanConfig(migrateKanbanConfig({ ...KANBAN_CONFIG_PADRAO, ...(kbcRaw.config || {}) }))
+        setPratos((prtsRaw || []).map(rowToPrato))
+        setGarcons((garsRaw || []).map(rowToGarcon))
+        setMesas((mssRaw || []).map(rowToMesa))
+        setPedidos((pdsRaw || []).map(rowToPedido))
+        setCardapioConfig(rowToCardapioConfig(ccsRaw))
+        setClientes((clisRaw || []).map(rowToCliente))
+        setDisplayReady(true)
+
+        // Realtime + polling para pedidos e mesas
+        const desde = () => new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+        const fetchComanda = () => {
+          supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', desde())
+            .then(({ data }) => data && setPedidos(data.map(rowToPedido)))
+          supabase.from('mesas').select('*').eq('user_id', uid)
+            .then(({ data }) => data && setMesas(data.map(rowToMesa)))
+        }
+        const ch = supabase.channel(`comanda-${token}`)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, payload => {
+            if (payload.new?.user_id === uid || payload.old?.user_id === uid) fetchComanda()
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas' }, payload => {
+            if (payload.new?.user_id === uid || payload.old?.user_id === uid) fetchComanda()
+          })
+          .subscribe(status => { if (status === 'CHANNEL_ERROR') setTimeout(() => ch.subscribe(), 3000) })
+        const cpollId = setInterval(fetchComanda, 3000)
+        window._displayCleanup = () => { supabase.removeChannel(ch); clearInterval(cpollId) }
+      }
+      carregarPorTokenGarcon()
+      return
+    }
+
     const match = path.match(/^\/(cozinha|caixa|telao|pedidos-display)\/(.+)$/)
     if (!match) return
     const [, tipo, token] = match
@@ -718,7 +774,7 @@ export function AppProvider({ children }) {
       } else {
         setAuth({ logado: false, usuario: '', isAdmin: false, userId: null })
         // Não limpa dados em páginas de display (carregadas por token, sem auth)
-        const isDisplayPath = /^\/(cozinha|caixa|telao|pedidos-display)\//.test(window.location.pathname)
+        const isDisplayPath = /^\/(cozinha|caixa|telao|pedidos-display|comanda)\//.test(window.location.pathname)
         if (!isDisplayPath) _limparDados()
         setAuthLoading(false)
       }

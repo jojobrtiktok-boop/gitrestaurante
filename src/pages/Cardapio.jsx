@@ -5,7 +5,7 @@ import { uploadImagem } from '../utils/storage.js'
 import Badge, { margemCor, cmvCor } from '../components/ui/Badge.jsx'
 import { custoPrato, lucroPrato, margemPrato, cmvPrato } from '../utils/calculos.js'
 import { formatarMoeda, formatarPorcentagem } from '../utils/formatacao.js'
-import { fromBase } from '../utils/unidades.js'
+import { fromBase, toBase } from '../utils/unidades.js'
 import { Link } from 'react-router-dom'
 import { PainelCozinha, PainelCaixa } from './Displays.jsx'
 
@@ -378,6 +378,11 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
   const [novaBordaInsumoId, setNovaBordaInsumoId] = useState('')
   const [novaBordaInsumoQtd, setNovaBordaInsumoQtd] = useState('')
 
+  // Ingredientes base do produto customizável
+  const [ingredientesVariacao, setIngredientesVariacao] = useState(pratoEdit?.ingredientes || [])
+  const [novoIngId, setNovoIngId] = useState('')
+  const [novoIngQtd, setNovoIngQtd] = useState('')
+
   // Seleção de receita (compartilhada, contexto-ciente)
   const [pratoSelecionadoId, setPratoSelecionadoId] = useState('')
   const [busca, setBusca] = useState('')
@@ -440,6 +445,21 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
     setPratoSelecionadoId(''); setPrecoOverride(''); setBusca('')
   }
 
+  function addIngredienteProduto() {
+    if (!novoIngId || novoIngQtd === '') return
+    const ing = todosInsumos.find(i => i.id === novoIngId)
+    if (!ing) return
+    const qtdBase = toBase(Number(novoIngQtd), ing.unidade)
+    const idx = ingredientesVariacao.findIndex(l => l.ingredienteId === novoIngId)
+    if (idx >= 0) {
+      setIngredientesVariacao(prev => prev.map((l, i) => i === idx ? { ...l, quantidade: qtdBase } : l))
+    } else {
+      setIngredientesVariacao(prev => [...prev, { ingredienteId: novoIngId, quantidade: qtdBase }])
+    }
+    setNovoIngId('')
+    setNovoIngQtd('')
+  }
+
   function adicionarBorda() {
     if (!novaBordaNome.trim()) return
     const insumo = todosInsumos.find(i => i.id === novaBordaInsumoId)
@@ -483,7 +503,7 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
       labelBordas: labelBordas.trim() || null,
       bordas,
       precoVenda,
-      ingredientes: [],
+      ingredientes: ingredientesVariacao,
     })
   }
 
@@ -740,6 +760,50 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
               )}
             </div>
           )}
+
+          {/* Insumos base */}
+          <div className="p-3 rounded-xl" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+            <div className="mb-2">
+              <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>🧪 Insumos base do produto (opcional)</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)', opacity: 0.7 }}>
+                Consumidos por unidade vendida. Se tiver 2 sabores, cada um consome ½; se tiver 3, ⅓ cada.
+              </p>
+            </div>
+            {ingredientesVariacao.length > 0 && (
+              <div className="flex flex-col gap-1.5 mb-2">
+                {ingredientesVariacao.map((linha, idx) => {
+                  const ing = todosInsumos.find(i => i.id === linha.ingredienteId)
+                  if (!ing) return null
+                  const qtdDisplay = fromBase(linha.quantidade, ing.unidade)
+                  return (
+                    <div key={idx} className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                      <span className="flex-1 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{ing.nome}</span>
+                      <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{Number(qtdDisplay).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} {ing.unidade}</span>
+                      <button onClick={() => setIngredientesVariacao(prev => prev.filter((_, i) => i !== idx))} className="btn btn-ghost p-1" style={{ color: '#ef4444' }}><Trash2 size={12} /></button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <select className="input text-sm flex-1" value={novoIngId} onChange={e => { setNovoIngId(e.target.value); setNovoIngQtd('') }}>
+                <option value="">— selecione o insumo —</option>
+                {todosInsumos.map(i => (
+                  <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>
+                ))}
+              </select>
+              {novoIngId && (
+                <input className="input text-sm" type="number" min="0" step="0.01"
+                  placeholder={`Qtd (${todosInsumos.find(i => i.id === novoIngId)?.unidade})`}
+                  value={novoIngQtd} onChange={e => setNovoIngQtd(e.target.value)}
+                  style={{ width: 100 }} />
+              )}
+              <button onClick={addIngredienteProduto} className="btn btn-primary px-3"
+                disabled={!novoIngId || novoIngQtd === ''}>
+                <Plus size={14} />
+              </button>
+            </div>
+          </div>
 
           {/* Bordas */}
           <div className="p-3 rounded-xl" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>

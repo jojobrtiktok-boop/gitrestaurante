@@ -1382,6 +1382,9 @@ export function AppProvider({ children }) {
 
     const prato = pratos.find(p => p.id === pratoId)
     if (!prato?.ingredientes?.length) return
+    // Produtos customizáveis (tipo='variacao') têm dedução proporcional tratada
+    // diretamente no loop de variacoes de adicionarPedido / aceitarPedidoDelivery
+    if (prato.tipo === 'variacao') return
     setIngredientes(prev => prev.map(ing => {
       const linha = prato.ingredientes.find(l => l.ingredienteId === ing.id)
       if (!linha) return ing
@@ -1796,6 +1799,7 @@ export function AppProvider({ children }) {
     itensComCusto.forEach(({ pratoId, quantidade, variacoes, borda }) => {
       if (variacoes?.length) {
         const fator = 1 / variacoes.length // ½ para 2 sabores, ⅓ para 3
+        // Deduz ingredientes de cada sub-prato (receita do sabor) proporcional ao fator
         variacoes.forEach(v => {
           const subPrato = pratos.find(p => p.id === v.pratoId)
           if (!subPrato?.ingredientes?.length) return
@@ -1808,6 +1812,19 @@ export function AppProvider({ children }) {
             return upd
           }))
         })
+        // Deduz ingredientes BASE do próprio produto customizável (quantidade integral,
+        // pois registrarVendas pula tipo='variacao')
+        const mainPrato = pratos.find(p => p.id === pratoId)
+        if (mainPrato?.ingredientes?.length) {
+          setIngredientes(prev => prev.map(ing => {
+            const linha = mainPrato.ingredientes.find(l => l.ingredienteId === ing.id)
+            if (!linha) return ing
+            const deduct = fromBase(linha.quantidade, ing.unidade) * quantidade
+            const upd = { ...ing, quantidadeEstoque: ing.quantidadeEstoque - deduct }
+            if (uid) sbWrite(supabase.from('ingredientes').update({ quantidade_estoque: upd.quantidadeEstoque }).eq('id', ing.id))
+            return upd
+          }))
+        }
       }
       // Deduzir insumo da borda (se configurado)
       if (borda?.ingredienteId && borda.ingredienteQtd > 0) {
@@ -1981,6 +1998,17 @@ export function AppProvider({ children }) {
             return upd
           }))
         })
+        // Ingredientes BASE do produto customizável (integral — registrarVendas pula tipo='variacao')
+        if (prato.ingredientes?.length) {
+          setIngredientes(prev => prev.map(ing => {
+            const linha = prato.ingredientes.find(l => l.ingredienteId === ing.id)
+            if (!linha) return ing
+            const deduct = fromBase(linha.quantidade, ing.unidade) * item.quantidade
+            const upd = { ...ing, quantidadeEstoque: ing.quantidadeEstoque - deduct }
+            if (uid) sbWrite(supabase.from('ingredientes').update({ quantidade_estoque: upd.quantidadeEstoque }).eq('id', ing.id))
+            return upd
+          }))
+        }
       } else if (prato.ingredientes?.length) {
         // Produto simples: deduz ingredientes normalmente
         setIngredientes(prev => prev.map(ing => {

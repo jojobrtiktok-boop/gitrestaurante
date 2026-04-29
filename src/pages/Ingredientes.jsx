@@ -61,7 +61,7 @@ function AbaInsumos({ onRegisterOpen }) {
     setEditandoId(ing.id); setErro(''); setModal(true)
   }
 
-  function salvar() {
+  async function salvar() {
     if (!form.nome.trim()) return setErro('Nome é obrigatório.')
     const perda = parseFloat(form.percentualPerda)
     if (isNaN(perda) || perda < 0 || perda > 100) return setErro('% de perda deve ser entre 0 e 100.')
@@ -76,8 +76,12 @@ function AbaInsumos({ onRegisterOpen }) {
       perecivel: form.perecivel,
       percentualPerda: perda,
     }
-    if (editandoId) editarIngrediente(editandoId, dados)
-    else adicionarIngrediente(dados)
+    if (editandoId) {
+      const r = await editarIngrediente(editandoId, dados)
+      if (r?.erro) return setErro('Erro ao salvar: ' + r.erro)
+    } else {
+      adicionarIngrediente(dados)
+    }
     setModal(false)
   }
 

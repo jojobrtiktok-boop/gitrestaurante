@@ -1239,13 +1239,25 @@ export function AppProvider({ children }) {
     return novo
   }
 
-  function editarIngrediente(id, dados) {
+  async function editarIngrediente(id, dados) {
+    let updatedIng = null
     setIngredientes(prev => prev.map(i => {
       if (i.id !== id) return i
-      const updated = { ...i, ...dados }
-      if (auth.userId) sbWrite(supabase.from('ingredientes').update(ingToRow(updated, auth.userId)).eq('id', id))
-      return updated
+      updatedIng = { ...i, ...dados }
+      return updatedIng
     }))
+    if (auth.userId && updatedIng) {
+      const { error } = await supabase
+        .from('ingredientes')
+        .update(ingToRow(updatedIng, auth.userId))
+        .eq('id', id)
+        .eq('user_id', auth.userId)
+      if (error) {
+        console.error('[supabase] editarIngrediente:', error)
+        return { erro: error.message }
+      }
+    }
+    return { ok: true }
   }
 
   function removerIngrediente(id) {
@@ -1785,13 +1797,30 @@ export function AppProvider({ children }) {
           custoPratoUnit += (bordaIng.preco || 0) * fc * itemBorda.ingredienteQtd
         }
       }
-      const ingredientesSnapshot = prato?.ingredientes?.length
+      let ingredientesSnapshot = prato?.ingredientes?.length
         ? prato.ingredientes.map(linha => {
             const ing = ingredientes.find(i => i.id === linha.ingredienteId)
             if (!ing) return null
             return { ingredienteId: linha.ingredienteId, custo: precoPorBase(ing) * linha.quantidade }
           }).filter(Boolean)
         : null
+      // Para produtos customizáveis (variação), incluir insumos dos sabores proporcionalmente
+      if (itemVar?.length) {
+        const fator = 1 / itemVar.length
+        const snapshotVariacao = []
+        itemVar.forEach(v => {
+          const subPrato = pratos.find(p => p.id === v.pratoId)
+          if (!subPrato?.ingredientes?.length) return
+          subPrato.ingredientes.forEach(linha => {
+            const ing = ingredientes.find(i => i.id === linha.ingredienteId)
+            if (!ing) return
+            snapshotVariacao.push({ ingredienteId: linha.ingredienteId, custo: precoPorBase(ing) * linha.quantidade * fator })
+          })
+        })
+        if (snapshotVariacao.length > 0) {
+          ingredientesSnapshot = [...(ingredientesSnapshot || []), ...snapshotVariacao]
+        }
+      }
       const atual = registrosVendas.find(r => r.pratoId === pratoId && r.data === dataAtual)
       registrarVendas(pratoId, dataAtual, (atual?.quantidade || 0) + quantidade)
       const precoVendaUnit = precoUnit || (prato ? (prato.precoVenda || 0) : 0)
@@ -1985,6 +2014,31 @@ export function AppProvider({ children }) {
       }
       const precoVendaUnit = item.precoUnit || prato.precoVenda || 0
 
+      // Snapshot de insumos — inclui prato principal e, se variação, sabores proporcionalmente
+      let ingredientesSnapshot = prato?.ingredientes?.length
+        ? prato.ingredientes.map(linha => {
+            const ing = ingredientes.find(i => i.id === linha.ingredienteId)
+            if (!ing) return null
+            return { ingredienteId: linha.ingredienteId, custo: precoPorBase(ing) * linha.quantidade }
+          }).filter(Boolean)
+        : null
+      if (itemVar?.length) {
+        const fator = 1 / itemVar.length
+        const snapshotVariacao = []
+        itemVar.forEach(v => {
+          const subPrato = pratos.find(p => p.id === v.pratoId)
+          if (!subPrato?.ingredientes?.length) return
+          subPrato.ingredientes.forEach(linha => {
+            const ing = ingredientes.find(i => i.id === linha.ingredienteId)
+            if (!ing) return
+            snapshotVariacao.push({ ingredienteId: linha.ingredienteId, custo: precoPorBase(ing) * linha.quantidade * fator })
+          })
+        })
+        if (snapshotVariacao.length > 0) {
+          ingredientesSnapshot = [...(ingredientesSnapshot || []), ...snapshotVariacao]
+        }
+      }
+
       const entrada = {
         id: crypto.randomUUID(),
         pratoId: item.pratoId,
@@ -1995,7 +2049,7 @@ export function AppProvider({ children }) {
         extrasUnit,
         extrasCustoUnit: 0,
         custoPratoUnit,
-        ingredientesSnapshot: null,
+        ingredientesSnapshot,
         precoVendaUnit,
         canal: 'delivery',
       }

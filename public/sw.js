@@ -1,7 +1,7 @@
 // Service Worker — Cheffya
 // Estratégia: cache-first para assets estáticos, stale-while-revalidate para imagens
-const CACHE_STATIC = 'cheffya-static-v3'
-const CACHE_IMAGES = 'cheffya-images-v3'
+const CACHE_STATIC = 'cheffya-static-v4'
+const CACHE_IMAGES = 'cheffya-images-v4'
 
 // Instalação: pré-cacheia o app shell
 self.addEventListener('install', event => {

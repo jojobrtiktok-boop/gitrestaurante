@@ -382,6 +382,7 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
   const [ingredientesVariacao, setIngredientesVariacao] = useState(pratoEdit?.ingredientes || [])
   const [novoIngId, setNovoIngId] = useState('')
   const [novoIngQtd, setNovoIngQtd] = useState('')
+  const [apareceCozinha, setApareceCozinha] = useState(pratoEdit?.apareceCozinha !== false)
 
   // Seleção de receita (compartilhada, contexto-ciente)
   const [pratoSelecionadoId, setPratoSelecionadoId] = useState('')
@@ -504,6 +505,7 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
       bordas,
       precoVenda,
       ingredientes: ingredientesVariacao,
+      apareceCozinha,
     })
   }
 
@@ -618,6 +620,32 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
             </div>
           </div>
           <input className="input" placeholder="Descrição (opcional)" value={descricao} onChange={e => setDescricao(e.target.value)} />
+
+          {/* Aparece na cozinha */}
+          <label style={{
+            display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+            padding: '10px 14px', borderRadius: 10,
+            background: apareceCozinha ? 'rgba(245,158,11,0.08)' : 'var(--bg-hover)',
+            border: `1.5px solid ${apareceCozinha ? '#f59e0b' : 'var(--border)'}`,
+            transition: 'all 0.15s',
+          }}>
+            <input
+              type="checkbox"
+              checked={apareceCozinha}
+              onChange={e => setApareceCozinha(e.target.checked)}
+              style={{ width: 16, height: 16, accentColor: '#f59e0b', flexShrink: 0 }}
+            />
+            <div>
+              <span className="text-sm font-semibold" style={{ color: apareceCozinha ? '#b45309' : 'var(--text-secondary)' }}>
+                Aparece na cozinha
+              </span>
+              <p className="text-xs" style={{ color: 'var(--text-muted)', marginTop: 1 }}>
+                {apareceCozinha
+                  ? 'Marcado — este item aparece no painel da cozinha ao ser pedido'
+                  : 'Desmarcado — só aparece no balcão/caixa (ex: bebida, sobremesa pronta)'}
+              </p>
+            </div>
+          </label>
 
           {/* Toggle: Simples | Com Tamanhos */}
           <div className="p-1 rounded-xl flex gap-1" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>

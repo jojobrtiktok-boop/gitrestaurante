@@ -90,11 +90,12 @@ function CardCozinha({ pedido, coluna, pratos, garcons, mesas, onAvancar, cfg })
         </div>
       )}
 
-      {/* Itens */}
+      {/* Itens — só mostra itens marcados para a cozinha */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {pedido.itens?.map(item => {
           const p = pratos.find(x => x.id === item.pratoId)
           if (!p) return null
+          if (p.apareceCozinha === false) return null
           return (
             <div key={item.uid || item.pratoId}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -284,6 +285,11 @@ export default function CozinhaDisplay() {
         {colunasDef.map(col => {
           const cards = pedidosHoje
             .filter(p => p.status === col.id)
+            // Só mostra pedidos que têm pelo menos 1 item marcado para a cozinha
+            .filter(p => p.itens?.some(item => {
+              const pr = pratos.find(x => x.id === item.pratoId)
+              return pr ? pr.apareceCozinha !== false : true
+            }))
             .sort((a, b) => (a.timestamps?.novo || '').localeCompare(b.timestamps?.novo || ''))
 
           return (

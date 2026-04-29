@@ -9,7 +9,7 @@ import { toBase, fromBase } from '../utils/unidades.js'
 import { custoPrato, lucroPrato, margemPrato, cmvPrato, precoSugeridoCMV, precoSugeridoMargem } from '../utils/calculos.js'
 import { formatarMoeda, formatarPorcentagem } from '../utils/formatacao.js'
 
-const FORM_VAZIO = { nome: '', descricao: '', precoVenda: '', categoria: '', ingredientes: [], grupos: [] }
+const FORM_VAZIO = { nome: '', descricao: '', precoVenda: '', categoria: '', ingredientes: [], grupos: [], apareceCozinha: true }
 
 function novoGrupo(categoria = 'complemento') {
   return { id: crypto.randomUUID(), nome: '', tipo: 'multiplo', minimo: 0, maximo: 3, categoria, itens: [] }
@@ -62,6 +62,7 @@ export default function Receitas() {
     setForm({
       nome: prato.nome, descricao: prato.descricao || '',
       precoVenda: String(prato.precoVenda), categoria: prato.categoria || '',
+      apareceCozinha: prato.apareceCozinha !== false,
       ingredientes: linhas,
       grupos: (prato.grupos || []).map(g => ({
         ...g,
@@ -132,7 +133,7 @@ export default function Receitas() {
       })),
     }))
 
-    const dados = { nome: form.nome.trim(), descricao: form.descricao.trim(), precoVenda: +form.precoVenda, categoria: form.categoria, ingredientes: ingredientesConvertidos, grupos: gruposConvertidos }
+    const dados = { nome: form.nome.trim(), descricao: form.descricao.trim(), precoVenda: +form.precoVenda, categoria: form.categoria, apareceCozinha: form.apareceCozinha !== false, ingredientes: ingredientesConvertidos, grupos: gruposConvertidos }
     if (editandoId) editarPrato(editandoId, dados)
     else adicionarPrato(dados)
     setModal(false)
@@ -307,6 +308,32 @@ export default function Receitas() {
             <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Descrição <span style={{ fontWeight: 400 }}>(aparece no cardápio)</span></label>
             <input className="input" placeholder="Ex: Massa artesanal, calabresa defumada e queijo mussarela..." value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} />
           </div>
+
+          {/* Aparece na cozinha */}
+          <label style={{
+            display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+            padding: '10px 14px', borderRadius: 10,
+            background: form.apareceCozinha ? 'rgba(245,158,11,0.08)' : 'var(--bg-hover)',
+            border: `1.5px solid ${form.apareceCozinha ? '#f59e0b' : 'var(--border)'}`,
+            transition: 'all 0.15s',
+          }}>
+            <input
+              type="checkbox"
+              checked={form.apareceCozinha !== false}
+              onChange={e => setForm(f => ({ ...f, apareceCozinha: e.target.checked }))}
+              style={{ width: 16, height: 16, accentColor: '#f59e0b', flexShrink: 0 }}
+            />
+            <div>
+              <span className="text-sm font-semibold" style={{ color: form.apareceCozinha ? '#b45309' : 'var(--text-secondary)' }}>
+                Aparece na cozinha
+              </span>
+              <p className="text-xs" style={{ color: 'var(--text-muted)', marginTop: 1 }}>
+                {form.apareceCozinha
+                  ? 'Marcado — este item aparece no painel da cozinha ao ser pedido'
+                  : 'Desmarcado — só aparece no balcão/caixa (ex: bebida, sobremesa pronta)'}
+              </p>
+            </div>
+          </label>
 
           {/* Insumos */}
           <div>

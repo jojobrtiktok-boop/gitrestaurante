@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { DollarSign, TrendingUp, Award, ShoppingBag, TrendingDown, BarChart2, Wallet, Info, X, ChevronDown, ChevronUp, Clock, Trophy, Layers, UtensilsCrossed, Truck, ArrowDownCircle, ArrowUpCircle, LockKeyhole, Printer } from 'lucide-react'
+import { DollarSign, TrendingUp, Award, ShoppingBag, TrendingDown, BarChart2, Wallet, Info, X, ChevronDown, ChevronUp, Clock, Trophy, Layers, UtensilsCrossed, Truck, ArrowDownCircle, ArrowUpCircle, LockKeyhole, Printer, Users } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { useApp } from '../context/AppContext.jsx'
 import MetricCard from '../components/ui/MetricCard.jsx'
@@ -519,7 +519,7 @@ function ResultadoGeral() {
 }
 
 export default function VisaoGeral() {
-  const { pratos, ingredientes, registrosVendas, entradasVendas, pedidos, tema, registrarCaixaInicial, getCaixaInicial, getCaixaInicialPeriodo, movimentosCaixa, adicionarMovimentoCaixa, removerMovimentoCaixa, getMovimentosCaixaDia, carregarPeriodo } = useApp()
+  const { pratos, ingredientes, registrosVendas, entradasVendas, pedidos, garcons, tema, registrarCaixaInicial, getCaixaInicial, getCaixaInicialPeriodo, movimentosCaixa, adicionarMovimentoCaixa, removerMovimentoCaixa, getMovimentosCaixaDia, carregarPeriodo } = useApp()
   const h = hoje()
   const [periodo, setPeriodo] = useState({ dataInicio: h, dataFim: h })
 
@@ -547,6 +547,46 @@ export default function VisaoGeral() {
   const entradasFiltradas = canalFiltro === 'todos' ? entradasPeriodo
     : canalFiltro === 'delivery' ? entradasPeriodo.filter(e => e.canal === 'delivery')
     : entradasPeriodo.filter(e => !e.canal || e.canal !== 'delivery')
+
+  // ── Ranking de garçons por receita no período ──
+  const rankingGarcons = useMemo(() => {
+    const pedidosPeriodo = pedidos.filter(p =>
+      p.data >= dataInicio && p.data <= dataFim && !p.cancelado
+    )
+    const mapa = {}
+    pedidosPeriodo.forEach(ped => {
+      const chave = ped.garconId || '__balcao__'
+      if (!mapa[chave]) {
+        const g = garcons.find(g => g.id === ped.garconId)
+        mapa[chave] = { nome: g ? g.nome : 'Balcão', pedidos: 0, receita: 0, isGarcon: !!ped.garconId }
+      }
+      mapa[chave].pedidos += 1
+      // Soma receita das entradas vinculadas a este pedido
+      entradasFiltradas.forEach(e => {
+        if (e.pedidoId === ped.id || (e.garconId === ped.garconId && e.data === ped.data)) {
+          const prato = pratos.find(p => p.id === e.pratoId)
+          mapa[chave].receita += receitaEntrada(e, prato)
+        }
+      })
+    })
+    // Fallback: se não há pedidos, usa entradasFiltradas agrupadas por garçon
+    if (pedidosPeriodo.length === 0) {
+      entradasFiltradas.forEach(e => {
+        const chave = e.garconId || '__balcao__'
+        if (!mapa[chave]) {
+          const g = garcons.find(g => g.id === e.garconId)
+          mapa[chave] = { nome: g ? g.nome : 'Balcão', pedidos: 0, receita: 0, isGarcon: !!e.garconId }
+        }
+        mapa[chave].pedidos += 1
+        const prato = pratos.find(p => p.id === e.pratoId)
+        mapa[chave].receita += receitaEntrada(e, prato)
+      })
+    }
+    return Object.values(mapa)
+      .filter(g => g.isGarcon) // só garçons, não balcão
+      .sort((a, b) => b.receita - a.receita)
+      .slice(0, 5)
+  }, [pedidos, garcons, entradasFiltradas, pratos, dataInicio, dataFim])
 
   // ── Agrega dados do período (rankings, chart)
   let maisVendidoQtd = 0, maisVendido = null
@@ -855,23 +895,44 @@ export default function VisaoGeral() {
 
             <div className="card">
               <div className="card-title mb-1">
-                <span className="card-title-icon"><BarChart2 size={14} /></span>
-                Vendas por Receita
+                <span className="card-title-icon"><Users size={14} /></span>
+                Melhores Garçons
               </div>
-              <p className="text-xs mb-4" style={{ color: 'var(--text-muted)', paddingLeft: 36 }}>Distribuição de unidades vendidas</p>
-              {semVendas ? (
-                <p className="text-sm text-center py-8" style={{ color: 'var(--text-muted)' }}>Sem dados para exibir.</p>
+              <p className="text-xs mb-4" style={{ color: 'var(--text-muted)', paddingLeft: 36 }}>Por receita gerada no período</p>
+              {rankingGarcons.length === 0 ? (
+                <div className="py-8 text-center">
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                    {garcons.length === 0 ? 'Nenhum garçon cadastrado.' : 'Nenhum pedido registrado no período.'}
+                  </p>
+                </div>
               ) : (
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={chartData} margin={{ top: 0, right: 8, left: -24, bottom: 0 }}>
-                    <XAxis dataKey="nome" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--bg-hover)' }} />
-                    <Bar dataKey="quantidade" radius={[5, 5, 0, 0]}>
-                      {chartData.map((_, idx) => <Cell key={idx} fill={CORES[idx % CORES.length]} />)}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="flex flex-col gap-2">
+                  {rankingGarcons.map((g, idx) => {
+                    const maxReceita = rankingGarcons[0]?.receita || 1
+                    const pct = (g.receita / maxReceita) * 100
+                    const cores = ['var(--accent)', '#f59e0b', '#3b82f6', '#8b5cf6', '#10b981']
+                    const cor = cores[idx] || 'var(--text-muted)'
+                    return (
+                      <div key={g.nome} className="flex flex-col gap-1 p-2.5 rounded-xl"
+                        style={{ background: idx === 0 ? 'var(--accent-bg)' : 'var(--bg-hover)', border: idx === 0 ? '1px solid var(--border-active)' : '1px solid transparent' }}>
+                        <div className="flex items-center gap-3">
+                          <span className="rank-badge" style={{
+                            background: idx === 0 ? 'var(--accent)' : idx === 1 ? 'rgba(245,158,11,0.35)' : idx === 2 ? 'rgba(59,130,246,0.3)' : 'var(--border)',
+                            color: idx <= 2 ? '#fff' : 'var(--text-muted)',
+                          }}>{idx + 1}</span>
+                          <span className="flex-1 text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{g.nome}</span>
+                          <div className="text-right">
+                            <span className="text-sm font-bold" style={{ color: idx === 0 ? 'var(--accent)' : 'var(--text-primary)' }}>{formatarMoeda(g.receita)}</span>
+                            <span className="text-xs ml-2" style={{ color: 'var(--text-muted)' }}>{g.pedidos} ped.</span>
+                          </div>
+                        </div>
+                        <div style={{ height: 4, background: 'var(--border)', borderRadius: 4, marginLeft: 36 }}>
+                          <div style={{ width: `${pct}%`, height: '100%', background: cor, borderRadius: 4, transition: 'width .4s' }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
               )}
             </div>
           </div>

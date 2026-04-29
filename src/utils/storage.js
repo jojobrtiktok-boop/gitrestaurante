@@ -47,23 +47,11 @@ export async function uploadImagem(file, pasta = 'geral', nomeFixo = null, opcoe
 }
 
 /**
- * Retorna URL da imagem otimizada para o tamanho pedido.
- * Usa transformação do Supabase Storage (plano Pro) se disponível,
- * senão retorna a URL original — sempre funciona.
- *
- * Uso:
- *   imgSrc(prato.foto, 120)   → thumbnail 120px
- *   imgSrc(prato.foto, 400)   → detalhe modal
- *   imgSrc(prato.foto)        → original
+ * Retorna a URL da imagem — mantém a original pois as fotos já são
+ * comprimidas em WebP 500px no upload (Storage transform é Pro only).
  */
-export function imgSrc(url, width) {
-  if (!url || !width) return url || ''
-  // Só funciona para URLs do Supabase Storage
-  if (!url.includes('/storage/v1/object/public/')) return url
-  // Troca /object/public/ por /render/image/public/ e adiciona params
-  return url
-    .replace('/storage/v1/object/public/', '/storage/v1/render/image/public/')
-    + `?width=${width}&quality=70&resize=cover`
+export function imgSrc(url, _width) {
+  return url || ''
 }
 
 /**

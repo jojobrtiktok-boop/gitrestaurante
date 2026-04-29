@@ -157,16 +157,10 @@ export default function ComandaDigital() {
     const prato = pratoOpcoes
     let precoUnit = prato.precoVenda || 0
     if (tamanho) {
-      if (variacoes?.length > 0) {
-        const precos = variacoes.map(v => v.preco ?? tamanho.preco ?? 0)
-        precoUnit = tamanho.calcVariacao === 'media'
-          ? precos.reduce((s, p) => s + p, 0) / precos.length
-          : Math.max(...precos)
-      } else {
-        precoUnit = tamanho.preco ?? prato.precoVenda ?? 0
-      }
+      // Com tamanho: preço fixo do tamanho (sabores não têm preço próprio)
+      precoUnit = tamanho.preco || prato.precoVenda || 0
     } else if (variacoes?.length) {
-      const precos = variacoes.map(v => v.preco ?? prato.precoVenda ?? 0)
+      const precos = variacoes.map(v => v.preco || prato.precoVenda || 0)
       precoUnit = prato.calcVariacao === 'media'
         ? precos.reduce((s, p) => s + p, 0) / precos.length
         : Math.max(...precos)

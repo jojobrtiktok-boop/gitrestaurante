@@ -216,11 +216,27 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
   const accentBorder = corStr ? `${corStr}44` : 'var(--border-active)'
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
       onClick={e => e.target === e.currentTarget && onFechar()}>
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, width: '100%', maxWidth: 420, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div style={{
+        background: 'var(--bg-card)',
+        borderRadius: '20px 20px 0 0',
+        width: '100%',
+        maxWidth: 520,
+        maxHeight: 'calc(100dvh - 48px)',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        paddingBottom: 'env(safe-area-inset-bottom, 12px)',
+        boxShadow: '0 -4px 40px rgba(0,0,0,0.25)',
+      }}>
+        {/* Barra de arrasto */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
+          <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border)' }} />
+        </div>
+
         {/* Header */}
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ padding: '8px 20px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ flex: 1 }}>
             <p style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)', margin: 0 }}>{prato.nome}</p>
             {prato.descricao && <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0' }}>{prato.descricao}</p>}
@@ -317,9 +333,11 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
                       <span style={{ flex: 1, fontSize: 14, color: 'var(--text-primary)', fontWeight: sel ? 600 : 400 }}>
                         {v.nome}
                       </span>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: accentCss }}>
-                        {formatarMoeda(v.preco ?? prato.precoVenda ?? 0)}
-                      </span>
+                      {!temTamanhos && (
+                        <span style={{ fontSize: 13, fontWeight: 700, color: accentCss }}>
+                          {formatarMoeda(v.preco || prato.precoVenda || 0)}
+                        </span>
+                      )}
                     </button>
                   )
                 })}

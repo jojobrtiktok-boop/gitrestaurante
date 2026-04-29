@@ -625,6 +625,8 @@ export function AppProvider({ children }) {
   const notifConfigRef = useRef(notifConfig)
   const cardapioConfigRef = useRef(cardapioConfig)
   const ingredientesRef = useRef(ingredientes)
+  // IDs de pedidos modificados localmente — ignora updates do servidor por 3s para evitar flickering
+  const pedidosLockRef = useRef(new Set())
   const pedidosRef = useRef(pedidos)
   const configuracaoGeralRef = useRef(configuracaoGeral)
   useEffect(() => { notifConfigRef.current = notifConfig }, [notifConfig])
@@ -632,6 +634,21 @@ export function AppProvider({ children }) {
   useEffect(() => { ingredientesRef.current = ingredientes }, [ingredientes])
   useEffect(() => { pedidosRef.current = pedidos }, [pedidos])
   useEffect(() => { configuracaoGeralRef.current = configuracaoGeral }, [configuracaoGeral])
+
+  // ── Merge seguro de pedidos: protege atualizações locais recentes contra sobrescrita do servidor ──
+  function _mergePedidos(serverPds) {
+    if (pedidosLockRef.current.size === 0) return serverPds
+    setPedidos(prev => {
+      const prevMap = Object.fromEntries(prev.map(p => [p.id, p]))
+      return serverPds.map(sp => pedidosLockRef.current.has(sp.id) ? (prevMap[sp.id] || sp) : sp)
+    })
+    return null // sinaliza que já fez o set
+  }
+
+  function _lockPedido(id, ms = 3500) {
+    pedidosLockRef.current.add(id)
+    setTimeout(() => pedidosLockRef.current.delete(id), ms)
+  }
 
   // ── Cache local para páginas display (token-based) ───────────────────
   function _dspCacheKey(token) { return `rd_dsp_${token}` }
@@ -1006,7 +1023,15 @@ export function AppProvider({ children }) {
         supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', dataLimiteRtStr).then(({ data }) => {
           if (data) {
             const pds = data.map(rowToPedido)
-            setPedidos(pds)
+            // Merge seguro: não sobrescreve pedidos modificados localmente nos últimos 3.5s
+            if (pedidosLockRef.current.size > 0) {
+              setPedidos(prev => {
+                const prevMap = Object.fromEntries(prev.map(p => [p.id, p]))
+                return pds.map(sp => pedidosLockRef.current.has(sp.id) ? (prevMap[sp.id] || sp) : sp)
+              })
+            } else {
+              setPedidos(pds)
+            }
             // Atualiza cache com apenas pedidos de hoje
             try {
               const raw = localStorage.getItem(_cacheKey(uid))
@@ -1054,11 +1079,15 @@ export function AppProvider({ children }) {
           if (data) {
             const pds = data.map(rowToPedido)
             setPedidos(prev => {
-              if (prev.length !== pds.length) return pds
               const key = p => `${p.id}${p.status}${p.pago}${p.cancelado}`
-              const prevIds = prev.map(key).join()
-              const newIds  = pds.map(key).join()
-              return prevIds === newIds ? prev : pds
+              // Merge seguro: preserva pedidos modificados localmente nos últimos 3.5s
+              const merged = pedidosLockRef.current.size > 0
+                ? pds.map(sp => pedidosLockRef.current.has(sp.id) ? (prev.find(p => p.id === sp.id) || sp) : sp)
+                : pds
+              if (prev.length !== merged.length) return merged
+              const prevKey = prev.map(key).join()
+              const newKey  = merged.map(key).join()
+              return prevKey === newKey ? prev : merged
             })
           }
         })
@@ -1859,6 +1888,7 @@ export function AppProvider({ children }) {
 
   function atualizarStatusPedido(id, status) {
     const uid = auth.userId || displayUserId
+    _lockPedido(id) // protege contra sobrescrita do servidor por 3.5s
     setPedidos(prev => prev.map(p => {
       if (p.id !== id) return p
       const updated = { ...p, status, timestamps: { ...p.timestamps, [status]: agoraBrasiliaISO() } }
@@ -1889,6 +1919,7 @@ export function AppProvider({ children }) {
     const uid = auth.userId || displayUserId
     const agora = agoraBrasiliaISO()
     const updated = { ...pedido, status: 'preparando', timestamps: { ...pedido.timestamps, preparando: agora } }
+    _lockPedido(id)
     setPedidos(prev => prev.map(p => p.id === id ? updated : p))
     if (uid) sbWrite(supabase.from('pedidos').update({ status: 'preparando', timestamps: updated.timestamps }).eq('id', id))
 

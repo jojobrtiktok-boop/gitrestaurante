@@ -1763,11 +1763,28 @@ export function AppProvider({ children }) {
     setPedidos(prev => [...prev, pedido])
     if (uid) sbWrite(supabase.from('pedidos').insert(pedidoToRow(pedido, uid)))
 
-    itensComCusto.forEach(({ pratoId, quantidade, opcoes, precoUnit }) => {
+    itensComCusto.forEach(({ pratoId, quantidade, opcoes, precoUnit, variacoes: itemVar, borda: itemBorda }) => {
       const extrasUnit = (opcoes || []).reduce((s, o) => s + (o.precoExtra || 0), 0)
       const extrasCustoUnit = custoOpcoes(opcoes || [], ingredientes)
       const prato = pratos.find(p => p.id === pratoId)
-      const custoPratoUnit = prato ? custoPrato(prato, ingredientes) : 0
+      // Custo base do produto (ingredientes próprios)
+      let custoPratoUnit = prato ? custoPrato(prato, ingredientes) : 0
+      // Custo proporcional dos sabores selecionados (½, ⅓, etc.)
+      if (itemVar?.length) {
+        const fator = 1 / itemVar.length
+        itemVar.forEach(v => {
+          const subPrato = pratos.find(p => p.id === v.pratoId)
+          if (subPrato) custoPratoUnit += custoPrato(subPrato, ingredientes) * fator
+        })
+      }
+      // Custo do insumo da borda selecionada
+      if (itemBorda?.ingredienteId && itemBorda.ingredienteQtd > 0) {
+        const bordaIng = ingredientes.find(i => i.id === itemBorda.ingredienteId)
+        if (bordaIng) {
+          const fc = bordaIng.fatorCorrecao > 0 ? bordaIng.fatorCorrecao : 1
+          custoPratoUnit += (bordaIng.preco || 0) * fc * itemBorda.ingredienteQtd
+        }
+      }
       const ingredientesSnapshot = prato?.ingredientes?.length
         ? prato.ingredientes.map(linha => {
             const ing = ingredientes.find(i => i.id === linha.ingredienteId)
@@ -1948,7 +1965,24 @@ export function AppProvider({ children }) {
       if (!prato) return
 
       const extrasUnit = (item.opcoes || []).reduce((s, o) => s + (Number(o.precoExtra) || Number(o.preco) || 0), 0)
-      const custoPratoUnit = custoPrato(prato, ingredientes)
+      let custoPratoUnit = custoPrato(prato, ingredientes)
+      // Custo proporcional dos sabores selecionados
+      const itemVar = item.variacoes || (item.variacao ? [item.variacao] : null)
+      if (itemVar?.length) {
+        const fator = 1 / itemVar.length
+        itemVar.forEach(v => {
+          const subPrato = pratos.find(p => p.id === v.pratoId)
+          if (subPrato) custoPratoUnit += custoPrato(subPrato, ingredientes) * fator
+        })
+      }
+      // Custo do insumo da borda selecionada
+      if (item.borda?.ingredienteId && item.borda.ingredienteQtd > 0) {
+        const bordaIng = ingredientes.find(i => i.id === item.borda.ingredienteId)
+        if (bordaIng) {
+          const fc = bordaIng.fatorCorrecao > 0 ? bordaIng.fatorCorrecao : 1
+          custoPratoUnit += (bordaIng.preco || 0) * fc * item.borda.ingredienteQtd
+        }
+      }
       const precoVendaUnit = item.precoUnit || prato.precoVenda || 0
 
       const entrada = {

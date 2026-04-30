@@ -1,7 +1,7 @@
 // Service Worker — Cheffya
 // Estratégia: cache-first para assets estáticos, stale-while-revalidate para imagens
-const CACHE_STATIC = 'cheffya-static-v4'
-const CACHE_IMAGES = 'cheffya-images-v4'
+const CACHE_STATIC = 'cheffya-static-v5'
+const CACHE_IMAGES = 'cheffya-images-v5'
 
 // Instalação: pré-cacheia o app shell
 self.addEventListener('install', event => {
@@ -42,7 +42,10 @@ self.addEventListener('fetch', event => {
         const cached = await cache.match(request)
         const fetchPromise = fetch(request)
           .then(res => {
-            if (res.ok) cache.put(request, res.clone())
+            if (res.ok) {
+              const resClone = res.clone() // clona sincronamente antes de qualquer await
+              cache.put(request, resClone)
+            }
             return res
           })
           .catch(() => cached)
@@ -64,7 +67,8 @@ self.addEventListener('fetch', event => {
         if (cached) return cached
         return fetch(request).then(res => {
           if (res.ok) {
-            caches.open(CACHE_STATIC).then(c => c.put(request, res.clone()))
+            const resClone = res.clone()
+            caches.open(CACHE_STATIC).then(c => c.put(request, resClone))
           }
           return res
         })
@@ -79,7 +83,8 @@ self.addEventListener('fetch', event => {
       fetch(request)
         .then(res => {
           if (res.ok) {
-            caches.open(CACHE_STATIC).then(c => c.put(request, res.clone()))
+            const resClone = res.clone()
+            caches.open(CACHE_STATIC).then(c => c.put(request, resClone))
           }
           return res
         })

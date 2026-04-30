@@ -194,20 +194,34 @@ function ModalDetalhe({ prato, onFechar, onFotoChange }) {
 }
 
 /* ─── Card clean — sem foto ───────────────────────── */
-function CardReceita({ prato, ingredientes, onClick, onToggleVisivel }) {
+function CardReceita({ prato, ingredientes, onClick, onToggleVisivel, onExcluir }) {
   const visivel = prato.visivelIndividual !== false
   const btnOlho = onToggleVisivel ? (
     <button
       onClick={e => { e.stopPropagation(); onToggleVisivel(prato) }}
       title={visivel ? 'Ocultar dos cardápios standalone' : 'Mostrar nos cardápios standalone'}
       style={{
-        position: 'absolute', top: 8, right: 8, zIndex: 2,
+        position: 'absolute', top: 8, right: onExcluir ? 44 : 8, zIndex: 2,
         width: 28, height: 28, borderRadius: 8, border: 'none', cursor: 'pointer',
         background: visivel ? 'rgba(22,163,74,0.15)' : 'rgba(239,68,68,0.15)',
         color: visivel ? '#16a34a' : '#ef4444',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
       {visivel ? <Eye size={13} /> : <EyeOff size={13} />}
+    </button>
+  ) : null
+  const btnExcluir = onExcluir ? (
+    <button
+      onClick={e => { e.stopPropagation(); onExcluir(prato) }}
+      title="Excluir produto"
+      style={{
+        position: 'absolute', top: 8, right: 8, zIndex: 2,
+        width: 28, height: 28, borderRadius: 8, border: 'none', cursor: 'pointer',
+        background: 'rgba(239,68,68,0.12)',
+        color: '#ef4444',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+      <Trash2 size={13} />
     </button>
   ) : null
 
@@ -218,6 +232,7 @@ function CardReceita({ prato, ingredientes, onClick, onToggleVisivel }) {
     return (
       <div style={{ position: 'relative' }}>
         {btnOlho}
+        {btnExcluir}
       <button onClick={onClick} className="group flex flex-col text-left w-full transition-all duration-200"
         style={{ background: visivel ? 'var(--bg-card)' : 'var(--bg-hover)', border: `1px solid ${visivel ? 'var(--border)' : 'rgba(239,68,68,0.3)'}`, borderRadius: 18, padding: '18px 16px 16px', cursor: 'pointer', outline: 'none', gap: 0, opacity: visivel ? 1 : 0.7 }}
         onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-active)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-glow)' }}
@@ -2392,7 +2407,7 @@ function DeliveryConfig() {
 
 /* ─── Página principal ────────────────────────────── */
 export default function Cardapio() {
-  const { pratos, ingredientes, editarPrato, adicionarPrato, cardapioConfig, atualizarCardapioConfig } = useApp()
+  const { pratos, ingredientes, editarPrato, adicionarPrato, removerPrato, cardapioConfig, atualizarCardapioConfig } = useApp()
   const [aba, setAba] = useState('cardapio')
   const [filtro, setFiltro] = useState('Todas')
   const [busca, setBusca] = useState('')
@@ -2544,6 +2559,9 @@ export default function Cardapio() {
                         }
                       }}
                       onToggleVisivel={p => editarPrato(p.id, { visivelIndividual: p.visivelIndividual === false ? true : false })}
+                      onExcluir={prato.tipo === 'variacao' ? p => {
+                        if (window.confirm(`Excluir "${p.nome}"? Esta ação não pode ser desfeita.`)) removerPrato(p.id)
+                      } : undefined}
                     />
                   ))}
                 </div>

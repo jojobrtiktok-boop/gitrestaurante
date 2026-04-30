@@ -325,49 +325,94 @@ export default function ComandaDigital() {
           ))}
         </div>
 
-        {/* Lista de pratos */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 32 }}>
-          {pratosFiltrados.map(prato => {
-            const qtd = qtdNoCarrinho(prato.id)
-            return (
-              <div key={prato.id} style={{ display: 'flex', gap: 12, alignItems: 'center', background: bgCard, border: `1px solid ${qtd > 0 ? destaque : border}`, borderRadius: 14, padding: 12, transition: 'border-color .15s' }}>
-                <div style={{ width: 60, height: 60, borderRadius: 10, overflow: 'hidden', flexShrink: 0, background: bgHover }}>
-                  {prato.foto && <img src={imgSrc(prato.foto, 120)} alt={prato.nome} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontWeight: 700, fontSize: 14, color: textoPrimario, marginBottom: 2 }}>{prato.nome}</p>
-                  {prato.descricao && <p style={{ fontSize: 11, color: textoSecundario, lineHeight: 1.4 }}>{prato.descricao}</p>}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
-                  {config.mostrarPrecos && (
-                    <span style={{ fontWeight: 800, fontSize: 14, color: destaque }}>
-                      {prato.tamanhos?.length > 0 ? (() => {
-                        const ps = prato.tamanhos.flatMap(t => (t.variacoes || []).map(v => v.preco || 0)).filter(x => x > 0)
-                        return ps.length > 0 ? 'a partir de ' + Math.min(...ps).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : ''
-                      })() : prato.precoVenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </span>
-                  )}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {qtd > 0 && !prato.grupos?.length && !prato.variacoes?.length && !prato.tamanhos?.length && (
-                      <button onClick={() => adicionarPratoSimples(prato.id, -1)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${destaque}`, background: 'transparent', color: destaque, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700 }}>
-                        <Minus size={13} />
-                      </button>
+        {/* Lista de pratos — agrupada por categoria em "Todas" */}
+        {(() => {
+          // Monta grupos: se filtro === 'Todas', agrupa por categoria; senão, um único grupo
+          const grupos = filtro === 'Todas'
+            ? catsOrdenadas
+                .map(cat => ({ cat, itens: pratosFiltrados.filter(p => p.categoria === cat) }))
+                .filter(g => g.itens.length > 0)
+            : [{ cat: null, itens: pratosFiltrados }]
+
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginBottom: 32 }}>
+              {grupos.map(({ cat, itens }) => {
+                // Subtotal do carrinho para esta categoria
+                const subtotalCat = cat ? carrinho.reduce((s, ci) => {
+                  const p = pratos.find(x => x.id === ci.pratoId)
+                  if (!p || p.categoria !== cat) return s
+                  const precoUnit = ci.precoUnit != null ? ci.precoUnit : p.precoVenda + (ci.opcoes || []).reduce((ss, o) => ss + (o.precoExtra || 0), 0)
+                  return s + precoUnit * ci.quantidade
+                }, 0) : 0
+                const qtdCat = cat ? carrinho.filter(ci => {
+                  const p = pratos.find(x => x.id === ci.pratoId)
+                  return p?.categoria === cat
+                }).reduce((s, ci) => s + ci.quantidade, 0) : 0
+
+                return (
+                  <div key={cat || 'all'} style={{ marginBottom: 20 }}>
+                    {/* Header de categoria */}
+                    {cat && (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingBottom: 8, borderBottom: `2px solid ${destaque}22` }}>
+                        <span style={{ fontWeight: 800, fontSize: 13, color: destaque, textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                          {cat}
+                        </span>
+                        {qtdCat > 0 && (
+                          <span style={{ fontSize: 12, fontWeight: 700, color: destaque, background: destaque + '18', borderRadius: 20, padding: '3px 10px' }}>
+                            {qtdCat} {qtdCat === 1 ? 'item' : 'itens'}{config.mostrarPrecos && subtotalCat > 0 ? ' · ' + subtotalCat.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : ''}
+                          </span>
+                        )}
+                      </div>
                     )}
-                    {qtd > 0 && (
-                      <span style={{ fontWeight: 700, fontSize: 14, color: textoPrimario, minWidth: 20, textAlign: 'center' }}>{qtd}</span>
-                    )}
-                    <button
-                      onClick={() => (prato.grupos?.length || prato.variacoes?.length || prato.tamanhos?.length) ? adicionarComOpcoes(prato) : adicionarPratoSimples(prato.id, 1)}
-                      style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: destaque, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    >
-                      <Plus size={13} />
-                    </button>
+                    {/* Itens da categoria */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {itens.map(prato => {
+                        const qtd = qtdNoCarrinho(prato.id)
+                        return (
+                          <div key={prato.id} style={{ display: 'flex', gap: 12, alignItems: 'center', background: bgCard, border: `1px solid ${qtd > 0 ? destaque : border}`, borderRadius: 14, padding: 12, transition: 'border-color .15s' }}>
+                            <div style={{ width: 60, height: 60, borderRadius: 10, overflow: 'hidden', flexShrink: 0, background: bgHover }}>
+                              {prato.foto && <img src={imgSrc(prato.foto, 120)} alt={prato.nome} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ fontWeight: 700, fontSize: 14, color: textoPrimario, marginBottom: 2 }}>{prato.nome}</p>
+                              {prato.descricao && <p style={{ fontSize: 11, color: textoSecundario, lineHeight: 1.4 }}>{prato.descricao}</p>}
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+                              {config.mostrarPrecos && (
+                                <span style={{ fontWeight: 800, fontSize: 14, color: destaque }}>
+                                  {prato.tamanhos?.length > 0 ? (() => {
+                                    const ps = prato.tamanhos.flatMap(t => (t.variacoes || []).map(v => v.preco || 0)).filter(x => x > 0)
+                                    return ps.length > 0 ? 'a partir de ' + Math.min(...ps).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : ''
+                                  })() : prato.precoVenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </span>
+                              )}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                {qtd > 0 && !prato.grupos?.length && !prato.variacoes?.length && !prato.tamanhos?.length && (
+                                  <button onClick={() => adicionarPratoSimples(prato.id, -1)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${destaque}`, background: 'transparent', color: destaque, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700 }}>
+                                    <Minus size={13} />
+                                  </button>
+                                )}
+                                {qtd > 0 && (
+                                  <span style={{ fontWeight: 700, fontSize: 14, color: textoPrimario, minWidth: 20, textAlign: 'center' }}>{qtd}</span>
+                                )}
+                                <button
+                                  onClick={() => (prato.grupos?.length || prato.variacoes?.length || prato.tamanhos?.length) ? adicionarComOpcoes(prato) : adicionarPratoSimples(prato.id, 1)}
+                                  style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: destaque, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                >
+                                  <Plus size={13} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+                )
+              })}
+            </div>
+          )
+        })()}
 
         {/* Pedidos do dia */}
         {pedidosHoje.length > 0 && (
@@ -411,12 +456,23 @@ export default function ComandaDigital() {
 
       {/* Botão flutuante do carrinho */}
       {totalItens > 0 && !carrinhoAberto && (
-        <div style={{ position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 20 }}>
+        <div style={{ position: 'fixed', bottom: 16, left: 16, right: 16, zIndex: 20, display: 'flex', justifyContent: 'center' }}>
           <button onClick={() => setCarrinhoAberto(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 28px', background: destaque, color: '#fff', border: 'none', borderRadius: 50, cursor: 'pointer', fontWeight: 700, fontSize: 15, boxShadow: `0 4px 20px ${destaque}88` }}>
-            <ShoppingBag size={18} />
-            Ver pedido ({totalItens} {totalItens === 1 ? 'item' : 'itens'})
-            <span style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 20, padding: '2px 8px', fontSize: 13 }}>
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              width: '100%', maxWidth: 480,
+              padding: '13px 18px', background: destaque, color: '#fff', border: 'none',
+              borderRadius: 16, cursor: 'pointer', fontWeight: 700, fontSize: 14,
+              boxShadow: `0 4px 20px ${destaque}88`, gap: 8,
+            }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <ShoppingBag size={17} />
+              <span>Ver pedido</span>
+              <span style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 20, padding: '2px 8px', fontSize: 12, fontWeight: 800 }}>
+                {totalItens}
+              </span>
+            </div>
+            <span style={{ fontWeight: 800, fontSize: 14 }}>
               {totalPreco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </span>
           </button>

@@ -531,6 +531,7 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
       !variacoesJa.find(v => v.pratoId === p.id)
     )
     const selecionado = receitasDisponiveis.find(p => p.id === pratoSelecionadoId)
+
     return receitasDisponiveis.length === 0 ? (
       <div className="p-3 rounded-xl text-center" style={{ background: 'var(--bg-hover)', border: '1px dashed var(--border)' }}>
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Nenhuma receita cadastrada ainda.</p>
@@ -538,45 +539,63 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
     ) : (
       <div className="flex flex-col gap-2 p-3 rounded-xl" style={{ background: 'var(--bg-hover)', border: '1px dashed var(--border)' }}>
         <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>Adicionar receita como sabor/opção</p>
-        <input className="input text-sm" placeholder="Buscar receita..." value={busca}
-          onChange={e => { setBusca(e.target.value); setPratoSelecionadoId('') }} />
-        {busca && filtradas.length > 0 && !selecionado && (
-          <div className="flex flex-col gap-1 max-h-40 overflow-y-auto rounded-lg" style={{ border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
-            {filtradas.map(p => (
-              <button key={p.id} onClick={() => { setPratoSelecionadoId(p.id); setBusca(p.nome); setPrecoOverride('') }}
-                className="flex items-center gap-2 px-3 py-2 text-left text-sm"
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-primary)' }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                {p.foto && <img src={p.foto} alt={p.nome} style={{ width: 24, height: 24, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }} />}
-                <span className="flex-1 font-medium">{p.nome}</span>
-                <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: 12 }}>{p.precoVenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+
+        {/* Selecionado — card com preço + botão add */}
+        {selecionado ? (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 p-2 rounded-lg" style={{ background: 'var(--accent-bg)', border: '1px solid var(--border-active)' }}>
+              {selecionado.foto && <img src={selecionado.foto} alt={selecionado.nome} style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{selecionado.nome}</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Preço original: {selecionado.precoVenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+              </div>
+              <button onClick={() => { setPratoSelecionadoId(''); setBusca(''); setPrecoOverride('') }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}>
+                <X size={14} />
               </button>
-            ))}
-          </div>
-        )}
-        {selecionado && (
-          <div className="flex items-center gap-2 p-2 rounded-lg" style={{ background: 'var(--accent-bg)', border: '1px solid var(--border-active)' }}>
-            {selecionado.foto && <img src={selecionado.foto} alt={selecionado.nome} style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{selecionado.nome}</p>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Preço original: {selecionado.precoVenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
             </div>
-            <input className="input text-sm" style={{ width: 90 }} type="number" min="0" step="0.01"
-              placeholder="R$ preço" value={precoOverride} onChange={e => setPrecoOverride(e.target.value)} />
-            <button onClick={onAdd} className="btn btn-primary text-sm px-3" style={{ gap: 4, whiteSpace: 'nowrap' }}>
-              <Plus size={13} /> Add
-            </button>
+            <div className="flex gap-2">
+              <input className="input text-sm flex-1" type="number" min="0" step="0.01"
+                placeholder={`Preço (padrão: ${selecionado.precoVenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})`}
+                value={precoOverride} onChange={e => setPrecoOverride(e.target.value)} />
+              <button onClick={onAdd} className="btn btn-primary text-sm px-4" style={{ gap: 4, whiteSpace: 'nowrap' }}>
+                <Plus size={13} /> Adicionar
+              </button>
+            </div>
           </div>
-        )}
-        {!busca && (
-          <select className="input text-sm" value={pratoSelecionadoId}
-            onChange={e => { setPratoSelecionadoId(e.target.value); if (e.target.value) setBusca(receitasDisponiveis.find(p => p.id === e.target.value)?.nome || '') }}>
-            <option value="">— selecionar receita —</option>
-            {filtradas.map(p => (
-              <option key={p.id} value={p.id}>{p.nome} ({p.precoVenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})</option>
-            ))}
-          </select>
+        ) : (
+          /* Busca + lista rolável */
+          <div className="flex flex-col gap-1">
+            <div style={{ position: 'relative' }}>
+              <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+              <input className="input text-sm" style={{ paddingLeft: 30 }}
+                placeholder="Buscar receita..." value={busca}
+                onChange={e => { setBusca(e.target.value); setPratoSelecionadoId('') }} />
+            </div>
+            <div style={{ maxHeight: 200, overflowY: 'auto', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+              {filtradas.length === 0 ? (
+                <p className="text-xs text-center py-4" style={{ color: 'var(--text-muted)' }}>Nenhuma receita encontrada.</p>
+              ) : (
+                filtradas.map(p => (
+                  <button key={p.id}
+                    onClick={() => { setPratoSelecionadoId(p.id); setBusca(''); setPrecoOverride('') }}
+                    className="flex items-center gap-2 px-3 py-2 text-left w-full text-sm"
+                    style={{ background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text-primary)' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    {p.foto
+                      ? <img src={p.foto} alt={p.nome} style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+                      : <div style={{ width: 28, height: 28, borderRadius: 6, background: 'var(--bg-hover)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>🍽️</div>
+                    }
+                    <span className="flex-1 font-medium">{p.nome}</span>
+                    <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
+                      {p.precoVenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
         )}
       </div>
     )

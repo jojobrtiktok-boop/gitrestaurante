@@ -84,6 +84,7 @@ export default function MenuPublico() {
   const [filtro, setFiltro] = useState('Todas')
   const [busca, setBusca] = useState('')
   const [pratoDetalhe, setPratoDetalhe] = useState(null)
+  const [tamanhoExpandido, setTamanhoExpandido] = useState(null)
   const layoutGrade = config.layoutPadrao === 'grade'
 
   if (carregando) {
@@ -242,7 +243,7 @@ export default function MenuPublico() {
               {layoutGrade ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, padding: '0 12px' }}>
                   {itens.map(prato => (
-                    <div key={prato.id} onClick={() => setPratoDetalhe(prato)} style={{ borderRadius: 12, overflow: 'hidden', background: cardBg, border: '1px solid ' + bordaCard, cursor: 'pointer' }}>
+                    <div key={prato.id} onClick={() => { setPratoDetalhe(prato); setTamanhoExpandido(null) }} style={{ borderRadius: 12, overflow: 'hidden', background: cardBg, border: '1px solid ' + bordaCard, cursor: 'pointer' }}>
                       <div style={{ width: '100%', aspectRatio: '1', background: modoClaro ? '#f0f0f0' : 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
                         {prato.foto
                           ? <img src={prato.foto} alt={prato.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
@@ -264,7 +265,7 @@ export default function MenuPublico() {
                 </div>
               ) : (
                 itens.map(prato => (
-                  <div key={prato.id} onClick={() => setPratoDetalhe(prato)} style={{
+                  <div key={prato.id} onClick={() => { setPratoDetalhe(prato); setTamanhoExpandido(null) }} style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     padding: '12px 16px', borderBottom: '1px solid ' + bordaCard, gap: 12, cursor: 'pointer',
                   }}>
@@ -356,7 +357,7 @@ export default function MenuPublico() {
                   <p style={{ fontSize: 14, color: corTextoSec, margin: '0 0 20px', lineHeight: 1.6 }}>{p.descricao}</p>
                 )}
 
-                {/* Tamanhos */}
+                {/* Tamanhos — clicável, expande sabores abaixo */}
                 {temTamanhos && (
                   <div style={{ marginBottom: 20 }}>
                     <p style={{ fontSize: 13, fontWeight: 700, color: corTextoBase, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
@@ -364,22 +365,69 @@ export default function MenuPublico() {
                     </p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {p.tamanhos.map(t => {
-                        const precos = (t.variacoes || []).map(v => v.preco || 0).filter(x => x > 0)
+                        const variacoes = t.variacoes || []
+                        const precos = variacoes.map(v => v.preco || 0).filter(x => x > 0)
                         const precoMin = precos.length > 0 ? Math.min(...precos) : (t.preco || 0)
+                        const aberto = tamanhoExpandido === t.id
+                        const temSabores = variacoes.length > 0
                         return (
-                          <div key={t.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 10, background: modoClaro ? '#f8f8f8' : 'rgba(255,255,255,0.06)', border: '1px solid ' + bordaCard }}>
-                            <div>
-                              <span style={{ fontSize: 14, fontWeight: 600, color: corTextoBase }}>{t.nome}</span>
-                              {(t.variacoes || []).length > 0 && (
-                                <p style={{ fontSize: 12, color: corTextoSec, margin: '2px 0 0' }}>
-                                  {t.variacoes.map(v => v.nome).join(' · ')}
-                                </p>
-                              )}
-                            </div>
-                            {config.mostrarPrecos && precoMin > 0 && (
-                              <span style={{ fontSize: 13, fontWeight: 700, color: corPreco }}>
-                                a partir de {precoMin.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                              </span>
+                          <div key={t.id}>
+                            {/* Cabeçalho do tamanho — clicável */}
+                            <button
+                              onClick={() => setTamanhoExpandido(aberto ? null : t.id)}
+                              style={{
+                                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                padding: '10px 14px', borderRadius: aberto ? '10px 10px 0 0' : 10,
+                                background: aberto ? destaque : (modoClaro ? '#f8f8f8' : 'rgba(255,255,255,0.06)'),
+                                border: '1px solid ' + (aberto ? destaque : bordaCard),
+                                cursor: temSabores ? 'pointer' : 'default',
+                                textAlign: 'left', transition: 'background 0.2s, border-color 0.2s',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: 14, fontWeight: 700, color: aberto ? '#fff' : corTextoBase }}>{t.nome}</span>
+                                {temSabores && (
+                                  <span style={{ fontSize: 11, color: aberto ? 'rgba(255,255,255,0.75)' : corTextoSec }}>
+                                    {variacoes.length} {variacoes.length === 1 ? 'sabor' : 'sabores'}
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                {config.mostrarPrecos && precoMin > 0 && (
+                                  <span style={{ fontSize: 13, fontWeight: 700, color: aberto ? '#fff' : corPreco }}>
+                                    a partir de {precoMin.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                  </span>
+                                )}
+                                {temSabores && (
+                                  <span style={{
+                                    fontSize: 16, color: aberto ? '#fff' : corTextoSec,
+                                    transform: aberto ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block',
+                                  }}>▾</span>
+                                )}
+                              </div>
+                            </button>
+                            {/* Sabores expandidos */}
+                            {aberto && temSabores && (
+                              <div style={{
+                                border: '1px solid ' + destaque, borderTop: 'none',
+                                borderRadius: '0 0 10px 10px', overflow: 'hidden',
+                                background: modoClaro ? '#f0faf4' : 'rgba(255,255,255,0.04)',
+                              }}>
+                                {variacoes.map((v, vi) => (
+                                  <div key={v.id || vi} style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    padding: '9px 14px',
+                                    borderTop: vi > 0 ? ('1px solid ' + (modoClaro ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)')) : 'none',
+                                  }}>
+                                    <span style={{ fontSize: 14, color: corTextoBase }}>{v.nome}</span>
+                                    {config.mostrarPrecos && (v.preco || 0) > 0 && (
+                                      <span style={{ fontSize: 13, fontWeight: 700, color: corPreco }}>
+                                        {v.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
                             )}
                           </div>
                         )

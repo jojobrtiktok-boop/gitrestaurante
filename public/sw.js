@@ -31,8 +31,9 @@ self.addEventListener('fetch', event => {
   const { request } = event
   const url = new URL(request.url)
 
-  // Ignora requests não-GET e cross-origin não relevantes
+  // Ignora requests não-GET, extensões do browser e schemes não cacheáveis
   if (request.method !== 'GET') return
+  if (!url.protocol.startsWith('http')) return
 
   // ── Imagens do Supabase Storage → stale-while-revalidate ──
   // Serve do cache imediatamente + atualiza em background

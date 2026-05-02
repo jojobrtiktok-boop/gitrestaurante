@@ -763,6 +763,18 @@ export default function AdminPanel() {
 
   useEffect(() => { if (!authLoading && auth.isAdmin) carregarDados() }, [authLoading, auth.isAdmin])
 
+  // ⚠️ useMemo DEVE ficar antes de qualquer early return (Rules of Hooks)
+  const restaurantes = useMemo(() => {
+    return usuarios
+      .filter(u => !u.is_admin)
+      .map(u => ({ ...u, stats: calcularStatsSupabase(todasVendas, u.id) }))
+      .sort((a, b) => b.stats.fatTotal - a.stats.fatTotal)
+  }, [usuarios, todasVendas])
+
+  const totalGlobalFat    = restaurantes.reduce((s, r) => s + r.stats.fatTotal, 0)
+  const totalGlobalFatMes = restaurantes.reduce((s, r) => s + r.stats.fatMes, 0)
+  const mesAtual = new Date().toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
+
   async function carregarDados() {
     setCarregando(true)
 
@@ -811,17 +823,6 @@ export default function AdminPanel() {
       </div>
     )
   }
-
-  const restaurantes = useMemo(() => {
-    return usuarios
-      .filter(u => !u.is_admin)
-      .map(u => ({ ...u, stats: calcularStatsSupabase(todasVendas, u.id) }))
-      .sort((a, b) => b.stats.fatTotal - a.stats.fatTotal)
-  }, [usuarios, todasVendas])
-
-  const totalGlobalFat    = restaurantes.reduce((s, r) => s + r.stats.fatTotal, 0)
-  const totalGlobalFatMes = restaurantes.reduce((s, r) => s + r.stats.fatMes, 0)
-  const mesAtual = new Date().toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
 
   const ABAS = [
     { id: 'restaurantes', label: 'Restaurantes',     icon: Users },

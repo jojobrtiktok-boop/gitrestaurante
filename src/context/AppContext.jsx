@@ -590,7 +590,7 @@ export function AppProvider({ children }) {
   const [tema, setTema] = useState(() => {
     try { return JSON.parse(localStorage.getItem('rd_tema')) || 'light' } catch { return 'light' }
   })
-  const [auth, setAuth] = useState({ logado: false, usuario: '', isAdmin: false, userId: null })
+  const [auth, setAuth] = useState({ logado: false, usuario: '', isAdmin: false, userId: null, planoAtivo: undefined, planoFim: undefined })
   const [authLoading, setAuthLoading] = useState(true)
   const [loading, setLoading] = useState(false)
   const [displayReady, setDisplayReady] = useState(false)
@@ -814,7 +814,7 @@ export function AppProvider({ children }) {
         // Enriquece com dados do perfil em background (não bloqueia)
         _aplicarSessao(session)
       } else {
-        setAuth({ logado: false, usuario: '', isAdmin: false, userId: null })
+        setAuth({ logado: false, usuario: '', isAdmin: false, userId: null, planoAtivo: undefined, planoFim: undefined })
         // Não limpa dados em páginas de display (carregadas por token, sem auth)
         const isDisplayPath = /^\/(cozinha|caixa|telao|pedidos-display|comanda)\//.test(window.location.pathname)
         if (!isDisplayPath) _limparDados()
@@ -827,14 +827,16 @@ export function AppProvider({ children }) {
   async function _aplicarSessao(session) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('is_admin, username, nome_exibicao, foto')
+      .select('is_admin, username, nome_exibicao, foto, plano_ativo, plano_fim')
       .eq('id', session.user.id)
       .maybeSingle()
     if (!profile) return
     setAuth(prev => ({
       ...prev,
-      usuario: profile.username || prev.usuario,
-      isAdmin: profile.is_admin || prev.isAdmin,
+      usuario:    profile.username   || prev.usuario,
+      isAdmin:    profile.is_admin   || prev.isAdmin,
+      planoAtivo: profile.plano_ativo ?? null,
+      planoFim:   profile.plano_fim  ?? null,
     }))
     setPerfil(prev => ({
       ...prev,

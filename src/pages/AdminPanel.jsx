@@ -1248,6 +1248,7 @@ export default function AdminPanel() {
                         {u.email && <span>{u.email} · </span>}
                         {u.is_admin ? '👑 Administrador' : 'Usuário'}
                         {u.criado_em && ` · ${new Date(u.criado_em).toLocaleDateString('pt-BR')}`}
+                        {u.plano_inicio && u.plano_fim && ` · ${new Date(u.plano_inicio + 'T00:00:00').toLocaleDateString('pt-BR')} - ${new Date(u.plano_fim + 'T00:00:00').toLocaleDateString('pt-BR')}`}
                       </p>
                     </div>
                     {!u.is_admin && (

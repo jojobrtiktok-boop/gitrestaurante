@@ -782,6 +782,7 @@ export default function AdminPanel() {
     const { data: profilesData } = await supabase
       .from('profiles')
       .select('*')
+      .order('criado_em', { ascending: true })
     setUsuarios(profilesData || [])
 
     // Faturamento dos restaurantes (falha silenciosa se policy ainda não existe)
@@ -880,7 +881,7 @@ export default function AdminPanel() {
               {restaurantes.map((r, idx) => {
                 const s = r.stats
                 const aberto = expandido === r.id
-                const criadoEm = r.created_at ? new Date(r.created_at).toLocaleDateString('pt-BR') : '-'
+                const criadoEm = r.criado_em ? new Date(r.criado_em).toLocaleDateString('pt-BR') : '-'
                 const nomeExibir = r.username || r.nome_exibicao || r.email || '?'
                 const planoStatus = statusPlano(r)
                 return (
@@ -904,6 +905,7 @@ export default function AdminPanel() {
                             {planoStatus?.tipo === 'expirado' && <AlertTriangle size={13} style={{ color: '#ef4444' }} />}
                           </div>
                           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                            {r.email && <span>{r.email} · </span>}
                             Cadastrado {criadoEm}
                             {r.desconto_pct > 0 && <span style={{ color: '#f59e0b' }}> · Desconto {r.desconto_pct}%</span>}
                           </p>
@@ -973,8 +975,9 @@ export default function AdminPanel() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{nome}</p>
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {u.email && <span>{u.email} · </span>}
                         {u.is_admin ? '👑 Administrador' : 'Usuário'}
-                        {u.created_at && ` · ${new Date(u.created_at).toLocaleDateString('pt-BR')}`}
+                        {u.criado_em && ` · ${new Date(u.criado_em).toLocaleDateString('pt-BR')}`}
                       </p>
                     </div>
                     {!u.is_admin && (

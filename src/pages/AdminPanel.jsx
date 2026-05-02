@@ -4,6 +4,7 @@ import {
   Calendar, Trash2, UserPlus, KeyRound, CreditCard, Package, Plus,
   CheckCircle2, Clock, XCircle, BarChart3, Pencil, X, Plug, Tag,
   AlertTriangle, Webhook, Settings, MessageCircle, Mail, Phone, Save,
+  Gift, Package,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import { supabase } from '../lib/supabase.js'
@@ -846,7 +847,9 @@ const SAAS_CONFIG_PADRAO = {
   suporteEmail: '',
   suporteMensagem: 'Olá, preciso renovar meu plano do Cheffya.',
   nomeSistema: 'Cheffya',
-  gateways: [], // [{ id, nome, url, cor }]
+  gateways: [],     // [{ id, nome, url, cor }]
+  trialLinks: [],   // [{ id, slug, nome, dias, descricao, ativo }]
+  planosUpgrade: [], // [{ id, nome, preco, periodo, descricao, destaque, cor, ativo, recursos:[], gateways:[{nome,url}] }]
 }
 
 function AbaConfiguracoes() {
@@ -997,6 +1000,160 @@ function AbaConfiguracoes() {
           <button className="btn" style={{ alignSelf: 'flex-start', fontSize: 12, gap: 6 }}
             onClick={() => setCfg(c => ({ ...c, gateways: [...(c.gateways || []), { id: crypto.randomUUID(), nome: '', url: '', cor: '#3b82f6' }] }))}>
             <Plus size={13} /> Adicionar gateway
+          </button>
+        </div>
+      </div>
+
+      {/* ── Links de Trial ── */}
+      <div className="card p-5">
+        <div className="flex items-center gap-2 mb-1">
+          <Gift size={15} style={{ color: '#8b5cf6' }} />
+          <h3 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Links de Teste Grátis (Trial)</h3>
+        </div>
+        <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
+          Cada link gera uma URL pública: <span style={{ fontFamily: 'monospace', background: 'var(--bg-hover)', padding: '1px 6px', borderRadius: 4 }}>seusite.com/trial/<strong>slug</strong></span>
+        </p>
+        <div className="flex flex-col gap-4">
+          {(cfg.trialLinks || []).map((tl, idx) => (
+            <div key={tl.id} style={{ background: 'var(--bg-hover)', borderRadius: 12, padding: '14px 14px 12px', border: '1px solid var(--border)' }}>
+              <div className="flex gap-2 mb-2 items-center">
+                {/* Ativo toggle */}
+                <div onClick={() => setCfg(c => ({ ...c, trialLinks: c.trialLinks.map((l, i) => i === idx ? { ...l, ativo: !l.ativo } : l) }))}
+                  style={{ width: 36, height: 20, borderRadius: 10, background: tl.ativo ? '#8b5cf6' : 'var(--border)', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'background .2s' }}>
+                  <div style={{ position: 'absolute', top: 2, left: tl.ativo ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .2s' }} />
+                </div>
+                <span className="text-xs font-semibold" style={{ color: tl.ativo ? '#8b5cf6' : 'var(--text-muted)' }}>{tl.ativo ? 'Ativo' : 'Inativo'}</span>
+                <button onClick={() => setCfg(c => ({ ...c, trialLinks: c.trialLinks.filter((_, i) => i !== idx) }))}
+                  style={{ marginLeft: 'auto', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 7, padding: '3px 7px', cursor: 'pointer', color: '#ef4444' }}>
+                  <Trash2 size={12} />
+                </button>
+              </div>
+              <div className="flex gap-2 mb-2">
+                <div style={{ flex: 1 }}>
+                  <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>Slug (URL)</label>
+                  <input className="input" placeholder="15dias" value={tl.slug}
+                    onChange={e => setCfg(c => ({ ...c, trialLinks: c.trialLinks.map((l, i) => i === idx ? { ...l, slug: e.target.value.toLowerCase().replace(/\s/g, '-') } : l) }))} />
+                </div>
+                <div style={{ width: 90 }}>
+                  <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>Dias</label>
+                  <input className="input" type="number" min="1" placeholder="15" value={tl.dias}
+                    onChange={e => setCfg(c => ({ ...c, trialLinks: c.trialLinks.map((l, i) => i === idx ? { ...l, dias: +e.target.value } : l) }))} />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <div style={{ flex: 1 }}>
+                  <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>Nome exibido</label>
+                  <input className="input" placeholder="15 dias grátis" value={tl.nome}
+                    onChange={e => setCfg(c => ({ ...c, trialLinks: c.trialLinks.map((l, i) => i === idx ? { ...l, nome: e.target.value } : l) }))} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>Descrição (opcional)</label>
+                  <input className="input" placeholder="Teste completo, sem cartão" value={tl.descricao || ''}
+                    onChange={e => setCfg(c => ({ ...c, trialLinks: c.trialLinks.map((l, i) => i === idx ? { ...l, descricao: e.target.value } : l) }))} />
+                </div>
+              </div>
+              {tl.slug && (
+                <p className="text-xs mt-2" style={{ color: '#8b5cf6' }}>
+                  🔗 /trial/{tl.slug} — {tl.dias} dias
+                </p>
+              )}
+            </div>
+          ))}
+          <button className="btn" style={{ alignSelf: 'flex-start', fontSize: 12, gap: 6 }}
+            onClick={() => setCfg(c => ({ ...c, trialLinks: [...(c.trialLinks || []), { id: crypto.randomUUID(), slug: '', nome: '', dias: 15, descricao: '', ativo: true }] }))}>
+            <Plus size={13} /> Adicionar link de trial
+          </button>
+        </div>
+      </div>
+
+      {/* ── Planos para tela de upgrade ── */}
+      <div className="card p-5">
+        <div className="flex items-center gap-2 mb-1">
+          <Package size={15} style={{ color: '#f59e0b' }} />
+          <h3 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Planos — tela de upgrade</h3>
+        </div>
+        <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
+          Aparecem após o trial expirar. Configure nome, preço, recursos e links de pagamento.
+        </p>
+        <div className="flex flex-col gap-4">
+          {(cfg.planosUpgrade || []).map((pl, idx) => (
+            <div key={pl.id} style={{ background: 'var(--bg-hover)', borderRadius: 12, padding: '14px', border: `1px solid ${pl.destaque ? (pl.cor || '#f59e0b') : 'var(--border)'}` }}>
+              {/* Linha 1: toggle ativo + destaque + cor + excluir */}
+              <div className="flex gap-2 items-center mb-3">
+                <div onClick={() => setCfg(c => ({ ...c, planosUpgrade: c.planosUpgrade.map((p, i) => i === idx ? { ...p, ativo: p.ativo === false ? true : false } : p) }))}
+                  style={{ width: 36, height: 20, borderRadius: 10, background: pl.ativo !== false ? '#16a34a' : 'var(--border)', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'background .2s' }}>
+                  <div style={{ position: 'absolute', top: 2, left: pl.ativo !== false ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .2s' }} />
+                </div>
+                <span className="text-xs font-semibold" style={{ color: pl.ativo !== false ? '#16a34a' : 'var(--text-muted)' }}>Visível</span>
+                <button onClick={() => setCfg(c => ({ ...c, planosUpgrade: c.planosUpgrade.map((p, i) => i === idx ? { ...p, destaque: !p.destaque } : p) }))}
+                  style={{ fontSize: 11, padding: '3px 10px', borderRadius: 8, border: `1px solid ${pl.destaque ? '#f59e0b' : 'var(--border)'}`, background: pl.destaque ? 'rgba(245,158,11,0.1)' : 'var(--bg-card)', color: pl.destaque ? '#f59e0b' : 'var(--text-muted)', cursor: 'pointer', fontWeight: 600 }}>
+                  ⭐ Destaque
+                </button>
+                <input type="color" title="Cor" value={pl.cor || '#3b82f6'}
+                  style={{ width: 32, height: 32, border: '1px solid var(--border)', borderRadius: 7, padding: 2, cursor: 'pointer', background: 'none' }}
+                  onChange={e => setCfg(c => ({ ...c, planosUpgrade: c.planosUpgrade.map((p, i) => i === idx ? { ...p, cor: e.target.value } : p) }))} />
+                <button onClick={() => setCfg(c => ({ ...c, planosUpgrade: c.planosUpgrade.filter((_, i) => i !== idx) }))}
+                  style={{ marginLeft: 'auto', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 7, padding: '3px 7px', cursor: 'pointer', color: '#ef4444' }}>
+                  <Trash2 size={12} />
+                </button>
+              </div>
+              {/* Linha 2: nome + preço + período */}
+              <div className="flex gap-2 mb-2">
+                <div style={{ flex: 2 }}>
+                  <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>Nome do plano</label>
+                  <input className="input" placeholder="Básico" value={pl.nome}
+                    onChange={e => setCfg(c => ({ ...c, planosUpgrade: c.planosUpgrade.map((p, i) => i === idx ? { ...p, nome: e.target.value } : p) }))} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>Preço (R$)</label>
+                  <input className="input" type="number" placeholder="89" value={pl.preco || ''}
+                    onChange={e => setCfg(c => ({ ...c, planosUpgrade: c.planosUpgrade.map((p, i) => i === idx ? { ...p, preco: e.target.value } : p) }))} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>Período</label>
+                  <input className="input" placeholder="mês" value={pl.periodo || ''}
+                    onChange={e => setCfg(c => ({ ...c, planosUpgrade: c.planosUpgrade.map((p, i) => i === idx ? { ...p, periodo: e.target.value } : p) }))} />
+                </div>
+              </div>
+              {/* Descrição */}
+              <div className="mb-2">
+                <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>Descrição curta</label>
+                <input className="input" placeholder="Ideal para restaurantes em crescimento" value={pl.descricao || ''}
+                  onChange={e => setCfg(c => ({ ...c, planosUpgrade: c.planosUpgrade.map((p, i) => i === idx ? { ...p, descricao: e.target.value } : p) }))} />
+              </div>
+              {/* Recursos */}
+              <div className="mb-2">
+                <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>Recursos (um por linha)</label>
+                <textarea className="input" rows={3} placeholder={'PDV completo\nDelivery ilimitado\nSuporte prioritário'}
+                  value={(pl.recursos || []).join('\n')}
+                  onChange={e => setCfg(c => ({ ...c, planosUpgrade: c.planosUpgrade.map((p, i) => i === idx ? { ...p, recursos: e.target.value.split('\n') } : p) }))}
+                  style={{ resize: 'vertical', fontFamily: 'inherit', fontSize: 13 }} />
+              </div>
+              {/* Gateways do plano */}
+              <div>
+                <label className="text-xs font-semibold block mb-2" style={{ color: 'var(--text-muted)' }}>Botões de pagamento</label>
+                {(pl.gateways || []).map((gw, gi) => (
+                  <div key={gi} className="flex gap-2 mb-2 items-center">
+                    <input className="input" placeholder="Nome (ex: Pix)" value={gw.nome} style={{ width: 130, flexShrink: 0 }}
+                      onChange={e => setCfg(c => ({ ...c, planosUpgrade: c.planosUpgrade.map((p, i) => i === idx ? { ...p, gateways: p.gateways.map((g, j) => j === gi ? { ...g, nome: e.target.value } : g) } : p) }))} />
+                    <input className="input" placeholder="URL de checkout" value={gw.url}
+                      onChange={e => setCfg(c => ({ ...c, planosUpgrade: c.planosUpgrade.map((p, i) => i === idx ? { ...p, gateways: p.gateways.map((g, j) => j === gi ? { ...g, url: e.target.value } : g) } : p) }))} />
+                    <button onClick={() => setCfg(c => ({ ...c, planosUpgrade: c.planosUpgrade.map((p, i) => i === idx ? { ...p, gateways: p.gateways.filter((_, j) => j !== gi) } : p) }))}
+                      style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 7, padding: '6px 8px', cursor: 'pointer', color: '#ef4444', flexShrink: 0 }}>
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+                <button className="btn" style={{ fontSize: 11, gap: 5 }}
+                  onClick={() => setCfg(c => ({ ...c, planosUpgrade: c.planosUpgrade.map((p, i) => i === idx ? { ...p, gateways: [...(p.gateways || []), { nome: '', url: '' }] } : p) }))}>
+                  <Plus size={11} /> Botão de pagamento
+                </button>
+              </div>
+            </div>
+          ))}
+          <button className="btn" style={{ alignSelf: 'flex-start', fontSize: 12, gap: 6 }}
+            onClick={() => setCfg(c => ({ ...c, planosUpgrade: [...(c.planosUpgrade || []), { id: crypto.randomUUID(), nome: '', preco: '', periodo: 'mês', descricao: '', destaque: false, cor: '#3b82f6', ativo: true, recursos: [], gateways: [] }] }))}>
+            <Plus size={13} /> Adicionar plano
           </button>
         </div>
       </div>

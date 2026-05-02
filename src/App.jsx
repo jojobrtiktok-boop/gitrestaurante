@@ -32,6 +32,7 @@ const Despesas         = lazy(() => import('./pages/Despesas.jsx'))
 const WhatsApp         = lazy(() => import('./pages/WhatsApp.jsx'))
 const ResetPassword    = lazy(() => import('./pages/ResetPassword.jsx'))
 const EmailConfirmado  = lazy(() => import('./pages/EmailConfirmado.jsx'))
+const Trial            = lazy(() => import('./pages/Trial.jsx'))
 
 function PageLoader() {
   return (
@@ -182,6 +183,111 @@ function TelaPlanoBloqueado({ motivo, auth, onLogout, cfg = {} }) {
   )
 }
 
+// ── Tela de seleção de plano (após trial expirado) ────────────────────────
+function TelaSelecionarPlano({ auth, onLogout, cfg = {} }) {
+  const nomeSistema  = cfg.nomeSistema || 'Cheffya'
+  const planos       = (cfg.planosUpgrade || []).filter(p => p.ativo !== false)
+  const waNumero     = (cfg.suporteWhatsapp || '').replace(/\D/g, '')
+  const waMensagem   = cfg.suporteMensagem || `Olá, quero assinar o ${nomeSistema}.`
+
+  return (
+    <div style={{ minHeight: '100vh', background: 'var(--bg-main)', padding: '32px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      {/* Logo */}
+      <img src="/logo-light.png" alt={nomeSistema}
+        style={{ height: 40, objectFit: 'contain', marginBottom: 24 }}
+        onError={e => { e.currentTarget.style.display = 'none' }}
+      />
+
+      {/* Header */}
+      <div style={{ textAlign: 'center', marginBottom: 32, maxWidth: 500 }}>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>🎉</div>
+        <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 8px' }}>
+          Seu período de teste encerrou!
+        </h1>
+        <p style={{ fontSize: 15, color: 'var(--text-muted)', lineHeight: 1.6, margin: 0 }}>
+          Esperamos que tenha curtido. Escolha um plano para continuar usando o {nomeSistema}.
+        </p>
+      </div>
+
+      {/* Cards de plano */}
+      {planos.length > 0 ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, width: '100%', maxWidth: 860, marginBottom: 32 }}>
+          {planos.map(p => (
+            <div key={p.id} style={{
+              background: 'var(--bg-card)', borderRadius: 20, padding: '28px 24px',
+              border: p.destaque ? `2px solid ${p.cor || 'var(--accent)'}` : '1px solid var(--border)',
+              boxShadow: p.destaque ? `0 4px 24px ${p.cor || 'var(--accent)'}30` : '0 2px 8px rgba(0,0,0,0.06)',
+              position: 'relative', display: 'flex', flexDirection: 'column',
+            }}>
+              {p.destaque && (
+                <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: p.cor || 'var(--accent)', color: '#fff', fontSize: 11, fontWeight: 700, padding: '4px 14px', borderRadius: 100, whiteSpace: 'nowrap' }}>
+                  ⭐ Mais popular
+                </div>
+              )}
+              <div style={{ marginBottom: 16 }}>
+                <h3 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>{p.nome}</h3>
+                {p.descricao && <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>{p.descricao}</p>}
+              </div>
+              <div style={{ marginBottom: 20 }}>
+                <span style={{ fontSize: 32, fontWeight: 800, color: p.cor || 'var(--accent)' }}>
+                  R$ {Number(p.preco || 0).toFixed(2).replace('.', ',')}
+                </span>
+                <span style={{ fontSize: 13, color: 'var(--text-muted)', marginLeft: 4 }}>/{p.periodo || 'mês'}</span>
+              </div>
+              {p.recursos && p.recursos.length > 0 && (
+                <ul style={{ margin: '0 0 20px', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+                  {p.recursos.map((r, i) => (
+                    <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
+                      <span style={{ color: p.cor || '#16a34a', flexShrink: 0 }}>✓</span> {r}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 'auto' }}>
+                {(p.gateways || []).map((gw, i) => (
+                  <a key={i} href={gw.url} target="_blank" rel="noopener noreferrer"
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      background: i === 0 ? (p.cor || 'var(--accent)') : 'var(--bg-hover)',
+                      color: i === 0 ? '#fff' : 'var(--text-primary)',
+                      border: i === 0 ? 'none' : '1px solid var(--border)',
+                      borderRadius: 12, padding: '12px 16px', fontWeight: 700, fontSize: 14,
+                      textDecoration: 'none', transition: 'opacity .15s',
+                    }}
+                    onMouseOver={e => e.currentTarget.style.opacity = '0.85'}
+                    onMouseOut={e => e.currentTarget.style.opacity = '1'}
+                  >
+                    💳 Assinar — {gw.nome}
+                  </a>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: '32px 28px', textAlign: 'center', marginBottom: 32, maxWidth: 400, border: '1px solid var(--border)' }}>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
+            Nenhum plano disponível no momento. Entre em contato com o suporte.
+          </p>
+        </div>
+      )}
+
+      {/* Suporte */}
+      {waNumero && (
+        <a href={`https://wa.me/${waNumero}?text=${encodeURIComponent(waMensagem)}`}
+          target="_blank" rel="noopener noreferrer"
+          style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#22c55e', fontSize: 14, fontWeight: 600, textDecoration: 'none', marginBottom: 8 }}>
+          <IconWhatsApp size={16} color="#22c55e" /> Falar com o suporte
+        </a>
+      )}
+
+      <button onClick={onLogout} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer', marginTop: 8, fontWeight: 600 }}>
+        Sair da conta
+      </button>
+    </div>
+  )
+}
+
 // ── Guard de plano ─────────────────────────────────────────────────────────
 function GuardaPlano({ children }) {
   const { auth, logout } = useApp()
@@ -221,7 +327,13 @@ function GuardaPlano({ children }) {
   const temDataValida = plano.fim && new Date(plano.fim + 'T23:59:59') >= new Date()
   if (temDataValida) return children
 
-  // Plano expirado (tinha data mas venceu)
+  // Trial expirado → tela de upgrade com planos
+  const foiTrial = plano.ativo === 'trial'
+  if (plano.fim && new Date(plano.fim + 'T23:59:59') < new Date() && foiTrial) {
+    return <TelaSelecionarPlano auth={authPlano} onLogout={logout} cfg={saasConfig} />
+  }
+
+  // Plano pago expirado
   if (plano.fim && new Date(plano.fim + 'T23:59:59') < new Date()) {
     return <TelaPlanoBloqueado motivo="expirado" auth={authPlano} onLogout={logout} cfg={saasConfig} />
   }
@@ -243,6 +355,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/email-confirmado" element={<EmailConfirmado />} />
+          <Route path="/trial/:slug" element={<Trial />} />
           <Route path="/menu/:slug" element={<MenuPublico />} />
           <Route path="/delivery/:slug" element={<DeliveryPublico />} />
           <Route path="/comanda/:token" element={<ComandaDigital />} />

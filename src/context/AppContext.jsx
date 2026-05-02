@@ -831,6 +831,38 @@ export function AppProvider({ children }) {
       .eq('id', session.user.id)
       .maybeSingle()
     if (!profile) return
+
+    // Auto-ativar trial: usuário veio de link trial mas ainda não tem plano
+    const meta = session.user.user_metadata || {}
+    if (!profile.plano_ativo && !profile.plano_fim && meta.trial_slug && meta.trial_dias) {
+      await supabase.rpc('activate_trial', {
+        p_user_id: session.user.id,
+        p_dias:    Number(meta.trial_dias),
+        p_slug:    meta.trial_slug,
+      })
+      // Re-busca após ativação
+      const { data: updated } = await supabase
+        .from('profiles')
+        .select('is_admin, username, nome_exibicao, foto, plano_ativo, plano_fim')
+        .eq('id', session.user.id)
+        .maybeSingle()
+      if (updated) {
+        setAuth(prev => ({
+          ...prev,
+          usuario:    updated.username   || prev.usuario,
+          isAdmin:    updated.is_admin   || prev.isAdmin,
+          planoAtivo: updated.plano_ativo ?? null,
+          planoFim:   updated.plano_fim  ?? null,
+        }))
+        setPerfil(prev => ({
+          ...prev,
+          ...(updated.nome_exibicao ? { nomeExibicao: updated.nome_exibicao } : {}),
+          ...(updated.foto ? { foto: updated.foto } : {}),
+        }))
+        return
+      }
+    }
+
     setAuth(prev => ({
       ...prev,
       usuario:    profile.username   || prev.usuario,

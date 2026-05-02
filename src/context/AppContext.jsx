@@ -1210,7 +1210,12 @@ export function AppProvider({ children }) {
     return { ok: true }
   }
 
-  function removerUsuario() { return { ok: true } }
+  async function removerUsuario(userId) {
+    // 1. Apaga o perfil da tabela profiles
+    const { error } = await supabase.from('profiles').delete().eq('id', userId)
+    if (error) return { erro: error.message }
+    return { ok: true }
+  }
 
   // ── Perfil ────────────────────────────────────────────────────────────
   function atualizarPerfil(updates) {

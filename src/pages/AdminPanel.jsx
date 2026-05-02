@@ -809,15 +809,76 @@ function AbaPlanos() {
   )
 }
 
+// ── Modal de confirmação para apagar conta ────────────────────────────────
+function ModalApagarUsuario({ usuario, onClose, onConfirmado }) {
+  const [texto, setTexto] = useState('')
+  const [apagando, setApagando] = useState(false)
+  const [erro, setErro] = useState('')
+  const nome = usuario.username || usuario.nome_exibicao || usuario.email || '?'
+  const valido = texto.trim().toLowerCase() === 'confirmar'
+
+  async function handleApagar() {
+    if (!valido) return
+    setApagando(true); setErro('')
+    const res = await onConfirmado(usuario.id)
+    setApagando(false)
+    if (res?.erro) return setErro('Erro: ' + res.erro)
+    onClose()
+  }
+
+  return (
+    <Modal titulo="Apagar conta" onClose={onClose}>
+      <div className="flex flex-col gap-4">
+        <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
+          <div className="flex items-center gap-2 mb-1">
+            <AlertTriangle size={14} style={{ color: '#ef4444' }} />
+            <p className="text-sm font-bold" style={{ color: '#ef4444' }}>Ação irreversível</p>
+          </div>
+          <p className="text-xs" style={{ color: 'var(--text-muted)', lineHeight: 1.5 }}>
+            Isso vai apagar permanentemente o perfil de <strong style={{ color: 'var(--text-primary)' }}>{nome}</strong> do banco de dados. Os dados do restaurante (cardápio, pedidos, etc.) vinculados a esta conta também serão removidos via RLS.
+          </p>
+        </div>
+        <div>
+          <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>
+            Digite <strong>confirmar</strong> para prosseguir
+          </label>
+          <input
+            className="input"
+            placeholder="confirmar"
+            value={texto}
+            onChange={e => setTexto(e.target.value)}
+            autoFocus
+          />
+        </div>
+        {erro && <p className="text-xs" style={{ color: '#ef4444' }}>{erro}</p>}
+        <button
+          className="btn w-full"
+          disabled={!valido || apagando}
+          onClick={handleApagar}
+          style={{
+            background: valido ? '#ef4444' : 'var(--bg-hover)',
+            color: valido ? '#fff' : 'var(--text-muted)',
+            border: 'none', cursor: valido ? 'pointer' : 'not-allowed',
+            fontWeight: 700, padding: '10px', borderRadius: 10, fontSize: 14,
+            transition: 'all 0.15s',
+          }}>
+          {apagando ? 'Apagando...' : '🗑 Apagar conta permanentemente'}
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
 // ── Componente principal ───────────────────────────────────────────────────
 export default function AdminPanel() {
-  const { auth, authLoading, cadastrarUsuario } = useApp()
+  const { auth, authLoading, cadastrarUsuario, removerUsuario } = useApp()
   const [aba, setAba] = useState('restaurantes')
   const [expandido, setExpandido] = useState(null)
   const [usuarios, setUsuarios] = useState([])
   const [todasVendas, setTodasVendas] = useState([])
   const [carregando, setCarregando] = useState(true)
-  const [modalPlano, setModalPlano] = useState(null) // usuario selecionado
+  const [modalPlano, setModalPlano] = useState(null)
+  const [modalApagar, setModalApagar] = useState(null) // usuario a apagar
 
   const [novoNome, setNovoNome] = useState('')
   const [novoEmail, setNovoEmail] = useState('')
@@ -1060,9 +1121,17 @@ export default function AdminPanel() {
                       </p>
                     </div>
                     {!u.is_admin && (
-                      <button className="btn" style={{ fontSize: 11, padding: '4px 10px' }} onClick={() => setModalPlano(u)}>
-                        <Tag size={11} /> Plano
-                      </button>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button className="btn" style={{ fontSize: 11, padding: '4px 10px' }} onClick={() => setModalPlano(u)}>
+                          <Tag size={11} /> Plano
+                        </button>
+                        <button
+                          onClick={() => setModalApagar(u)}
+                          title="Apagar conta"
+                          style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 8, padding: '4px 8px', cursor: 'pointer', color: '#ef4444', display: 'flex', alignItems: 'center' }}>
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     )}
                   </div>
                 )
@@ -1108,6 +1177,19 @@ export default function AdminPanel() {
           planos={lerLS('saas_planos', PLANOS_PADRAO)}
           onClose={() => setModalPlano(null)}
           onSalvo={() => carregarDados()}
+        />
+      )}
+
+      {/* Modal apagar conta */}
+      {modalApagar && (
+        <ModalApagarUsuario
+          usuario={modalApagar}
+          onClose={() => setModalApagar(null)}
+          onConfirmado={async (id) => {
+            const res = await removerUsuario(id)
+            if (res.ok) carregarDados()
+            return res
+          }}
         />
       )}
     </div>

@@ -95,7 +95,7 @@ function TelaPlanoBloqueado({ motivo, auth, onLogout }) {
             ? `Seu plano ${auth.planoAtivo ? `(${auth.planoAtivo})` : ''} venceu${dataFim ? ` em ${dataFim}` : ''}.`
             : 'Sua conta ainda não possui um plano ativo.'}
         </p>
-        <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, margin: '0 0 28px' }}>
+        <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, margin: '0 0 16px' }}>
           Entre em contato com o suporte para renovar e voltar a usar o sistema.
         </p>
 
@@ -109,7 +109,7 @@ function TelaPlanoBloqueado({ motivo, auth, onLogout }) {
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               background: '#22c55e', color: '#fff', fontWeight: 700, fontSize: 15,
               padding: '13px 24px', borderRadius: 12, textDecoration: 'none',
-              marginBottom: 12, transition: 'opacity 0.15s',
+              marginBottom: 8, transition: 'opacity 0.15s',
             }}
             onMouseOver={e => e.currentTarget.style.opacity = '0.88'}
             onMouseOut={e => e.currentTarget.style.opacity = '1'}
@@ -123,11 +123,14 @@ function TelaPlanoBloqueado({ motivo, auth, onLogout }) {
           <a href={`mailto:${suporteEmail}`}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              color: '#3b82f6', fontSize: 13, textDecoration: 'none', marginBottom: 12, fontWeight: 600,
+              color: '#3b82f6', fontSize: 13, textDecoration: 'none', marginBottom: 16, fontWeight: 600,
             }}>
             ✉️ {suporteEmail}
           </a>
         )}
+
+        {/* Separador */}
+        <div style={{ height: 1, background: 'var(--border)', margin: '4px 0 16px' }} />
 
         {/* Logout */}
         <button

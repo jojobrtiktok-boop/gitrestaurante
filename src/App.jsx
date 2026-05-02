@@ -163,24 +163,31 @@ function TelaPlanoBloqueado({ motivo, auth, onLogout, cfg = {} }) {
 function GuardaPlano({ children }) {
   const { auth, logout } = useApp()
   const [saasConfig, setSaasConfig] = useState({})
+  const [plano, setPlano] = useState({ carregando: true, ativo: null, fim: null })
 
+  // Busca saas_config e plano do perfil direto do Supabase (sempre atualizado)
   useEffect(() => {
+    if (!auth.logado || auth.isAdmin) return
     supabase.from('saas_config').select('config').eq('id', 1).maybeSingle()
       .then(({ data }) => { if (data?.config) setSaasConfig(data.config) })
-  }, [])
+    supabase.from('profiles').select('plano_ativo, plano_fim').eq('id', auth.userId).maybeSingle()
+      .then(({ data }) => {
+        setPlano({ carregando: false, ativo: data?.plano_ativo ?? null, fim: data?.plano_fim ?? null })
+      })
+  }, [auth.logado, auth.isAdmin, auth.userId])
 
   // Admin sempre passa
   if (auth.isAdmin) return children
 
-  // Aguardando carregar dados do plano do perfil
-  if (auth.planoAtivo === undefined) return <PageLoader />
+  // Aguardando carregar
+  if (plano.carregando) return <PageLoader />
 
   // Sem plano atribuído
-  if (!auth.planoAtivo) return <TelaPlanoBloqueado motivo="sem_plano" auth={auth} onLogout={logout} cfg={saasConfig} />
+  if (!plano.ativo) return <TelaPlanoBloqueado motivo="sem_plano" auth={{ ...auth, planoAtivo: plano.ativo, planoFim: plano.fim }} onLogout={logout} cfg={saasConfig} />
 
   // Plano expirado
-  if (auth.planoFim && new Date(auth.planoFim + 'T23:59:59') < new Date()) {
-    return <TelaPlanoBloqueado motivo="expirado" auth={auth} onLogout={logout} cfg={saasConfig} />
+  if (plano.fim && new Date(plano.fim + 'T23:59:59') < new Date()) {
+    return <TelaPlanoBloqueado motivo="expirado" auth={{ ...auth, planoAtivo: plano.ativo, planoFim: plano.fim }} onLogout={logout} cfg={saasConfig} />
   }
 
   return children

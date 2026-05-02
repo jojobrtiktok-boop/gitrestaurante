@@ -766,23 +766,12 @@ export default function AdminPanel() {
   async function carregarDados() {
     setCarregando(true)
 
-    // Tenta buscar com colunas de plano; se falhar (colunas ainda não existem), busca sem elas
-    let profilesData = null
-    const { data: pd1, error: e1 } = await supabase
+    // select('*') pega todas as colunas que existem — funciona com ou sem colunas de plano
+    const { data: profilesData } = await supabase
       .from('profiles')
-      .select('id, username, email, nome_exibicao, is_admin, created_at, plano_ativo, plano_inicio, plano_fim, desconto_pct, obs_admin')
+      .select('*')
       .order('created_at', { ascending: true })
-    if (!e1 && pd1) {
-      profilesData = pd1
-    } else {
-      // Fallback sem colunas novas
-      const { data: pd2 } = await supabase
-        .from('profiles')
-        .select('id, username, email, nome_exibicao, is_admin, created_at')
-        .order('created_at', { ascending: true })
-      profilesData = pd2 || []
-    }
-    setUsuarios(profilesData)
+    setUsuarios(profilesData || [])
 
     // Faturamento dos restaurantes (falha silenciosa se policy ainda não existe)
     const { data: vendasData } = await supabase
@@ -915,7 +904,6 @@ export default function AdminPanel() {
                             {planoStatus?.tipo === 'expirado' && <AlertTriangle size={13} style={{ color: '#ef4444' }} />}
                           </div>
                           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                            {r.email && <span>{r.email} · </span>}
                             Cadastrado {criadoEm}
                             {r.desconto_pct > 0 && <span style={{ color: '#f59e0b' }}> · Desconto {r.desconto_pct}%</span>}
                           </p>
@@ -985,7 +973,6 @@ export default function AdminPanel() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{nome}</p>
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {u.email && <span>{u.email} · </span>}
                         {u.is_admin ? '👑 Administrador' : 'Usuário'}
                         {u.created_at && ` · ${new Date(u.created_at).toLocaleDateString('pt-BR')}`}
                       </p>

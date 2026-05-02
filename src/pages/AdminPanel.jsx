@@ -782,7 +782,6 @@ export default function AdminPanel() {
     const { data: profilesData } = await supabase
       .from('profiles')
       .select('*')
-      .order('created_at', { ascending: true })
     setUsuarios(profilesData || [])
 
     // Faturamento dos restaurantes (falha silenciosa se policy ainda não existe)

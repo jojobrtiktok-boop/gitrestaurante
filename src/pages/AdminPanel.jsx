@@ -718,12 +718,31 @@ export default function AdminPanel() {
 
   async function carregarDados() {
     setCarregando(true)
-    const [profilesRes, vendasRes] = await Promise.all([
-      supabase.from('profiles').select('id, username, email, nome_exibicao, is_admin, created_at, plano_ativo, plano_inicio, plano_fim, desconto_pct, obs_admin').order('created_at', { ascending: true }),
-      supabase.from('entradas_vendas').select('user_id, quantidade, preco_venda_unit, extras_unit, data'),
-    ])
-    if (!profilesRes.error && profilesRes.data) setUsuarios(profilesRes.data)
-    if (!vendasRes.error && vendasRes.data) setTodasVendas(vendasRes.data)
+
+    // Tenta buscar com colunas de plano; se falhar (colunas ainda não existem), busca sem elas
+    let profilesData = null
+    const { data: pd1, error: e1 } = await supabase
+      .from('profiles')
+      .select('id, username, email, nome_exibicao, is_admin, created_at, plano_ativo, plano_inicio, plano_fim, desconto_pct, obs_admin')
+      .order('created_at', { ascending: true })
+    if (!e1 && pd1) {
+      profilesData = pd1
+    } else {
+      // Fallback sem colunas novas
+      const { data: pd2 } = await supabase
+        .from('profiles')
+        .select('id, username, email, nome_exibicao, is_admin, created_at')
+        .order('created_at', { ascending: true })
+      profilesData = pd2 || []
+    }
+    setUsuarios(profilesData)
+
+    // Faturamento dos restaurantes (falha silenciosa se policy ainda não existe)
+    const { data: vendasData } = await supabase
+      .from('entradas_vendas')
+      .select('user_id, quantidade, preco_venda_unit, extras_unit, data')
+    if (vendasData) setTodasVendas(vendasData)
+
     setCarregando(false)
   }
 

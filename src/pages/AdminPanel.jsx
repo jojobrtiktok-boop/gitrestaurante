@@ -179,11 +179,12 @@ function Modal({ titulo, onClose, children, largura = 480 }) {
 function ModalPlanoUsuario({ usuario, planos, onClose, onSalvo }) {
   const planosAtivos = planos.filter(p => p.ativo)
   const [form, setForm] = useState({
-    plano_ativo:  usuario.plano_ativo  || '',
-    plano_inicio: usuario.plano_inicio || hoje(),
-    plano_fim:    usuario.plano_fim    || '',
-    desconto_pct: usuario.desconto_pct || 0,
-    obs_admin:    usuario.obs_admin    || '',
+    plano_ativo:       usuario.plano_ativo       || '',
+    plano_inicio:      usuario.plano_inicio      || hoje(),
+    plano_fim:         usuario.plano_fim         || '',
+    desconto_pct:      usuario.desconto_pct      || 0,
+    obs_admin:         usuario.obs_admin         || '',
+    pagamento_status:  usuario.pagamento_status  || '',
   })
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState('')
@@ -213,6 +214,12 @@ function ModalPlanoUsuario({ usuario, planos, onClose, onSalvo }) {
       p_desconto_pct: Number(form.desconto_pct) || 0,
       p_obs_admin:    form.obs_admin    || null,
     })
+    // Atualiza pagamento_status separadamente (coluna simples)
+    if (!error) {
+      await supabase.from('profiles')
+        .update({ pagamento_status: form.pagamento_status || null })
+        .eq('id', usuario.id)
+    }
     setSalvando(false)
     if (error) return setErro('Erro ao salvar: ' + error.message)
     onSalvo()
@@ -272,6 +279,32 @@ function ModalPlanoUsuario({ usuario, planos, onClose, onSalvo }) {
           <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>Observação (interna)</label>
           <input className="input" placeholder="Ex: cliente especial, parceiro, etc." value={form.obs_admin}
             onChange={e => setForm(f => ({ ...f, obs_admin: e.target.value }))} />
+        </div>
+
+        {/* Status de pagamento */}
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
+          <label className="text-xs font-semibold block mb-2" style={{ color: 'var(--text-muted)' }}>Status do pagamento</label>
+          <div className="flex gap-2">
+            {[
+              { val: '',       label: 'Normal',           cor: '#6b7280' },
+              { val: 'falhou', label: '❌ Pagamento falhou', cor: '#ef4444' },
+            ].map(({ val, label, cor }) => (
+              <button key={val} onClick={() => setForm(f => ({ ...f, pagamento_status: val }))}
+                style={{
+                  flex: 1, padding: '8px 10px', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  border: `1px solid ${form.pagamento_status === val ? cor : 'var(--border)'}`,
+                  background: form.pagamento_status === val ? `${cor}20` : 'var(--bg-hover)',
+                  color: form.pagamento_status === val ? cor : 'var(--text-muted)',
+                }}>
+                {label}
+              </button>
+            ))}
+          </div>
+          {form.pagamento_status === 'falhou' && (
+            <p className="text-xs mt-2" style={{ color: '#ef4444' }}>
+              ⚠️ O usuário verá a tela "Pagamento não aprovado" com os botões de tentar novamente.
+            </p>
+          )}
         </div>
 
         {erro && <p className="text-xs" style={{ color: '#ef4444' }}>{erro}</p>}
@@ -813,6 +846,7 @@ const SAAS_CONFIG_PADRAO = {
   suporteEmail: '',
   suporteMensagem: 'Olá, preciso renovar meu plano do Cheffya.',
   nomeSistema: 'Cheffya',
+  gateways: [], // [{ id, nome, url, cor }]
 }
 
 function AbaConfiguracoes() {
@@ -928,6 +962,42 @@ function AbaConfiguracoes() {
             value={cfg.nomeSistema}
             onChange={e => setCfg(c => ({ ...c, nomeSistema: e.target.value }))} />
           <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Aparece na tela de bloqueio e em mensagens automáticas</p>
+        </div>
+      </div>
+
+      {/* Gateways de pagamento */}
+      <div className="card p-5">
+        <div className="flex items-center gap-2 mb-1">
+          <CreditCard size={15} style={{ color: '#3b82f6' }} />
+          <h3 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Gateways de Pagamento</h3>
+        </div>
+        <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
+          Aparecem como botões "Pagar agora" / "Tentar novamente" na tela de plano bloqueado.
+        </p>
+        <div className="flex flex-col gap-3">
+          {(cfg.gateways || []).map((gw, idx) => (
+            <div key={gw.id} className="flex gap-2 items-center">
+              <input className="input" placeholder="Nome (ex: Mercado Pago)"
+                value={gw.nome}
+                style={{ width: 160, flexShrink: 0 }}
+                onChange={e => setCfg(c => ({ ...c, gateways: c.gateways.map((g, i) => i === idx ? { ...g, nome: e.target.value } : g) }))} />
+              <input className="input" placeholder="URL de checkout (https://...)"
+                value={gw.url}
+                onChange={e => setCfg(c => ({ ...c, gateways: c.gateways.map((g, i) => i === idx ? { ...g, url: e.target.value } : g) }))} />
+              <input type="color" title="Cor do botão"
+                value={gw.cor || '#3b82f6'}
+                style={{ width: 36, height: 36, border: '1px solid var(--border)', borderRadius: 8, padding: 2, cursor: 'pointer', background: 'none', flexShrink: 0 }}
+                onChange={e => setCfg(c => ({ ...c, gateways: c.gateways.map((g, i) => i === idx ? { ...g, cor: e.target.value } : g) }))} />
+              <button onClick={() => setCfg(c => ({ ...c, gateways: c.gateways.filter((_, i) => i !== idx) }))}
+                style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 8, padding: '6px 8px', cursor: 'pointer', color: '#ef4444', flexShrink: 0 }}>
+                <Trash2 size={13} />
+              </button>
+            </div>
+          ))}
+          <button className="btn" style={{ alignSelf: 'flex-start', fontSize: 12, gap: 6 }}
+            onClick={() => setCfg(c => ({ ...c, gateways: [...(c.gateways || []), { id: crypto.randomUUID(), nome: '', url: '', cor: '#3b82f6' }] }))}>
+            <Plus size={13} /> Adicionar gateway
+          </button>
         </div>
       </div>
 

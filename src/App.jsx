@@ -60,7 +60,8 @@ function IconWhatsApp({ size = 24, color = 'currentColor' }) {
 
 // ── Tela de plano bloqueado ────────────────────────────────────────────────
 function TelaPlanoBloqueado({ motivo, auth, onLogout, cfg = {} }) {
-  const expirado = motivo === 'expirado'
+  const expirado        = motivo === 'expirado'
+  const pagamentoFalhou = motivo === 'pagamento_falhou'
   const dataFim  = auth.planoFim
     ? new Date(auth.planoFim + 'T00:00:00').toLocaleDateString('pt-BR')
     : null
@@ -68,6 +69,19 @@ function TelaPlanoBloqueado({ motivo, auth, onLogout, cfg = {} }) {
   const waNumero     = (cfg.suporteWhatsapp || '').replace(/\D/g, '')
   const waMensagem   = cfg.suporteMensagem || `Olá, preciso renovar meu plano do ${nomeSistema}.`
   const suporteEmail = cfg.suporteEmail || ''
+  const gateways     = cfg.gateways || []
+
+  const iconeCor = pagamentoFalhou ? 'rgba(239,68,68,0.1)' : expirado ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)'
+  const icone    = pagamentoFalhou ? '❌' : expirado ? '🔒' : '⏳'
+  const titulo   = pagamentoFalhou ? 'Pagamento não aprovado' : expirado ? 'Plano expirado' : 'Sem plano ativo'
+  const msg1     = pagamentoFalhou
+    ? 'Seu pagamento não foi processado. Tente novamente pelo seu gateway de pagamento.'
+    : expirado
+      ? `Seu plano ${auth.planoAtivo && auth.planoAtivo !== 'ativo' ? `(${auth.planoAtivo})` : ''} venceu${dataFim ? ` em ${dataFim}` : ''}.`
+      : 'Sua conta ainda não possui um plano ativo.'
+  const msg2 = pagamentoFalhou
+    ? 'Se o problema persistir, entre em contato com o suporte.'
+    : 'Entre em contato com o suporte para renovar e voltar a usar o sistema.'
 
   return (
     <div style={{
@@ -89,33 +103,45 @@ function TelaPlanoBloqueado({ motivo, auth, onLogout, cfg = {} }) {
         {/* Ícone */}
         <div style={{
           width: 64, height: 64, borderRadius: '50%', margin: '0 auto 20px',
-          background: expirado ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
+          background: iconeCor,
           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28,
         }}>
-          {expirado ? '🔒' : '⏳'}
+          {icone}
         </div>
 
         {/* Título */}
         <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 8px' }}>
-          {expirado ? 'Plano expirado' : 'Sem plano ativo'}
+          {titulo}
         </h2>
 
-        {/* Mensagem */}
-        <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, margin: '0 0 8px' }}>
-          {expirado
-            ? `Seu plano ${auth.planoAtivo ? `(${auth.planoAtivo})` : ''} venceu${dataFim ? ` em ${dataFim}` : ''}.`
-            : 'Sua conta ainda não possui um plano ativo.'}
-        </p>
-        <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, margin: '0 0 16px' }}>
-          Entre em contato com o suporte para renovar e voltar a usar o sistema.
-        </p>
+        {/* Mensagens */}
+        <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, margin: '0 0 4px' }}>{msg1}</p>
+        <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, margin: '0 0 20px' }}>{msg2}</p>
+
+        {/* Botões de gateway (pagamento falhou ou expirado) */}
+        {(pagamentoFalhou || expirado) && gateways.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+            {gateways.map(gw => (
+              <a key={gw.id} href={gw.url} target="_blank" rel="noopener noreferrer"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  background: gw.cor || '#3b82f6', color: '#fff', fontWeight: 700, fontSize: 15,
+                  padding: '13px 24px', borderRadius: 12, textDecoration: 'none', transition: 'opacity 0.15s',
+                }}
+                onMouseOver={e => e.currentTarget.style.opacity = '0.85'}
+                onMouseOut={e => e.currentTarget.style.opacity = '1'}
+              >
+                {pagamentoFalhou ? '🔄 Tentar novamente' : '💳 Renovar'} — {gw.nome}
+              </a>
+            ))}
+          </div>
+        )}
 
         {/* Botão WhatsApp */}
         {waNumero && (
           <a
             href={`https://wa.me/${waNumero}?text=${encodeURIComponent(waMensagem)}`}
-            target="_blank"
-            rel="noopener noreferrer"
+            target="_blank" rel="noopener noreferrer"
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               background: '#22c55e', color: '#fff', fontWeight: 700, fontSize: 15,
@@ -144,14 +170,11 @@ function TelaPlanoBloqueado({ motivo, auth, onLogout, cfg = {} }) {
         <div style={{ height: 1, background: 'var(--border)', margin: '4px 0 16px' }} />
 
         {/* Logout */}
-        <button
-          onClick={onLogout}
-          style={{
-            background: 'none', border: '1px solid var(--border)', borderRadius: 12,
-            padding: '10px 24px', color: 'var(--text-muted)', fontSize: 13,
-            cursor: 'pointer', width: '100%', fontWeight: 600,
-          }}
-        >
+        <button onClick={onLogout} style={{
+          background: 'none', border: '1px solid var(--border)', borderRadius: 12,
+          padding: '10px 24px', color: 'var(--text-muted)', fontSize: 13,
+          cursor: 'pointer', width: '100%', fontWeight: 600,
+        }}>
           Sair da conta
         </button>
       </div>
@@ -170,9 +193,14 @@ function GuardaPlano({ children }) {
     if (!auth.logado || auth.isAdmin) return
     supabase.from('saas_config').select('config').eq('id', 1).maybeSingle()
       .then(({ data }) => { if (data?.config) setSaasConfig(data.config) })
-    supabase.from('profiles').select('plano_ativo, plano_fim').eq('id', auth.userId).maybeSingle()
+    supabase.from('profiles').select('plano_ativo, plano_fim, pagamento_status').eq('id', auth.userId).maybeSingle()
       .then(({ data }) => {
-        setPlano({ carregando: false, ativo: data?.plano_ativo ?? null, fim: data?.plano_fim ?? null })
+        setPlano({
+          carregando: false,
+          ativo: data?.plano_ativo ?? null,
+          fim: data?.plano_fim ?? null,
+          pagamentoStatus: data?.pagamento_status ?? null,
+        })
       })
   }, [auth.logado, auth.isAdmin, auth.userId])
 
@@ -182,17 +210,24 @@ function GuardaPlano({ children }) {
   // Aguardando carregar
   if (plano.carregando) return <PageLoader />
 
-  // Tem data futura válida → libera (mesmo sem nome de plano)
+  const authPlano = { ...auth, planoAtivo: plano.ativo, planoFim: plano.fim }
+
+  // Pagamento falhou (admin marcou manualmente)
+  if (plano.pagamentoStatus === 'falhou') {
+    return <TelaPlanoBloqueado motivo="pagamento_falhou" auth={authPlano} onLogout={logout} cfg={saasConfig} />
+  }
+
+  // Tem data futura válida → libera
   const temDataValida = plano.fim && new Date(plano.fim + 'T23:59:59') >= new Date()
   if (temDataValida) return children
 
   // Plano expirado (tinha data mas venceu)
   if (plano.fim && new Date(plano.fim + 'T23:59:59') < new Date()) {
-    return <TelaPlanoBloqueado motivo="expirado" auth={{ ...auth, planoAtivo: plano.ativo, planoFim: plano.fim }} onLogout={logout} cfg={saasConfig} />
+    return <TelaPlanoBloqueado motivo="expirado" auth={authPlano} onLogout={logout} cfg={saasConfig} />
   }
 
   // Sem plano atribuído
-  if (!plano.ativo) return <TelaPlanoBloqueado motivo="sem_plano" auth={{ ...auth, planoAtivo: plano.ativo, planoFim: plano.fim }} onLogout={logout} cfg={saasConfig} />
+  if (!plano.ativo) return <TelaPlanoBloqueado motivo="sem_plano" auth={authPlano} onLogout={logout} cfg={saasConfig} />
 
   return children
 }

@@ -1211,8 +1211,8 @@ export function AppProvider({ children }) {
   }
 
   async function removerUsuario(userId) {
-    // 1. Apaga o perfil da tabela profiles
-    const { error } = await supabase.from('profiles').delete().eq('id', userId)
+    // Chama função SECURITY DEFINER que verifica is_admin e apaga auth.users em cascade
+    const { error } = await supabase.rpc('admin_delete_user', { target_user_id: userId })
     if (error) return { erro: error.message }
     return { ok: true }
   }

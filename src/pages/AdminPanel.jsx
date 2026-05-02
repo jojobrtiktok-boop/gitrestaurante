@@ -205,16 +205,14 @@ function ModalPlanoUsuario({ usuario, planos, onClose, onSalvo }) {
 
   async function salvar() {
     setSalvando(true); setErro('')
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        plano_ativo:  form.plano_ativo  || null,
-        plano_inicio: form.plano_inicio || null,
-        plano_fim:    form.plano_fim    || null,
-        desconto_pct: Number(form.desconto_pct) || 0,
-        obs_admin:    form.obs_admin    || null,
-      })
-      .eq('id', usuario.id)
+    const { error } = await supabase.rpc('admin_update_user_plan', {
+      target_user_id: usuario.id,
+      p_plano_ativo:  form.plano_ativo  || null,
+      p_plano_inicio: form.plano_inicio || null,
+      p_plano_fim:    form.plano_fim    || null,
+      p_desconto_pct: Number(form.desconto_pct) || 0,
+      p_obs_admin:    form.obs_admin    || null,
+    })
     setSalvando(false)
     if (error) return setErro('Erro ao salvar: ' + error.message)
     onSalvo()

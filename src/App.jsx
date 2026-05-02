@@ -182,13 +182,17 @@ function GuardaPlano({ children }) {
   // Aguardando carregar
   if (plano.carregando) return <PageLoader />
 
-  // Sem plano atribuído
-  if (!plano.ativo) return <TelaPlanoBloqueado motivo="sem_plano" auth={{ ...auth, planoAtivo: plano.ativo, planoFim: plano.fim }} onLogout={logout} cfg={saasConfig} />
+  // Tem data futura válida → libera (mesmo sem nome de plano)
+  const temDataValida = plano.fim && new Date(plano.fim + 'T23:59:59') >= new Date()
+  if (temDataValida) return children
 
-  // Plano expirado
+  // Plano expirado (tinha data mas venceu)
   if (plano.fim && new Date(plano.fim + 'T23:59:59') < new Date()) {
     return <TelaPlanoBloqueado motivo="expirado" auth={{ ...auth, planoAtivo: plano.ativo, planoFim: plano.fim }} onLogout={logout} cfg={saasConfig} />
   }
+
+  // Sem plano atribuído
+  if (!plano.ativo) return <TelaPlanoBloqueado motivo="sem_plano" auth={{ ...auth, planoAtivo: plano.ativo, planoFim: plano.fim }} onLogout={logout} cfg={saasConfig} />
 
   return children
 }

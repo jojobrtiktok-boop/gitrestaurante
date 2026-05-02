@@ -207,7 +207,7 @@ function ModalPlanoUsuario({ usuario, planos, onClose, onSalvo }) {
     setSalvando(true); setErro('')
     const { error } = await supabase.rpc('admin_update_user_plan', {
       target_user_id: usuario.id,
-      p_plano_ativo:  form.plano_ativo  || null,
+      p_plano_ativo:  form.plano_ativo  || (form.plano_fim ? 'ativo' : null),
       p_plano_inicio: form.plano_inicio || null,
       p_plano_fim:    form.plano_fim    || null,
       p_desconto_pct: Number(form.desconto_pct) || 0,

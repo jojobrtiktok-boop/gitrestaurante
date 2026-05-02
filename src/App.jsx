@@ -75,11 +75,17 @@ function TelaPlanoBloqueado({ motivo, auth, onLogout }) {
         padding: '40px 32px', boxShadow: '0 8px 40px rgba(0,0,0,0.15)',
         border: '1px solid var(--border)',
       }}>
+        {/* Logo */}
+        <img src="/logo-light.png" alt={nomeSistema}
+          style={{ height: 48, objectFit: 'contain', margin: '0 auto 24px', display: 'block' }}
+          onError={e => { e.currentTarget.style.display = 'none' }}
+        />
+
         {/* Ícone */}
         <div style={{
-          width: 72, height: 72, borderRadius: '50%', margin: '0 auto 20px',
+          width: 64, height: 64, borderRadius: '50%', margin: '0 auto 20px',
           background: expirado ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28,
         }}>
           {expirado ? '🔒' : '⏳'}
         </div>

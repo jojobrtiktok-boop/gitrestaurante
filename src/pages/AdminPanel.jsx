@@ -816,11 +816,22 @@ const SAAS_CONFIG_PADRAO = {
 }
 
 function AbaConfiguracoes() {
-  const [cfg, setCfg] = useState(() => lerLS('saas_config', SAAS_CONFIG_PADRAO))
+  const [cfg, setCfg] = useState(SAAS_CONFIG_PADRAO)
   const [salvo, setSalvo] = useState(false)
+  const [carregando, setCarregando] = useState(true)
 
-  function salvar() {
-    salvarLS('saas_config', cfg)
+  useEffect(() => {
+    supabase.from('saas_config').select('config').eq('id', 1).maybeSingle()
+      .then(({ data }) => {
+        if (data?.config) setCfg({ ...SAAS_CONFIG_PADRAO, ...data.config })
+        setCarregando(false)
+      })
+  }, [])
+
+  async function salvar() {
+    const { error } = await supabase.from('saas_config')
+      .upsert({ id: 1, config: cfg, updated_at: new Date().toISOString() })
+    if (error) return alert('Erro ao salvar: ' + error.message)
     setSalvo(true)
     setTimeout(() => setSalvo(false), 2500)
   }

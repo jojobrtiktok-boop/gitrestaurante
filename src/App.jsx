@@ -1,9 +1,10 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useState, useEffect } from 'react'
 import { Navigate, Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout.jsx'
 import Login from './pages/Login.jsx'
 import NotificationManager from './components/NotificationManager.jsx'
 import { useApp } from './context/AppContext.jsx'
+import { supabase } from './lib/supabase.js'
 
 // Páginas carregadas sob demanda
 const LandingPage      = lazy(() => import('./pages/LandingPage.jsx'))
@@ -49,16 +50,11 @@ function ProtectedRoute({ children }) {
 }
 
 // ── Tela de plano bloqueado ────────────────────────────────────────────────
-function lerSaasConfig() {
-  try { return JSON.parse(localStorage.getItem('saas_config') || '{}') } catch { return {} }
-}
-
-function TelaPlanoBloqueado({ motivo, auth, onLogout }) {
+function TelaPlanoBloqueado({ motivo, auth, onLogout, cfg = {} }) {
   const expirado = motivo === 'expirado'
   const dataFim  = auth.planoFim
     ? new Date(auth.planoFim + 'T00:00:00').toLocaleDateString('pt-BR')
     : null
-  const cfg = lerSaasConfig()
   const nomeSistema  = cfg.nomeSistema  || 'Cheffya'
   const waNumero     = (cfg.suporteWhatsapp || '').replace(/\D/g, '')
   const waMensagem   = cfg.suporteMensagem || `Olá, preciso renovar meu plano do ${nomeSistema}.`
@@ -157,6 +153,12 @@ function TelaPlanoBloqueado({ motivo, auth, onLogout }) {
 // ── Guard de plano ─────────────────────────────────────────────────────────
 function GuardaPlano({ children }) {
   const { auth, logout } = useApp()
+  const [saasConfig, setSaasConfig] = useState({})
+
+  useEffect(() => {
+    supabase.from('saas_config').select('config').eq('id', 1).maybeSingle()
+      .then(({ data }) => { if (data?.config) setSaasConfig(data.config) })
+  }, [])
 
   // Admin sempre passa
   if (auth.isAdmin) return children
@@ -165,11 +167,11 @@ function GuardaPlano({ children }) {
   if (auth.planoAtivo === undefined) return <PageLoader />
 
   // Sem plano atribuído
-  if (!auth.planoAtivo) return <TelaPlanoBloqueado motivo="sem_plano" auth={auth} onLogout={logout} />
+  if (!auth.planoAtivo) return <TelaPlanoBloqueado motivo="sem_plano" auth={auth} onLogout={logout} cfg={saasConfig} />
 
   // Plano expirado
   if (auth.planoFim && new Date(auth.planoFim + 'T23:59:59') < new Date()) {
-    return <TelaPlanoBloqueado motivo="expirado" auth={auth} onLogout={logout} />
+    return <TelaPlanoBloqueado motivo="expirado" auth={auth} onLogout={logout} cfg={saasConfig} />
   }
 
   return children

@@ -3,7 +3,7 @@ import {
   Users, TrendingUp, DollarSign, ChevronDown, ChevronUp, ShieldCheck,
   Calendar, Trash2, UserPlus, KeyRound, CreditCard, Package, Plus,
   CheckCircle2, Clock, XCircle, BarChart3, Pencil, X, Plug, Tag,
-  AlertTriangle, Webhook,
+  AlertTriangle, Webhook, Settings, MessageCircle, Mail, Phone, Save,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import { supabase } from '../lib/supabase.js'
@@ -807,6 +807,126 @@ function AbaPlanos() {
   )
 }
 
+// ── Aba Configurações ──────────────────────────────────────────────────────
+const SAAS_CONFIG_PADRAO = {
+  suporteWhatsapp: '',
+  suporteEmail: '',
+  suporteMensagem: 'Olá, preciso renovar meu plano do Cheffya.',
+  nomeSistema: 'Cheffya',
+}
+
+function AbaConfiguracoes() {
+  const [cfg, setCfg] = useState(() => lerLS('saas_config', SAAS_CONFIG_PADRAO))
+  const [salvo, setSalvo] = useState(false)
+
+  function salvar() {
+    salvarLS('saas_config', cfg)
+    setSalvo(true)
+    setTimeout(() => setSalvo(false), 2500)
+  }
+
+  const previewWa = cfg.suporteWhatsapp
+    ? `https://wa.me/${cfg.suporteWhatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(cfg.suporteMensagem || '')}`
+    : null
+
+  return (
+    <div className="flex flex-col gap-5">
+
+      {/* Suporte */}
+      <div className="card p-5">
+        <div className="flex items-center gap-2 mb-5">
+          <MessageCircle size={15} style={{ color: '#22c55e' }} />
+          <h3 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Contato de Suporte</h3>
+          <p className="text-xs ml-auto" style={{ color: 'var(--text-muted)' }}>Aparece na tela de plano bloqueado</p>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          {/* WhatsApp */}
+          <div>
+            <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>
+              <Phone size={11} style={{ display: 'inline', marginRight: 4 }} />
+              WhatsApp (com código do país, sem espaços)
+            </label>
+            <div className="flex gap-2">
+              <input className="input" placeholder="Ex: 5511999999999"
+                value={cfg.suporteWhatsapp}
+                onChange={e => setCfg(c => ({ ...c, suporteWhatsapp: e.target.value }))} />
+              {previewWa && (
+                <a href={previewWa} target="_blank" rel="noopener noreferrer"
+                  className="btn" style={{ fontSize: 12, whiteSpace: 'nowrap', background: '#22c55e', color: '#fff', border: 'none' }}>
+                  Testar
+                </a>
+              )}
+            </div>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+              Ex: 5511999999999 → Brasil (55) + DDD + número
+            </p>
+          </div>
+
+          {/* Email */}
+          <div>
+            <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>
+              <Mail size={11} style={{ display: 'inline', marginRight: 4 }} />
+              E-mail de suporte
+            </label>
+            <input className="input" type="email" placeholder="Ex: suporte@cheffya.com.br"
+              value={cfg.suporteEmail}
+              onChange={e => setCfg(c => ({ ...c, suporteEmail: e.target.value }))} />
+          </div>
+
+          {/* Mensagem padrão */}
+          <div>
+            <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>
+              Mensagem padrão do WhatsApp
+            </label>
+            <input className="input" placeholder="Ex: Olá, preciso renovar meu plano..."
+              value={cfg.suporteMensagem}
+              onChange={e => setCfg(c => ({ ...c, suporteMensagem: e.target.value }))} />
+          </div>
+
+          {/* Preview */}
+          <div style={{ padding: '14px 16px', borderRadius: 12, background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+            <p className="text-xs font-bold mb-2" style={{ color: 'var(--text-muted)' }}>PREVIEW — como aparece na tela de bloqueio</p>
+            <div className="flex flex-col gap-2">
+              {cfg.suporteWhatsapp ? (
+                <div className="flex items-center gap-2 text-sm" style={{ color: '#22c55e' }}>
+                  <MessageCircle size={13} /> 📲 Falar no WhatsApp → {cfg.suporteWhatsapp}
+                </div>
+              ) : (
+                <p className="text-xs" style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>WhatsApp não configurado</p>
+              )}
+              {cfg.suporteEmail && (
+                <div className="flex items-center gap-2 text-sm" style={{ color: '#3b82f6' }}>
+                  <Mail size={13} /> ✉️ {cfg.suporteEmail}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Nome do sistema */}
+      <div className="card p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Settings size={15} style={{ color: 'var(--accent)' }} />
+          <h3 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Geral</h3>
+        </div>
+        <div>
+          <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>Nome do sistema</label>
+          <input className="input" placeholder="Ex: Cheffya"
+            value={cfg.nomeSistema}
+            onChange={e => setCfg(c => ({ ...c, nomeSistema: e.target.value }))} />
+          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Aparece na tela de bloqueio e em mensagens automáticas</p>
+        </div>
+      </div>
+
+      <button className="btn btn-primary" style={{ alignSelf: 'flex-start', gap: 6 }} onClick={salvar}>
+        <Save size={14} /> {salvo ? '✓ Salvo!' : 'Salvar configurações'}
+      </button>
+    </div>
+  )
+}
+
 // ── Modal de confirmação para apagar conta ────────────────────────────────
 function ModalApagarUsuario({ usuario, onClose, onConfirmado }) {
   const [texto, setTexto] = useState('')
@@ -958,9 +1078,10 @@ export default function AdminPanel() {
   }
 
   const ABAS = [
-    { id: 'restaurantes', label: 'Restaurantes',     icon: Users },
-    { id: 'faturamento',  label: 'Faturamento SaaS', icon: CreditCard },
-    { id: 'planos',       label: 'Planos',            icon: Package },
+    { id: 'restaurantes',  label: 'Restaurantes',     icon: Users },
+    { id: 'faturamento',   label: 'Faturamento SaaS', icon: CreditCard },
+    { id: 'planos',        label: 'Planos',            icon: Package },
+    { id: 'configuracoes', label: 'Configurações',     icon: Settings },
   ]
 
   return (
@@ -1165,8 +1286,9 @@ export default function AdminPanel() {
         </>
       )}
 
-      {aba === 'faturamento' && <AbaFaturamento usuarios={usuarios} />}
-      {aba === 'planos'      && <AbaPlanos />}
+      {aba === 'faturamento'   && <AbaFaturamento usuarios={usuarios} />}
+      {aba === 'planos'        && <AbaPlanos />}
+      {aba === 'configuracoes' && <AbaConfiguracoes />}
 
       {/* Modal configurar plano do usuário */}
       {modalPlano && (

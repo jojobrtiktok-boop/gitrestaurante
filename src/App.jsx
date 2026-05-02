@@ -49,11 +49,20 @@ function ProtectedRoute({ children }) {
 }
 
 // ── Tela de plano bloqueado ────────────────────────────────────────────────
+function lerSaasConfig() {
+  try { return JSON.parse(localStorage.getItem('saas_config') || '{}') } catch { return {} }
+}
+
 function TelaPlanoBloqueado({ motivo, auth, onLogout }) {
   const expirado = motivo === 'expirado'
   const dataFim  = auth.planoFim
     ? new Date(auth.planoFim + 'T00:00:00').toLocaleDateString('pt-BR')
     : null
+  const cfg = lerSaasConfig()
+  const nomeSistema  = cfg.nomeSistema  || 'Cheffya'
+  const waNumero     = (cfg.suporteWhatsapp || '').replace(/\D/g, '')
+  const waMensagem   = cfg.suporteMensagem || `Olá, preciso renovar meu plano do ${nomeSistema}.`
+  const suporteEmail = cfg.suporteEmail || ''
 
   return (
     <div style={{
@@ -91,21 +100,34 @@ function TelaPlanoBloqueado({ motivo, auth, onLogout }) {
         </p>
 
         {/* Botão WhatsApp */}
-        <a
-          href="https://wa.me/5500000000000?text=Olá, preciso renovar meu plano do Cheffya."
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            background: '#22c55e', color: '#fff', fontWeight: 700, fontSize: 15,
-            padding: '13px 24px', borderRadius: 12, textDecoration: 'none',
-            marginBottom: 12, transition: 'opacity 0.15s',
-          }}
-          onMouseOver={e => e.currentTarget.style.opacity = '0.88'}
-          onMouseOut={e => e.currentTarget.style.opacity = '1'}
-        >
-          📲 Falar no WhatsApp
-        </a>
+        {waNumero && (
+          <a
+            href={`https://wa.me/${waNumero}?text=${encodeURIComponent(waMensagem)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              background: '#22c55e', color: '#fff', fontWeight: 700, fontSize: 15,
+              padding: '13px 24px', borderRadius: 12, textDecoration: 'none',
+              marginBottom: 12, transition: 'opacity 0.15s',
+            }}
+            onMouseOver={e => e.currentTarget.style.opacity = '0.88'}
+            onMouseOut={e => e.currentTarget.style.opacity = '1'}
+          >
+            📲 Falar no WhatsApp
+          </a>
+        )}
+
+        {/* Email de suporte */}
+        {suporteEmail && (
+          <a href={`mailto:${suporteEmail}`}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              color: '#3b82f6', fontSize: 13, textDecoration: 'none', marginBottom: 12, fontWeight: 600,
+            }}>
+            ✉️ {suporteEmail}
+          </a>
+        )}
 
         {/* Logout */}
         <button

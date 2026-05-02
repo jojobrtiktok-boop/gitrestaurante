@@ -18,21 +18,83 @@ function salvarLS(chave, valor) {
   try { localStorage.setItem(chave, JSON.stringify(valor)) } catch {}
 }
 
-// Agrupa entradas_vendas por user_id e calcula faturamento
-function calcularStatsSupabase(todasVendas, userId) {
-  const mesAtual = hoje().slice(0, 7)
-  const vendas = todasVendas.filter(v => v.user_id === userId)
-  let fatTotal = 0, fatMes = 0, vendasTotal = 0, vendasMes = 0
+// ── Helpers de data ────────────────────────────────────────────────────────
+function isoDate(d) { return d.toISOString().slice(0, 10) }
+function filtroPresets() {
+  const now = new Date()
+  const y = now.getFullYear(), m = now.getMonth()
+  const inicioSemana = new Date(now); inicioSemana.setDate(now.getDate() - now.getDay())
+  const fimSemana = new Date(inicioSemana); fimSemana.setDate(inicioSemana.getDate() + 6)
+  const mesPassadoIni = new Date(y, m - 1, 1)
+  const mesPassadoFim = new Date(y, m, 0)
+  return [
+    { label: 'Hoje',        de: isoDate(now),          ate: isoDate(now) },
+    { label: 'Esta semana', de: isoDate(inicioSemana),  ate: isoDate(fimSemana) },
+    { label: 'Este mês',    de: `${y}-${String(m+1).padStart(2,'0')}-01`, ate: isoDate(new Date(y, m+1, 0)) },
+    { label: 'Mês passado', de: isoDate(mesPassadoIni), ate: isoDate(mesPassadoFim) },
+    { label: 'Este ano',    de: `${y}-01-01`,           ate: `${y}-12-31` },
+    { label: 'Tudo',        de: '',                     ate: '' },
+  ]
+}
+
+// Filtro de datas reutilizável
+function FiltroDatas({ value, onChange }) {
+  const presets = filtroPresets()
+  const ativoIdx = presets.findIndex(p => p.de === value.de && p.ate === value.ate)
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Atalhos */}
+      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+        {presets.map((p, i) => (
+          <button key={p.label} onClick={() => onChange({ de: p.de, ate: p.ate })}
+            style={{
+              fontSize: 11, padding: '4px 10px', borderRadius: 20, border: 'none', cursor: 'pointer',
+              fontWeight: 600,
+              background: i === ativoIdx ? 'var(--accent)' : 'var(--bg-hover)',
+              color: i === ativoIdx ? '#fff' : 'var(--text-muted)',
+            }}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+      {/* Range customizado */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        <Calendar size={13} style={{ color: 'var(--text-muted)' }} />
+        <input type="date" className="input" style={{ width: 140, padding: '4px 8px', fontSize: 12 }}
+          value={value.de} onChange={e => onChange({ ...value, de: e.target.value })} />
+        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>até</span>
+        <input type="date" className="input" style={{ width: 140, padding: '4px 8px', fontSize: 12 }}
+          value={value.ate} onChange={e => onChange({ ...value, ate: e.target.value })} />
+        {(value.de || value.ate) && (
+          <button onClick={() => onChange({ de: '', ate: '' })}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+            <X size={13} />
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Agrupa entradas_vendas por user_id e calcula faturamento com filtro de datas
+function calcularStatsSupabase(todasVendas, userId, filtro = { de: '', ate: '' }) {
+  const vendas = todasVendas.filter(v => {
+    if (v.user_id !== userId) return false
+    if (filtro.de && v.data < filtro.de) return false
+    if (filtro.ate && v.data > filtro.ate) return false
+    return true
+  })
+  const vendasTodas = todasVendas.filter(v => v.user_id === userId)
+  let fatPeriodo = 0, fatTotal = 0, vendasPeriodo = 0, vendasTotal = 0
   for (const v of vendas) {
     const receita = ((v.preco_venda_unit || 0) + (v.extras_unit || 0)) * (v.quantidade || 0)
-    fatTotal += receita
-    vendasTotal += Number(v.quantidade || 0)
-    if (v.data?.startsWith(mesAtual)) {
-      fatMes += receita
-      vendasMes += Number(v.quantidade || 0)
-    }
+    fatPeriodo += receita; vendasPeriodo += Number(v.quantidade || 0)
   }
-  return { fatTotal, fatMes, vendasTotal, vendasMes }
+  for (const v of vendasTodas) {
+    const receita = ((v.preco_venda_unit || 0) + (v.extras_unit || 0)) * (v.quantidade || 0)
+    fatTotal += receita; vendasTotal += Number(v.quantidade || 0)
+  }
+  return { fatPeriodo, fatTotal, vendasPeriodo, vendasTotal }
 }
 
 // ── Status do plano ────────────────────────────────────────────────────────
@@ -227,11 +289,12 @@ function ModalPlanoUsuario({ usuario, planos, onClose, onSalvo }) {
 function AbaFaturamento({ usuarios }) {
   const [pagamentos, setPagamentos] = useState(() => lerLS('saas_pagamentos', []))
   const [planos] = useState(() => lerLS('saas_planos', PLANOS_PADRAO))
-  const [filtroMes, setFiltroMes] = useState('')
+  const [filtroFat, setFiltroFat] = useState(() => {
+    const p = filtroPresets(); return p[2] // "Este mês" por padrão
+  })
   const [modalAberto, setModalAberto] = useState(false)
   const [editando, setEditando] = useState(null)
 
-  const mesAtual = hoje().slice(0, 7)
   const formVazio = { clienteId: '', clienteNome: '', plano: '', valor: '', desconto_pct: 0, valorFinal: '', data: hoje(), status: 'pago', plataforma: '', observacao: '' }
   const [form, setForm] = useState(formVazio)
   const [erroForm, setErroForm] = useState('')
@@ -266,11 +329,18 @@ function AbaFaturamento({ usuarios }) {
     setModalAberto(true)
   }
 
-  const pagFiltrados = filtroMes ? pagamentos.filter(p => p.data?.startsWith(filtroMes)) : pagamentos
-  const receitaMes   = pagamentos.filter(p => p.status === 'pago' && p.data?.startsWith(mesAtual)).reduce((s, p) => s + p.valor, 0)
-  const receitaTotal = pagamentos.filter(p => p.status === 'pago').reduce((s, p) => s + p.valor, 0)
-  const pendentes    = pagamentos.filter(p => p.status === 'pendente').reduce((s, p) => s + p.valor, 0)
-  const clientesAtivos = [...new Set(pagamentos.filter(p => p.status === 'pago' && p.data?.startsWith(mesAtual)).map(p => p.clienteNome || p.clienteId))].length
+  const pagFiltrados = pagamentos.filter(p => {
+    if (filtroFat.de && p.data < filtroFat.de) return false
+    if (filtroFat.ate && p.data > filtroFat.ate) return false
+    return true
+  })
+  const receitaPeriodo = pagFiltrados.filter(p => p.status === 'pago').reduce((s, p) => s + p.valor, 0)
+  const receitaTotal   = pagamentos.filter(p => p.status === 'pago').reduce((s, p) => s + p.valor, 0)
+  const pendentes      = pagamentos.filter(p => p.status === 'pendente').reduce((s, p) => s + p.valor, 0)
+  const clientesAtivos = [...new Set(pagFiltrados.filter(p => p.status === 'pago').map(p => p.clienteNome || p.clienteId))].length
+  const labelFat = filtroFat.de && filtroFat.ate
+    ? `${filtroFat.de.split('-').reverse().join('/')} – ${filtroFat.ate.split('-').reverse().join('/')}`
+    : filtroFat.de ? `a partir de ${filtroFat.de.split('-').reverse().join('/')}` : 'Tudo'
 
   const grafico = useMemo(() => {
     const meses = []
@@ -284,16 +354,19 @@ function AbaFaturamento({ usuarios }) {
     return meses
   }, [pagamentos])
   const maxGrafico = Math.max(...grafico.map(m => m.valor), 1)
-
-  const mesesDisponiveis = [...new Set(pagamentos.map(p => p.data?.slice(0, 7)).filter(Boolean))].sort().reverse()
+  const mesAtual = hoje().slice(0, 7)
 
   return (
     <div>
+      {/* Filtro de datas */}
+      <div className="card p-4 mb-4">
+        <FiltroDatas value={filtroFat} onChange={setFiltroFat} />
+      </div>
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <StatCard label="Receita do Mês" valor={formatarMoeda(receitaMes)} cor="#3b82f6"
-          sub={new Date().toLocaleString('pt-BR', { month: 'long' })} />
+        <StatCard label="Receita do Período" valor={formatarMoeda(receitaPeriodo)} cor="#3b82f6" sub={labelFat} />
         <StatCard label="Receita Total" valor={formatarMoeda(receitaTotal)} cor="#7c3aed" sub="todos os tempos" />
-        <StatCard label="Clientes Ativos" valor={clientesAtivos} cor="#16a34a" sub="pagantes este mês" />
+        <StatCard label="Clientes Ativos" valor={clientesAtivos} cor="#16a34a" sub={`pagantes — ${labelFat}`} />
         <StatCard label="Aguardando" valor={formatarMoeda(pendentes)} cor="#f59e0b" sub="pagamentos pendentes" />
       </div>
 
@@ -329,12 +402,6 @@ function AbaFaturamento({ usuarios }) {
             <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(124,58,237,0.12)', color: '#7c3aed' }}>{pagFiltrados.length}</span>
           </div>
           <div className="flex items-center gap-2">
-            <select className="input text-xs" style={{ width: 'auto', padding: '5px 10px' }} value={filtroMes} onChange={e => setFiltroMes(e.target.value)}>
-              <option value="">Todos os meses</option>
-              {mesesDisponiveis.map(m => (
-                <option key={m} value={m}>{new Date(m + '-01').toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}</option>
-              ))}
-            </select>
             <button className="btn btn-primary" style={{ fontSize: 12, padding: '6px 12px' }} onClick={() => { setEditando(null); setForm(formVazio); setModalAberto(true) }}>
               <Plus size={13} /> Adicionar
             </button>
@@ -761,19 +828,26 @@ export default function AdminPanel() {
 
   const [planos] = useState(() => lerLS('saas_planos', PLANOS_PADRAO))
 
+  // filtros de data
+  const [filtroRest, setFiltroRest] = useState(() => {
+    const p = filtroPresets(); return p[2] // "Este mês" por padrão
+  })
+
   useEffect(() => { if (!authLoading && auth.isAdmin) carregarDados() }, [authLoading, auth.isAdmin])
 
   // ⚠️ useMemo DEVE ficar antes de qualquer early return (Rules of Hooks)
   const restaurantes = useMemo(() => {
     return usuarios
       .filter(u => !u.is_admin)
-      .map(u => ({ ...u, stats: calcularStatsSupabase(todasVendas, u.id) }))
+      .map(u => ({ ...u, stats: calcularStatsSupabase(todasVendas, u.id, filtroRest) }))
       .sort((a, b) => b.stats.fatTotal - a.stats.fatTotal)
-  }, [usuarios, todasVendas])
+  }, [usuarios, todasVendas, filtroRest])
 
-  const totalGlobalFat    = restaurantes.reduce((s, r) => s + r.stats.fatTotal, 0)
-  const totalGlobalFatMes = restaurantes.reduce((s, r) => s + r.stats.fatMes, 0)
-  const mesAtual = new Date().toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
+  const totalGlobalFat     = restaurantes.reduce((s, r) => s + r.stats.fatTotal, 0)
+  const totalGlobalPeriodo = restaurantes.reduce((s, r) => s + r.stats.fatPeriodo, 0)
+  const labelPeriodo = filtroRest.de && filtroRest.ate
+    ? `${filtroRest.de.split('-').reverse().join('/')} – ${filtroRest.ate.split('-').reverse().join('/')}`
+    : filtroRest.de ? `a partir de ${filtroRest.de.split('-').reverse().join('/')}` : 'Tudo'
 
   async function carregarDados() {
     setCarregando(true)
@@ -861,11 +935,16 @@ export default function AdminPanel() {
       {/* ── ABA RESTAURANTES ── */}
       {aba === 'restaurantes' && (
         <>
+          {/* Filtro de datas */}
+          <div className="card p-4 mb-4">
+            <FiltroDatas value={filtroRest} onChange={setFiltroRest} />
+          </div>
+
           {/* KPIs globais */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
             <StatCard label="Restaurantes" valor={restaurantes.length} cor="var(--accent)" />
-            <StatCard label={`Fat. — ${mesAtual}`} valor={formatarMoeda(totalGlobalFatMes)} cor="#3b82f6" />
-            <StatCard label="Fat. Total (todos)" valor={formatarMoeda(totalGlobalFat)} cor="#7c3aed" />
+            <StatCard label="Fat. Período" valor={formatarMoeda(totalGlobalPeriodo)} cor="#3b82f6" sub={labelPeriodo} />
+            <StatCard label="Fat. Total (tudo)" valor={formatarMoeda(totalGlobalFat)} cor="#7c3aed" />
             <StatCard label="Com plano ativo" valor={restaurantes.filter(r => r.plano_ativo && (!r.plano_fim || new Date(r.plano_fim) >= new Date())).length} cor="#16a34a" sub="assinantes" />
           </div>
 
@@ -913,8 +992,8 @@ export default function AdminPanel() {
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right hidden sm:block">
-                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Mês</p>
-                          <p className="font-bold text-sm" style={{ color: '#3b82f6' }}>{formatarMoeda(s.fatMes)}</p>
+                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Período</p>
+                          <p className="font-bold text-sm" style={{ color: '#3b82f6' }}>{formatarMoeda(s.fatPeriodo)}</p>
                         </div>
                         <div className="text-right hidden sm:block">
                           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Total</p>
@@ -928,8 +1007,8 @@ export default function AdminPanel() {
                       <div className="px-5 py-4">
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
                           {[
-                            { icon: Calendar,    label: 'Fat. Mês',     valor: formatarMoeda(s.fatMes),    cor: '#3b82f6', sub: `${s.vendasMes} unid.` },
-                            { icon: DollarSign,  label: 'Fat. Total',   valor: formatarMoeda(s.fatTotal),  cor: '#7c3aed', sub: `${s.vendasTotal} unid. total` },
+                            { icon: Calendar,    label: 'Fat. Período', valor: formatarMoeda(s.fatPeriodo),    cor: '#3b82f6', sub: `${s.vendasPeriodo} unid.` },
+                            { icon: DollarSign,  label: 'Fat. Total',   valor: formatarMoeda(s.fatTotal),     cor: '#7c3aed', sub: `${s.vendasTotal} unid. total` },
                             { icon: Tag,         label: 'Plano',        valor: r.plano_ativo || '—',        cor: '#16a34a', sub: r.plano_fim ? `Vence ${new Date(r.plano_fim).toLocaleDateString('pt-BR')}` : 'Sem vencimento' },
                             { icon: TrendingUp,  label: 'Desconto',     valor: r.desconto_pct > 0 ? `-${r.desconto_pct}%` : '—', cor: '#f59e0b', sub: r.obs_admin || ' ' },
                           ].map(({ icon: Icon, label, valor, cor, sub }) => (

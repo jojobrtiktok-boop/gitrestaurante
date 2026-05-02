@@ -20,7 +20,8 @@ function salvarLS(chave, valor) {
 
 // ── Stats por restaurante ──────────────────────────────────────────────────
 function calcularStats(userId) {
-  const prefixo = `rd_${userId.slice(0, 8)}_`
+  try {
+  const prefixo = `rd_${(userId || '').slice(0, 8)}_`
   const entradas = lerLS(prefixo + 'entradas_vendas', [])
   const pedidos = lerLS(prefixo + 'pedidos', [])
   const pratos = lerLS(prefixo + 'pratos', [])
@@ -38,6 +39,7 @@ function calcularStats(userId) {
   const ultimaVenda = entradas.length > 0
     ? entradas.reduce((max, e) => e.data > max ? e.data : max, '') : null
   return { fatTotal, fatMes, lucroTotal, lucroMes, vendasTotal, vendasMes, ultimaVenda, totalEntradas: entradas.length }
+  } catch { return { fatTotal: 0, fatMes: 0, lucroTotal: 0, lucroMes: 0, vendasTotal: 0, vendasMes: 0, ultimaVenda: null, totalEntradas: 0 } }
 }
 
 // ── Sub-componentes ────────────────────────────────────────────────────────
@@ -533,7 +535,7 @@ function AbaPlanos() {
 
 // ── Componente principal ───────────────────────────────────────────────────
 export default function AdminPanel() {
-  const { auth, cadastrarUsuario } = useApp()
+  const { auth, authLoading, cadastrarUsuario } = useApp()
   const [aba, setAba] = useState('restaurantes')
   const [expandido, setExpandido] = useState(null)
   const [usuarios, setUsuarios] = useState([])
@@ -572,6 +574,15 @@ export default function AdminPanel() {
     setNovoNome(''); setNovoEmail(''); setNovaS('')
     setOkU(true); setTimeout(() => setOkU(false), 2500)
     carregarUsuarios()
+  }
+
+  // Aguarda o Supabase confirmar a sessão antes de checar isAdmin
+  if (authLoading) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Carregando...</p>
+      </div>
+    )
   }
 
   if (!auth.isAdmin) {

@@ -481,7 +481,7 @@ function AbaPlanos() {
   const [apiConfig, setApiConfig] = useState(() => lerLS('saas_api_config', { plataforma: '', webhook_secret: '', api_key: '', api_url: '' }))
   const [modalAberto, setModalAberto] = useState(false)
   const [editando, setEditando] = useState(null)
-  const formVazio = { nome: '', preco: '', periodo: 'mensal', descricao: '', ativo: true }
+  const formVazio = { nome: '', preco: '', periodo: 'mensal', descricao: '', plataforma: '', produto_id: '', ativo: true }
   const [form, setForm] = useState(formVazio)
   const [erroForm, setErroForm] = useState('')
 
@@ -561,9 +561,17 @@ function AbaPlanos() {
                     color: p.periodo === 'anual' ? '#ca8a04' : p.periodo === 'trimestral' ? '#9333ea' : '#3b82f6',
                     fontWeight: 700,
                   }}>{p.periodo}</span>
+                  {p.plataforma && (
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(99,102,241,0.12)', color: '#6366f1', fontWeight: 600 }}>
+                      {p.plataforma}
+                    </span>
+                  )}
                   {!p.ativo && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>Inativo</span>}
                 </div>
-                {p.descricao && <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{p.descricao}</p>}
+                <div className="flex items-center gap-3 mt-0.5">
+                  {p.descricao && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{p.descricao}</p>}
+                  {p.produto_id && <p className="text-xs" style={{ color: 'var(--text-muted)', fontFamily: 'monospace' }}>ID: {p.produto_id}</p>}
+                </div>
               </div>
               <p className="font-bold text-base shrink-0" style={{ color: '#16a34a' }}>{formatarMoeda(p.preco)}</p>
               <div className="flex items-center gap-1 shrink-0">
@@ -682,6 +690,45 @@ function AbaPlanos() {
               <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>Descrição</label>
               <input className="input" placeholder="Ex: Pedidos ilimitados..." value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} />
             </div>
+
+            {/* Plataforma + ID do produto */}
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+              <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Plataforma de pagamento</p>
+              <div className="flex gap-3">
+                <div style={{ flex: 1 }}>
+                  <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>Plataforma</label>
+                  <select className="input" value={form.plataforma} onChange={e => setForm(f => ({ ...f, plataforma: e.target.value }))}>
+                    <option value="">Nenhuma</option>
+                    <option value="Stripe">Stripe</option>
+                    <option value="Hotmart">Hotmart</option>
+                    <option value="Kiwify">Kiwify</option>
+                    <option value="CartPanda">CartPanda</option>
+                    <option value="Cakto">Cakto</option>
+                  </select>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-muted)' }}>
+                    ID do produto na plataforma
+                  </label>
+                  <input className="input" placeholder={
+                    form.plataforma === 'Stripe' ? 'price_1ABC...' :
+                    form.plataforma === 'Hotmart' ? 'P12345' :
+                    form.plataforma === 'Kiwify' ? 'prod_abc...' :
+                    'ID do produto'
+                  } value={form.produto_id} onChange={e => setForm(f => ({ ...f, produto_id: e.target.value }))} />
+                </div>
+              </div>
+              {form.plataforma && (
+                <p className="text-xs mt-2" style={{ color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  {form.plataforma === 'Stripe' && '📌 Stripe: Dashboard → Products → seu produto → copie o Price ID (price_...)'}
+                  {form.plataforma === 'Hotmart' && '📌 Hotmart: Produtos → seu produto → a URL contém o ID (ex: /product/P12345)'}
+                  {form.plataforma === 'Kiwify' && '📌 Kiwify: Produtos → seu produto → Configurações → copie o Product ID'}
+                  {form.plataforma === 'CartPanda' && '📌 CartPanda: Produtos → seu produto → copie o ID da URL'}
+                  {form.plataforma === 'Cakto' && '📌 Cakto: Produtos → seu produto → copie o ID do produto'}
+                </p>
+              )}
+            </div>
+
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={form.ativo} onChange={e => setForm(f => ({ ...f, ativo: e.target.checked }))} />
               <span className="text-sm" style={{ color: 'var(--text-primary)' }}>Plano ativo</span>

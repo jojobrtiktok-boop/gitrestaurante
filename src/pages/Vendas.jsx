@@ -350,15 +350,22 @@ export default function Vendas() {
     .filter(e => e.data >= dataInicio && e.data <= dataFim)
     .sort((a, b) => b.data !== a.data ? b.data.localeCompare(a.data) : b.hora.localeCompare(a.hora))
 
+  // pedido "quitado": pago=true OU status terminal (completo/pronto/entregue) — histórico pode não ter pago=true
+  function pedidoQuitado(ped) {
+    if (!ped) return true // lançamento manual sem pedido vinculado → conta
+    if (ped.cancelado) return false
+    if (ped.pago === true) return true
+    return ['completo', 'pronto', 'entregue'].includes(ped.status)
+  }
+
   const entradasPagas = entradasDia.filter(e => {
     const ped = pedidoDeEntrada(e)
-    if (ped?.cancelado) return false
-    return !ped || ped.pago === true
+    return pedidoQuitado(ped)
   })
 
   const entradasPendentes = entradasDia.filter(e => {
     const ped = pedidoDeEntrada(e)
-    return ped && !ped.pago && !ped.cancelado
+    return ped && !ped.cancelado && !pedidoQuitado(ped)
   })
 
   const totalReceita = entradasPagas.reduce((s, e) => {

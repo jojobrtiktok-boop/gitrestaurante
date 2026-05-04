@@ -4,7 +4,7 @@ import {
   Calendar, Trash2, UserPlus, KeyRound, CreditCard, Package, Plus,
   CheckCircle2, Clock, XCircle, BarChart3, Pencil, X, Plug, Tag,
   AlertTriangle, Webhook, Settings, MessageCircle, Mail, Phone, Save,
-  Gift, Package,
+  Gift,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import { supabase } from '../lib/supabase.js'

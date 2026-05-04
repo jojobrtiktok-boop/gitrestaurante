@@ -1554,11 +1554,11 @@ function CardapioDigitalConfig() {
           </button>
         </div>
 
-        {garcons.length === 0 ? (
+        {garcons.filter(g => g.ativo !== false).length === 0 ? (
           <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted)' }}>Nenhum garçon cadastrado ainda.</p>
         ) : (
           <div className="flex flex-col gap-2">
-            {garcons.map(g => {
+            {garcons.filter(g => g.ativo !== false).map(g => {
               const link = `${base}/comanda/${g.token}`
               return (
                 <div key={g.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
@@ -1576,7 +1576,12 @@ function CardapioDigitalConfig() {
                   <a href={`/comanda/${g.token}`} target="_blank" className="btn btn-ghost p-1.5 shrink-0" title="Abrir comanda">
                     <Smartphone size={13} />
                   </a>
-                  <button className="btn btn-ghost p-1.5 shrink-0" style={{ color: '#ef4444' }} onClick={() => removerGarcon(g.id)}>
+                  <button className="btn btn-ghost p-1.5 shrink-0" style={{ color: '#ef4444' }}
+                    title="Desativar garçon (histórico de vendas é preservado)"
+                    onClick={() => {
+                      if (window.confirm(`Desativar "${g.nome}"?\n\nO garçon será removido da lista ativa, mas todo o histórico de vendas e pedidos dele continuará salvo no sistema.`))
+                        removerGarcon(g.id)
+                    }}>
                     <Trash2 size={13} />
                   </button>
                 </div>

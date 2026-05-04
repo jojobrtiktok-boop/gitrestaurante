@@ -258,10 +258,10 @@ function rowToImposto(row) {
 }
 
 function garconToRow(g, uid) {
-  return { id: g.id, user_id: uid, nome: g.nome, token: g.token }
+  return { id: g.id, user_id: uid, nome: g.nome, token: g.token, ativo: g.ativo !== false }
 }
 function rowToGarcon(row) {
-  return { id: row.id, nome: row.nome, token: row.token }
+  return { id: row.id, nome: row.nome, token: row.token, ativo: row.ativo !== false }
 }
 
 function clienteToRow(c, uid) {
@@ -1706,9 +1706,9 @@ export function AppProvider({ children }) {
   }
 
   function removerGarcon(id) {
-    setGarcons(prev => prev.filter(g => g.id !== id))
-    setPedidos(prev => prev.filter(p => p.garconId !== id))
-    if (auth.userId) sbWrite(supabase.from('garcons').delete().eq('id', id).eq('user_id', auth.userId))
+    // Soft delete: mantém histórico, apenas desativa
+    setGarcons(prev => prev.map(g => g.id === id ? { ...g, ativo: false } : g))
+    if (auth.userId) sbWrite(supabase.from('garcons').update({ ativo: false }).eq('id', id).eq('user_id', auth.userId))
   }
 
   // ── Clientes ──────────────────────────────────────────────────────────

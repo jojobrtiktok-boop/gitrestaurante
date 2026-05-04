@@ -267,10 +267,17 @@ function RelatorioTempo({ pedidos, pratos, dataInicio, dataFim }) {
 export default function Vendas() {
   const { entradasVendas, removerEntradaVenda, pratos, ingredientes, garcons, pedidos, mesas, clientes, sessoesMesas, kanbanConfig, marcarPedidoPago, cardapioConfig, marcarEntregue, carregarPeriodo } = useApp()
   const h = hoje()
-  const [periodo, setPeriodo] = useState({ dataInicio: h, dataFim: h })
+  const [periodo, setPeriodo] = useState(() => {
+    try {
+      const salvo = JSON.parse(localStorage.getItem('rd_vendas_periodo'))
+      if (salvo?.dataInicio && salvo?.dataFim) return salvo
+    } catch {}
+    return { dataInicio: h, dataFim: h }
+  })
 
   function handlePeriodo(p) {
     setPeriodo(p)
+    localStorage.setItem('rd_vendas_periodo', JSON.stringify(p))
     carregarPeriodo(p.dataInicio)
   }
   const [entradaDetalhe, setEntradaDetalhe] = useState(null)

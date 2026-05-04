@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { DollarSign, TrendingUp, Award, ShoppingBag, TrendingDown, BarChart2, Wallet, Info, X, ChevronDown, ChevronUp, Clock, Trophy, Layers, UtensilsCrossed, Truck, ArrowDownCircle, ArrowUpCircle, LockKeyhole, Printer, Users } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { useApp } from '../context/AppContext.jsx'
@@ -244,10 +244,14 @@ function ultimoDiaMesAnterior() {
 }
 
 function ResultadoGeral() {
-  const { pratos, ingredientes, entradasVendas, despesas, pedidos } = useApp()
+  const { pratos, ingredientes, entradasVendas, despesas, pedidos, carregarPeriodo } = useApp()
   const h = hoje()
   const [resInicio, setResInicio] = useState(primeiroDiaMes)
   const [resFim, setResFim] = useState(h)
+
+  useEffect(() => {
+    carregarPeriodo(resInicio)
+  }, [resInicio])
   const [expandido, setExpandido] = useState(null)
 
   const entradas = useMemo(() =>
@@ -521,12 +525,22 @@ function ResultadoGeral() {
 export default function VisaoGeral() {
   const { pratos, ingredientes, registrosVendas, entradasVendas, pedidos, garcons, tema, registrarCaixaInicial, getCaixaInicial, getCaixaInicialPeriodo, movimentosCaixa, adicionarMovimentoCaixa, removerMovimentoCaixa, getMovimentosCaixaDia, carregarPeriodo } = useApp()
   const h = hoje()
-  const [periodo, setPeriodo] = useState({ dataInicio: h, dataFim: h })
+  const [periodo, setPeriodo] = useState(() => {
+    try {
+      const salvo = JSON.parse(localStorage.getItem('rd_visaogeral_periodo'))
+      if (salvo?.dataInicio && salvo?.dataFim) return salvo
+    } catch {}
+    return { dataInicio: h, dataFim: h }
+  })
 
   function handlePeriodo(p) {
     setPeriodo(p)
-    carregarPeriodo(p.dataInicio)
+    localStorage.setItem('rd_visaogeral_periodo', JSON.stringify(p))
   }
+
+  useEffect(() => {
+    carregarPeriodo(periodo.dataInicio)
+  }, [periodo.dataInicio])
   const [modalCaixa, setModalCaixa] = useState(false)
   const [modalFechamento, setModalFechamento] = useState(false)
   const [aba, setAba] = useState('resumo')
@@ -730,7 +744,7 @@ export default function VisaoGeral() {
                 ))}
               </div>
 
-              <FiltroPeriodo onChange={handlePeriodo} />
+              <FiltroPeriodo onChange={handlePeriodo} initialIni={periodo.dataInicio} initialFim={periodo.dataFim} />
             </div>
           </div>
 

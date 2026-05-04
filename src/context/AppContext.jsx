@@ -975,7 +975,12 @@ export function AppProvider({ children }) {
 
       const pds = (pdsRaw || []).map(rowToPedido)
       setKanbanConfig(kbc)
-      setPedidos(pds)
+      // Map-merge: preserva todos os pedidos já em memória, substitui/acrescenta os vindos do servidor
+      setPedidos(prev => {
+        const m = new Map(prev.map(p => [p.id, p]))
+        pds.forEach(p => { if (!pedidosLockRef.current.has(p.id)) m.set(p.id, p) })
+        return Array.from(m.values())
+      })
       setPratos(prts)
       setGarcons(gars)
       setMesas(mss)
@@ -1024,12 +1029,24 @@ export function AppProvider({ children }) {
 
       if (ingsRaw) setIngredientes(ingsRaw.map(rowToIng))
       if (rvsRaw)  setRegistrosVendas(rvsRaw.map(rowToRegistroVenda))
-      if (evsRaw)  setEntradasVendas(evsRaw.map(rowToEntradaVenda))
+      // Map-merge: preserva todos os registros já em memória, substitui/acrescenta os vindos do servidor
+      if (evsRaw) setEntradasVendas(prev => {
+        const novas = evsRaw.map(rowToEntradaVenda)
+        const m = new Map(prev.map(e => [e.id, e]))
+        novas.forEach(e => m.set(e.id, e))
+        return Array.from(m.values())
+      })
       if (cosRaw)  setCompras(cosRaw.map(rowToCompra))
       if (cisRaw)  setCaixaInicialState(cisRaw.map(rowToCaixaInicial))
       if (smsRaw)  setSessoesMesas(smsRaw.map(rowToSessaoMesa))
-      if (mvsRaw)  setMovimentosCaixa(mvsRaw.map(rowToMovimentoCaixa))
-      setPeriodoCarregado(dataLimite) // marca que temos dados a partir de hoje
+      if (mvsRaw) setMovimentosCaixa(prev => {
+        const novas = mvsRaw.map(rowToMovimentoCaixa)
+        const m = new Map(prev.map(mv => [mv.id, mv]))
+        novas.forEach(mv => m.set(mv.id, mv))
+        return Array.from(m.values())
+      })
+      // Não sobrescreve periodoCarregado se carregarPeriodo já carregou período mais antigo
+      setPeriodoCarregado(prev => (prev && prev < dataLimite) ? prev : dataLimite)
       setConfiguracaoGeral(cgRaw ? { estoqueMinimoPadrao: Number(cgRaw.estoque_minimo_padrao || 0) } : { estoqueMinimoPadrao: 0 })
       setConfiguracaoDelivery(rowToDeliveryConfig(cdRaw))
       if (lcsRaw)  setListaCompras(lcsRaw.map(rowToListaCompra))
@@ -1059,15 +1076,12 @@ export function AppProvider({ children }) {
         supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', dataLimiteRtStr).then(({ data }) => {
           if (data) {
             const pds = data.map(rowToPedido)
-            // Merge seguro: não sobrescreve pedidos modificados localmente nos últimos 3.5s
-            if (pedidosLockRef.current.size > 0) {
-              setPedidos(prev => {
-                const prevMap = Object.fromEntries(prev.map(p => [p.id, p]))
-                return pds.map(sp => pedidosLockRef.current.has(sp.id) ? (prevMap[sp.id] || sp) : sp)
-              })
-            } else {
-              setPedidos(pds)
-            }
+            // Map-merge: preserva pedidos históricos e respeita lock local
+            setPedidos(prev => {
+              const m = new Map(prev.map(p => [p.id, p]))
+              pds.forEach(sp => { if (!pedidosLockRef.current.has(sp.id)) m.set(sp.id, sp) })
+              return Array.from(m.values())
+            })
             // Atualiza cache com apenas pedidos de hoje
             try {
               const raw = localStorage.getItem(_cacheKey(uid))
@@ -1090,7 +1104,12 @@ export function AppProvider({ children }) {
         // Verifica user_id manualmente pois filter pode falhar com inserções anon (display page)
         if (payload.new?.user_id === uid || payload.old?.user_id === uid) {
           supabase.from('entradas_vendas').select('*').eq('user_id', uid).then(({ data }) => {
-            if (data) setEntradasVendas(data.map(rowToEntradaVenda))
+            if (data) setEntradasVendas(prev => {
+            const novas = data.map(rowToEntradaVenda)
+            const m = new Map(prev.map(e => [e.id, e]))
+            novas.forEach(e => m.set(e.id, e))
+            return Array.from(m.values())
+          })
           })
         }
       })
@@ -1114,16 +1133,14 @@ export function AppProvider({ children }) {
         .then(({ data }) => {
           if (data) {
             const pds = data.map(rowToPedido)
+            // Map-merge: o poll só traz hoje, mas preserva histórico via Map
             setPedidos(prev => {
+              const m = new Map(prev.map(p => [p.id, p]))
+              pds.forEach(sp => { if (!pedidosLockRef.current.has(sp.id)) m.set(sp.id, sp) })
+              const next = Array.from(m.values())
               const key = p => `${p.id}${p.status}${p.pago}${p.cancelado}`
-              // Merge seguro: preserva pedidos modificados localmente nos últimos 3.5s
-              const merged = pedidosLockRef.current.size > 0
-                ? pds.map(sp => pedidosLockRef.current.has(sp.id) ? (prev.find(p => p.id === sp.id) || sp) : sp)
-                : pds
-              if (prev.length !== merged.length) return merged
-              const prevKey = prev.map(key).join()
-              const newKey  = merged.map(key).join()
-              return prevKey === newKey ? prev : merged
+              if (prev.length === next.length && prev.map(key).join() === next.map(key).join()) return prev
+              return next
             })
           }
         })
@@ -1137,10 +1154,17 @@ export function AppProvider({ children }) {
       supabase.from('entradas_vendas').select('*').eq('user_id', uid).gte('data', hojeStr)
         .then(({ data }) => {
           if (!data) return
+          // Map-merge: o poll só traz hoje, mas preserva histórico via Map
           setEntradasVendas(prev => {
-            if (prev.length !== data.length) return data.map(rowToEntradaVenda)
-            const ids = d => d.map(x => x.id).sort().join()
-            return ids(prev) === ids(data) ? prev : data.map(rowToEntradaVenda)
+            const novas = data.map(rowToEntradaVenda)
+            const m = new Map(prev.map(e => [e.id, e]))
+            novas.forEach(e => m.set(e.id, e))
+            const next = Array.from(m.values())
+            if (prev.length === next.length) {
+              const ids = d => d.map(x => x.id).sort().join()
+              return ids(prev) === ids(next) ? prev : next
+            }
+            return next
           })
         })
     }, 30000)
@@ -1159,9 +1183,21 @@ export function AppProvider({ children }) {
       supabase.from('entradas_vendas').select('*').eq('user_id', uid).gte('data', dataInicio),
       supabase.from('movimentos_caixa').select('*').eq('user_id', uid).gte('data', dataInicio).then(r => r, () => ({ data: [] })),
     ])
-    if (pdsRaw) setPedidos(pdsRaw.map(rowToPedido))
-    if (evsRaw) setEntradasVendas(evsRaw.map(rowToEntradaVenda))
-    if (mvsRaw) setMovimentosCaixa(mvsRaw.map(rowToMovimentoCaixa))
+    if (pdsRaw) setPedidos(prev => {
+      const m = new Map(prev.map(p => [p.id, p]))
+      pdsRaw.map(rowToPedido).forEach(p => { if (!pedidosLockRef.current.has(p.id)) m.set(p.id, p) })
+      return Array.from(m.values())
+    })
+    if (evsRaw) setEntradasVendas(prev => {
+      const m = new Map(prev.map(e => [e.id, e]))
+      evsRaw.map(rowToEntradaVenda).forEach(e => m.set(e.id, e))
+      return Array.from(m.values())
+    })
+    if (mvsRaw) setMovimentosCaixa(prev => {
+      const m = new Map(prev.map(mv => [mv.id, mv]))
+      mvsRaw.map(rowToMovimentoCaixa).forEach(mv => m.set(mv.id, mv))
+      return Array.from(m.values())
+    })
     setPeriodoCarregado(dataInicio)
   }
 

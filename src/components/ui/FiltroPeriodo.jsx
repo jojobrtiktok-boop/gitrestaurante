@@ -146,10 +146,10 @@ const PERIODOS = [
   { id: 'custom', label: 'Período' },
 ]
 
-export default function FiltroPeriodo({ onChange, defaultPeriodo = 'hoje' }) {
-  const [periodo, setPeriodo] = useState(defaultPeriodo)
-  const [dataInicio, setDataInicio] = useState(hoje())
-  const [dataFim, setDataFim] = useState(hoje())
+export default function FiltroPeriodo({ onChange, defaultPeriodo = 'hoje', initialIni, initialFim }) {
+  const [periodo, setPeriodo] = useState(() => (initialIni && initialFim) ? 'custom' : defaultPeriodo)
+  const [dataInicio, setDataInicio] = useState(initialIni || hoje())
+  const [dataFim, setDataFim] = useState(initialFim || hoje())
   const [aberto, setAberto] = useState(false)
   const wrapperRef = useRef(null)
 
@@ -167,6 +167,7 @@ export default function FiltroPeriodo({ onChange, defaultPeriodo = 'hoje' }) {
     if (periodo === 'hoje')   notify(h, h)
     if (periodo === 'semana') notify(inicioSemana(), h)
     if (periodo === 'mes')    notify(inicioMes(), h)
+    if (periodo === 'custom') notify(dataInicio, dataFim)
   }, [periodo])
 
   function notify(ini, fim) {

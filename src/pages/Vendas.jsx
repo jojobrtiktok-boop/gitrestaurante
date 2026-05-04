@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ShoppingCart, Trash2, Clock, X, Check, Printer, FileText, Truck, MapPin, User, Timer, ChevronDown, ChevronUp, AlertTriangle, Phone, Cake } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import TabelaVazia from '../components/ui/TabelaVazia.jsx'
@@ -278,8 +278,11 @@ export default function Vendas() {
   function handlePeriodo(p) {
     setPeriodo(p)
     localStorage.setItem('rd_vendas_periodo', JSON.stringify(p))
-    carregarPeriodo(p.dataInicio)
   }
+
+  useEffect(() => {
+    carregarPeriodo(periodo.dataInicio)
+  }, [periodo.dataInicio])
   const [entradaDetalhe, setEntradaDetalhe] = useState(null)
   const [aba, setAba] = useState('lancamentos')
   const [extratoInicio, setExtratoInicio] = useState(h)
@@ -680,7 +683,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
           <h1 className="page-title">Vendas</h1>
           <p className="page-subtitle">Histórico de lançamentos com horário</p>
         </div>
-        <FiltroPeriodo onChange={handlePeriodo} />
+        <FiltroPeriodo onChange={handlePeriodo} initialIni={periodo.dataInicio} initialFim={periodo.dataFim} />
       </div>
 
       <div className="grid gap-3 mb-6" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>

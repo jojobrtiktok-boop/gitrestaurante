@@ -622,6 +622,7 @@ export function AppProvider({ children }) {
   const [motoboys, setMotoboys] = useState([])
   const [movimentosCaixa, setMovimentosCaixa] = useState([])
   const [periodoCarregado, setPeriodoCarregado] = useState(null) // dataInicio mais antiga carregada
+  const periodoCarregadoRef = useRef(null) // ref síncrono — evita stale closure no guard
 
   const userIdRef = useRef(null)
   const notifConfigRef = useRef(notifConfig)
@@ -903,6 +904,8 @@ export function AppProvider({ children }) {
     setPerfil({ foto: null, nomeExibicao: '' })
     setMotoboys([])
     setMovimentosCaixa([])
+    setPeriodoCarregado(null)
+    periodoCarregadoRef.current = null
   }
 
   // ── Carregar todos os dados quando userId muda ────────────────────────
@@ -1046,7 +1049,11 @@ export function AppProvider({ children }) {
         return Array.from(m.values())
       })
       // Não sobrescreve periodoCarregado se carregarPeriodo já carregou período mais antigo
-      setPeriodoCarregado(prev => (prev && prev < dataLimite) ? prev : dataLimite)
+      setPeriodoCarregado(prev => {
+        const next = (prev && prev < dataLimite) ? prev : dataLimite
+        periodoCarregadoRef.current = next
+        return next
+      })
       setConfiguracaoGeral(cgRaw ? { estoqueMinimoPadrao: Number(cgRaw.estoque_minimo_padrao || 0) } : { estoqueMinimoPadrao: 0 })
       setConfiguracaoDelivery(rowToDeliveryConfig(cdRaw))
       if (lcsRaw)  setListaCompras(lcsRaw.map(rowToListaCompra))
@@ -1175,8 +1182,11 @@ export function AppProvider({ children }) {
   // ── Carregar período histórico sob demanda ────────────────────────────
   async function carregarPeriodo(dataInicio) {
     if (!auth.userId) return
-    // Só busca se a data pedida for anterior ao que já temos
-    if (periodoCarregado && dataInicio >= periodoCarregado) return
+    // Usa ref (não state) para evitar stale closure — lê valor sempre atualizado
+    const jaCarregado = periodoCarregadoRef.current
+    if (jaCarregado && dataInicio >= jaCarregado) return
+    // Marca imediatamente (síncrono) para bloquear chamadas concorrentes
+    periodoCarregadoRef.current = dataInicio
     const uid = auth.userId
     const [{ data: pdsRaw }, { data: evsRaw }, { data: mvsRaw }] = await Promise.all([
       supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', dataInicio),
@@ -1198,6 +1208,7 @@ export function AppProvider({ children }) {
       mvsRaw.map(rowToMovimentoCaixa).forEach(mv => m.set(mv.id, mv))
       return Array.from(m.values())
     })
+    periodoCarregadoRef.current = dataInicio
     setPeriodoCarregado(dataInicio)
   }
 

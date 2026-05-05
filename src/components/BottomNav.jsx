@@ -38,7 +38,7 @@ export default function BottomNav() {
                 }} />
               )}
               <Icon size={20} />
-              <span style={{ fontSize: 10, fontWeight: isActive ? 700 : 500 }}>{label}</span>
+              <span className="bottom-nav-label" style={{ fontSize: 10, fontWeight: isActive ? 700 : 500 }}>{label}</span>
             </>
           )}
         </NavLink>

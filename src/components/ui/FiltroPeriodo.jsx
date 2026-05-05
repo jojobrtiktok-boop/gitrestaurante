@@ -212,10 +212,12 @@ export default function FiltroPeriodo({ onChange, defaultPeriodo = 'hoje', initi
 
       {/* Popup calendário */}
       {aberto && (
-        <div style={{
-          position: 'absolute',
-          top: '100%',
-          right: 0,
+        <div className="fp-popup" style={{
+          position: 'fixed',
+          top: 'auto',
+          bottom: 'auto',
+          right: 'auto',
+          left: 'auto',
           marginTop: 6,
           zIndex: 1000,
           background: 'var(--bg-card)',
@@ -223,7 +225,17 @@ export default function FiltroPeriodo({ onChange, defaultPeriodo = 'hoje', initi
           borderRadius: 14,
           boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
           minWidth: 260,
-        }}>
+          maxWidth: '100vw',
+        }}
+          ref={el => {
+            if (!el || !wrapperRef.current) return
+            const rect = wrapperRef.current.getBoundingClientRect()
+            const popupW = 270
+            const left = Math.max(8, Math.min(rect.right - popupW, window.innerWidth - popupW - 8))
+            el.style.left = left + 'px'
+            el.style.top = (rect.bottom + 6) + 'px'
+          }}
+        >
           <Calendario ini={dataInicio} fim={dataFim} onSelect={handleCalendario} />
         </div>
       )}

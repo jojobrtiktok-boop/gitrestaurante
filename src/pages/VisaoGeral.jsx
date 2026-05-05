@@ -713,16 +713,14 @@ export default function VisaoGeral() {
               <h1 className="page-title">Relatório</h1>
               <p className="page-subtitle">Resumo financeiro do período</p>
             </div>
-            <div className="flex items-center gap-2 flex-wrap" style={{ justifyContent: 'flex-end' }}>
+            <div className="vg-header-actions flex items-center gap-2 flex-wrap" style={{ justifyContent: 'flex-end' }}>
               <button
                 className="btn btn-secondary"
                 onClick={() => setModalCaixa(true)}
                 style={{ gap: 6 }}
               >
                 <Wallet size={14} />
-                {caixaInicialValor != null && caixaInicialValor > 0
-                  ? `Caixa: ${formatarMoeda(caixaInicialValor)}`
-                  : 'Caixa Inicial'}
+                <span className="canal-label">{caixaInicialValor != null && caixaInicialValor > 0 ? `Caixa: ${formatarMoeda(caixaInicialValor)}` : 'Caixa'}</span>
               </button>
               {isPeriodoUnico && (
                 <button
@@ -731,7 +729,7 @@ export default function VisaoGeral() {
                   style={{ gap: 6, color: '#f59e0b', borderColor: 'rgba(245,158,11,0.3)' }}
                 >
                   <LockKeyhole size={14} />
-                  Fechar Caixa
+                  <span className="canal-label">Fechar Caixa</span>
                 </button>
               )}
 
@@ -739,11 +737,12 @@ export default function VisaoGeral() {
               <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)', flexShrink: 0 }}>
                 {[
                   { id: 'todos',       label: 'Todos',       Icon: Layers },
-                  { id: 'restaurante', label: 'Restaurante', Icon: UtensilsCrossed },
+                  { id: 'restaurante', label: 'Rest.',        Icon: UtensilsCrossed },
                   { id: 'delivery',    label: 'Delivery',    Icon: Truck },
                 ].map((op, i, arr) => (
                   <button
                     key={op.id}
+                    className="canal-btn"
                     onClick={() => setCanalFiltro(op.id)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 5,
@@ -755,7 +754,7 @@ export default function VisaoGeral() {
                     }}
                   >
                     <op.Icon size={12} />
-                    {op.label}
+                    <span className="canal-label">{op.label}</span>
                   </button>
                 ))}
               </div>
@@ -786,14 +785,14 @@ export default function VisaoGeral() {
             <>
           {/* ── Caixa inicial banner ── */}
           {caixaInicialValor != null && caixaInicialValor > 0 && (
-            <div className="rounded-xl px-4 py-3 mb-4 flex items-center gap-3" style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)' }}>
+            <div className="caixa-banner rounded-xl px-4 py-3 mb-4 flex items-center gap-3" style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)' }}>
               <Wallet size={15} style={{ color: '#d97706', flexShrink: 0 }} />
-              <div className="flex-1">
+              <div className="flex-1" style={{ minWidth: 0 }}>
                 <span className="text-sm font-semibold" style={{ color: '#d97706' }}>Caixa inicial: {formatarMoeda(caixaInicialValor)}</span>
-                <span className="text-xs ml-2" style={{ color: 'var(--text-muted)' }}>— troco/fundo, não conta como faturamento</span>
+                <span className="text-xs ml-2" style={{ color: 'var(--text-muted)' }}>— troco/fundo</span>
               </div>
-              <span className="text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>
-                Total em caixa: <span style={{ color: 'var(--text-primary)' }}>{formatarMoeda(totalEmCaixa)}</span>
+              <span className="text-sm font-bold" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
+                Total: <span style={{ color: 'var(--text-primary)' }}>{formatarMoeda(totalEmCaixa)}</span>
               </span>
             </div>
           )}
@@ -976,44 +975,16 @@ export default function VisaoGeral() {
                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>— por faturamento</span>
               </div>
               <div className="table-wrapper">
-                <table>
+                <table className="vg-det-tbl">
                   <thead>
                     <tr>
                       <th>Receita</th>
-                      <th>Qtd vendida</th>
-                      <th>
-                        <span className="flex items-center gap-1">
-                          Faturamento
-                          <Tooltip2 texto="Receita × preço de venda">
-                            <Info size={10} style={{ color: 'var(--text-muted)', cursor: 'help' }} />
-                          </Tooltip2>
-                        </span>
-                      </th>
-                      <th>
-                        <span className="flex items-center gap-1">
-                          Custo
-                          <Tooltip2 texto="Custo dos ingredientes de todas as unidades vendidas">
-                            <Info size={10} style={{ color: 'var(--text-muted)', cursor: 'help' }} />
-                          </Tooltip2>
-                        </span>
-                      </th>
-                      <th>
-                        <span className="flex items-center gap-1">
-                          Lucro
-                          <Tooltip2 texto="Faturamento − Custo">
-                            <Info size={10} style={{ color: 'var(--text-muted)', cursor: 'help' }} />
-                          </Tooltip2>
-                        </span>
-                      </th>
-                      <th>
-                        <span className="flex items-center gap-1">
-                          Margem
-                          <Tooltip2 texto="Percentual de lucro sobre o preço de venda">
-                            <Info size={10} style={{ color: 'var(--text-muted)', cursor: 'help' }} />
-                          </Tooltip2>
-                        </span>
-                      </th>
-                      <th>% do fat.</th>
+                      <th>Qtd</th>
+                      <th>Faturamento</th>
+                      <th>Custo</th>
+                      <th>Lucro</th>
+                      <th>Margem</th>
+                      <th>% fat.</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1022,23 +993,23 @@ export default function VisaoGeral() {
                       const pctFat = receitaTotal > 0 ? (receita / receitaTotal) * 100 : 0
                       return (
                         <tr key={prato.id}>
-                          <td className="font-medium">{prato.nome}</td>
-                          <td style={{ color: 'var(--text-secondary)' }}>{qtd} un</td>
-                          <td style={{ color: 'var(--accent)', fontWeight: 600 }}>{formatarMoeda(receita)}</td>
-                          <td style={{ color: '#ef4444' }}>{formatarMoeda(custo)}</td>
-                          <td style={{ color: lucro >= 0 ? '#3b82f6' : '#ef4444', fontWeight: 600 }}>{formatarMoeda(lucro)}</td>
-                          <td>
+                          <td data-label="Receita" className="font-medium">{prato.nome}</td>
+                          <td data-label="Qtd" style={{ color: 'var(--text-secondary)' }}>{qtd} un</td>
+                          <td data-label="Faturamento" style={{ color: 'var(--accent)', fontWeight: 600 }}>{formatarMoeda(receita)}</td>
+                          <td data-label="Custo" style={{ color: '#ef4444' }}>{formatarMoeda(custo)}</td>
+                          <td data-label="Lucro" style={{ color: lucro >= 0 ? '#3b82f6' : '#ef4444', fontWeight: 600 }}>{formatarMoeda(lucro)}</td>
+                          <td data-label="Margem">
                             <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
                               style={{ background: margem >= 55 ? 'var(--accent-bg)' : margem >= 30 ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)', color: margem >= 55 ? 'var(--accent)' : margem >= 30 ? '#d97706' : '#ef4444' }}>
                               {formatarPorcentagem(margem)}
                             </span>
                           </td>
-                          <td>
+                          <td data-label="% fat.">
                             <div className="flex items-center gap-2">
                               <div style={{ flex: 1, height: 6, background: 'var(--bg-hover)', borderRadius: 3, minWidth: 40 }}>
                                 <div style={{ width: `${pctFat}%`, height: '100%', background: 'var(--accent)', borderRadius: 3 }} />
                               </div>
-                              <span className="text-xs" style={{ color: 'var(--text-muted)', minWidth: 30 }}>{pctFat.toFixed(0)}%</span>
+                              <span className="text-xs" style={{ color: 'var(--text-muted)', minWidth: 28 }}>{pctFat.toFixed(0)}%</span>
                             </div>
                           </td>
                         </tr>

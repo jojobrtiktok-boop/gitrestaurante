@@ -337,4 +337,56 @@ tbody tr:last-child { border-bottom: none; }
     padding: 8px 12px;
     font-size: 13px;
   }
+  /* Modal ocupa tela toda no mobile */
+  .modal-box {
+    max-height: 95dvh;
+    border-radius: 20px 20px 0 0;
+  }
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+}
+
+/* ─── VisaoGeral (Relatório) mobile ────────────────── */
+@media (max-width: 640px) {
+  /* Header ações: quebra em coluna limpa */
+  .vg-header-actions {
+    width: 100%;
+    justify-content: flex-start !important;
+    gap: 6px !important;
+  }
+
+  /* Filtro de canal: esconde label, mostra só ícone */
+  .canal-label { display: none !important; }
+  .canal-btn   { padding: 6px 8px !important; }
+
+  /* Banner do caixa: empilha */
+  .caixa-banner {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+  }
+
+  /* Tabela detalhamento: card view */
+  .vg-det-tbl thead            { display: none; }
+  .vg-det-tbl tbody tr         { display: block; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .vg-det-tbl tbody td         { display: flex; justify-content: space-between; align-items: center;
+                                  padding: 4px 0; font-size: 13px; border: none !important; min-height: 24px; }
+  .vg-det-tbl tbody td[data-label]::before {
+    content: attr(data-label); font-size: 11px; color: var(--text-muted);
+    font-weight: 600; min-width: 80px; flex-shrink: 0;
+  }
+  .vg-det-tbl tbody td:empty  { display: none; }
+  .vg-det-tbl tfoot tr        { display: flex; flex-wrap: wrap; padding: 8px 12px; gap: 6px; border-top: 2px solid var(--border); }
+  .vg-det-tbl tfoot td        { font-size: 12px !important; padding: 2px 4px !important; border: none !important; }
+
+  /* FiltroPeriodo: popup à esquerda para não cair fora */
+  .fp-popup { right: auto !important; left: 0 !important; }
+
+  /* Botões FiltroPeriodo: reduzir padding */
+  .fp-btn { padding: 5px 8px !important; font-size: 11px !important; }
+
+  /* BottomNav: texto menor */
+  .bottom-nav-label { font-size: 9px !important; }
 }

@@ -33,6 +33,7 @@ const WhatsApp         = lazy(() => import('./pages/WhatsApp.jsx'))
 const ResetPassword    = lazy(() => import('./pages/ResetPassword.jsx'))
 const EmailConfirmado  = lazy(() => import('./pages/EmailConfirmado.jsx'))
 const Trial            = lazy(() => import('./pages/Trial.jsx'))
+const Presel           = lazy(() => import('./pages/Presel.jsx'))
 
 function PageLoader() {
   return (
@@ -356,6 +357,7 @@ export default function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/email-confirmado" element={<EmailConfirmado />} />
           <Route path="/trial/:slug" element={<Trial />} />
+          <Route path="/presel" element={<Presel />} />
           <Route path="/menu/:slug" element={<MenuPublico />} />
           <Route path="/delivery/:slug" element={<DeliveryPublico />} />
           <Route path="/comanda/:token" element={<ComandaDigital />} />

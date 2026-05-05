@@ -650,7 +650,9 @@ export default function VisaoGeral() {
         px.hora === entrada.hora &&
         px.itens?.some(i => i.pratoId === entrada.pratoId)
       )
-      if (ped && !ped.pago && !ped.cancelado) {
+      // Pedido quitado: pago=true OU status terminal (completo/pronto/entregue)
+      const quitado = !ped || ped.cancelado || ped.pago === true || ['completo', 'pronto', 'entregue'].includes(ped.status)
+      if (!quitado) {
         receitaPendente += r
         lucroPendente += l
       }

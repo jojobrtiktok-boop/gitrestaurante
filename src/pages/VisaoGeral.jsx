@@ -541,6 +541,15 @@ export default function VisaoGeral() {
   useEffect(() => {
     carregarPeriodo(periodo.dataInicio)
   }, [periodo.dataInicio])
+
+  // Recuperação automática: se dados sumiram para o período ativo, recarrega
+  useEffect(() => {
+    const { dataInicio, dataFim } = periodo
+    const temDadosNoPeriodo = entradasVendas.some(e => e.data >= dataInicio && e.data <= dataFim)
+    if (!temDadosNoPeriodo && dataInicio < hoje()) {
+      carregarPeriodo(dataInicio)
+    }
+  }, [entradasVendas])
   const [modalCaixa, setModalCaixa] = useState(false)
   const [modalFechamento, setModalFechamento] = useState(false)
   const [aba, setAba] = useState('resumo')

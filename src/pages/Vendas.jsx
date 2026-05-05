@@ -283,6 +283,16 @@ export default function Vendas() {
   useEffect(() => {
     carregarPeriodo(periodo.dataInicio)
   }, [periodo.dataInicio])
+
+  // Recuperação automática: se dados sumiram para o período ativo, recarrega
+  useEffect(() => {
+    const { dataInicio, dataFim } = periodo
+    const temDadosNoPeriodo = entradasVendas.some(e => e.data >= dataInicio && e.data <= dataFim)
+    if (!temDadosNoPeriodo && dataInicio < h) {
+      carregarPeriodo(dataInicio)
+    }
+  }, [entradasVendas])
+
   const [entradaDetalhe, setEntradaDetalhe] = useState(null)
   const [aba, setAba] = useState('lancamentos')
   const [extratoInicio, setExtratoInicio] = useState(h)

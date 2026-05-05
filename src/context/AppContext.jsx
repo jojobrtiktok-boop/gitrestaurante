@@ -1184,7 +1184,15 @@ export function AppProvider({ children }) {
     if (!auth.userId) return
     // Usa ref (não state) para evitar stale closure — lê valor sempre atualizado
     const jaCarregado = periodoCarregadoRef.current
-    if (jaCarregado && dataInicio >= jaCarregado) return
+    if (jaCarregado && dataInicio >= jaCarregado) {
+      // Guard diz "já carregado" — mas verifica se dados históricos ainda existem
+      // Se sumiram (ex: re-auth limpou o estado), força novo carregamento
+      const hoje = hojeBrasilia()
+      const temHistorico = entradasVendas.some(e => e.data < hoje) || pedidos.some(p => p.data < hoje)
+      if (temHistorico) return // dados OK, não precisa buscar
+      // Dados históricos ausentes — reseta guard e busca novamente
+      periodoCarregadoRef.current = null
+    }
     // Marca imediatamente (síncrono) para bloquear chamadas concorrentes
     periodoCarregadoRef.current = dataInicio
     const uid = auth.userId

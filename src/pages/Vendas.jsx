@@ -245,13 +245,13 @@ function RelatorioTempo({ pedidos, pratos, dataInicio, dataFim }) {
                 <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Histórico de pedidos</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {[...peds].sort((a, b) => (b.data || '').localeCompare(a.data || '')).slice(0, 20).map((ped, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, padding: '4px 0', borderBottom: '1px solid var(--border)' }}>
-                      <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', minWidth: 50 }}>{ped.data?.split('-').reverse().join('/') || '--'}</span>
-                      <span style={{ color: 'var(--text-muted)', minWidth: 40 }}>{ped.hora}</span>
-                      <span style={{ color: 'var(--text-secondary)' }}>×{ped.quantidade}</span>
-                      <span style={{ color: '#3b82f6', minWidth: 60 }}>espera: {fmt(ped.tempoEspera)}</span>
-                      <span style={{ color: '#f59e0b', minWidth: 70 }}>preparo: {fmt(ped.tempoPreparo)}</span>
-                      <span style={{ fontWeight: 700, color: ped.tempoTotal > 25 ? '#ef4444' : '#16a34a' }}>total: {fmt(ped.tempoTotal)}</span>
+                    <div key={i} className="vendas-tempo-hist" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, padding: '5px 0', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
+                      <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', minWidth: 50, flexShrink: 0 }}>{ped.data?.split('-').reverse().join('/') || '--'}</span>
+                      <span style={{ color: 'var(--text-muted)', flexShrink: 0 }}>{ped.hora}</span>
+                      <span style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>×{ped.quantidade}</span>
+                      <span style={{ color: '#3b82f6', flexShrink: 0 }}>⏳ {fmt(ped.tempoEspera)}</span>
+                      <span style={{ color: '#f59e0b', flexShrink: 0 }}>🍳 {fmt(ped.tempoPreparo)}</span>
+                      <span style={{ fontWeight: 700, color: ped.tempoTotal > 25 ? '#ef4444' : '#16a34a', flexShrink: 0 }}>✓ {fmt(ped.tempoTotal)}</span>
                     </div>
                   ))}
                 </div>
@@ -687,7 +687,71 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
   })()
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto">
+    <div className="p-4 md:p-6 max-w-4xl mx-auto vendas-pg">
+      <style>{`
+        /* ── VENDAS MOBILE ───────────────────────────────────────── */
+        @media (max-width: 640px) {
+          .vendas-pg .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+          .vendas-pg .page-header > * { width: 100%; }
+
+          /* Cards de resumo: 2 colunas */
+          .vendas-summary { grid-template-columns: repeat(2, 1fr) !important; }
+
+          /* Tabelas → card view no mobile */
+          .vendas-tbl thead { display: none; }
+          .vendas-tbl tbody tr {
+            display: block;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+          }
+          .vendas-tbl tbody td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+            font-size: 13px;
+            border: none !important;
+            min-height: 26px;
+          }
+          .vendas-tbl tbody td[data-label]::before {
+            content: attr(data-label);
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 600;
+            min-width: 72px;
+            flex-shrink: 0;
+            margin-right: 8px;
+          }
+          .vendas-tbl tbody td:empty { display: none; }
+          .vendas-tbl tfoot tr {
+            display: flex;
+            padding: 8px 12px;
+            gap: 6px;
+            flex-wrap: wrap;
+            font-size: 12px !important;
+          }
+          .vendas-tbl tfoot td { border: none !important; padding: 2px 4px !important; font-size: 12px !important; }
+
+          /* Extrato: datas empilham */
+          .vendas-datas-row { flex-direction: column !important; gap: 8px !important; }
+          .vendas-datas-row input { width: 100% !important; }
+
+          /* Extrato 3-col totais → 2 col */
+          .vendas-extrato-3col { grid-template-columns: 1fr 1fr !important; }
+
+          /* Extrato botões wrap */
+          .vendas-extrato-btns { flex-wrap: wrap !important; }
+          .vendas-extrato-btns > button { flex: 1 1 auto; justify-content: center; }
+
+          /* Relatório tempo: histórico wrapa */
+          .vendas-tempo-hist { flex-wrap: wrap !important; row-gap: 3px !important; }
+          .vendas-tempo-hist > span { min-width: unset !important; font-size: 11px !important; }
+
+          /* Funcionários: header empilha */
+          .vendas-func-header { flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; }
+        }
+      `}</style>
+
       <div className="page-header">
         <div>
           <h1 className="page-title">Vendas</h1>
@@ -696,7 +760,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
         <FiltroPeriodo onChange={handlePeriodo} initialIni={periodo.dataInicio} initialFim={periodo.dataFim} />
       </div>
 
-      <div className="grid gap-3 mb-6" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>
+      <div className="grid gap-3 mb-6 vendas-summary" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>
         {[
           { label: 'Faturamento', valor: formatarMoeda(totalReceita), cor: '#3b82f6' },
           { label: 'Lucro Bruto', valor: formatarMoeda(totalLucro), cor: '#16a34a' },
@@ -732,7 +796,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
           <div className="flex flex-col gap-4">
             {porFuncionario.map(func => (
               <div key={func.id} className="card p-0 overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-hover)' }}>
+                <div className="vendas-func-header flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-hover)' }}>
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
                       style={{ background: func.isGarcon ? 'var(--accent-bg)' : 'rgba(107,114,128,0.12)', color: func.isGarcon ? 'var(--accent)' : '#6b7280' }}>
@@ -751,7 +815,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                   </div>
                 </div>
                 <div className="table-wrapper">
-                  <table>
+                  <table className="vendas-tbl">
                     <thead>
                       <tr>
                         <th>Data</th>
@@ -772,18 +836,18 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                         const lastId = kanbanConfig?.etapas?.[kanbanConfig.etapas.length - 1]?.id || 'completo'
                         return (
                           <tr key={entrada.id || idx}>
-                            <td className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
+                            <td data-label="Data" className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
                               {entrada.data.slice(5).replace('-', '/')}
                             </td>
-                            <td>
+                            <td data-label="Hora">
                               <div className="flex items-center gap-1.5">
                                 <Clock size={12} style={{ color: 'var(--text-muted)' }} />
                                 <span className="font-mono text-sm font-semibold" style={{ color: 'var(--accent)' }}>{entrada.hora}</span>
                               </div>
                             </td>
-                            <td className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{prato.nome}</td>
-                            <td><span className="font-bold" style={{ color: 'var(--text-primary)' }}>×{entrada.quantidade}</span></td>
-                            <td style={{ color: '#3b82f6', fontWeight: 600 }}>{formatarMoeda(receita)}</td>
+                            <td data-label="Produto" className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{prato.nome}</td>
+                            <td data-label="Qtd"><span className="font-bold" style={{ color: 'var(--text-primary)' }}>×{entrada.quantidade}</span></td>
+                            <td data-label="Receita" style={{ color: '#3b82f6', fontWeight: 600 }}>{formatarMoeda(receita)}</td>
                             <td>{(() => {
                               if (!ped) return <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(59,130,246,0.12)', color: '#3b82f6' }}>Balcão</span>
                               if (ped.cancelado) return <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}>Cancelado</span>
@@ -933,26 +997,26 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
         <div>
           {/* Filtro de período do extrato */}
           <div className="card mb-4">
-            <div className="flex flex-wrap items-end gap-4">
-              <div className="flex-1 min-w-0">
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 16 }}>
+              <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                 <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Período do Extrato</p>
-                <div className="flex items-center gap-2">
-                  <div className="flex flex-col gap-1">
+                <div className="vendas-datas-row flex items-center gap-2">
+                  <div className="flex flex-col gap-1" style={{ flex: 1 }}>
                     <label className="text-xs" style={{ color: 'var(--text-muted)' }}>De</label>
                     <input type="date" value={extratoInicio} onChange={e => setExtratoInicio(e.target.value)}
-                      className="input" style={{ width: 150 }} />
+                      className="input" style={{ width: '100%', minWidth: 0 }} />
                   </div>
-                  <span className="text-sm mt-4" style={{ color: 'var(--text-muted)' }}>—</span>
-                  <div className="flex flex-col gap-1">
+                  <span className="text-sm mt-4" style={{ color: 'var(--text-muted)', flexShrink: 0 }}>—</span>
+                  <div className="flex flex-col gap-1" style={{ flex: 1 }}>
                     <label className="text-xs" style={{ color: 'var(--text-muted)' }}>Até</label>
                     <input type="date" value={extratoFim} onChange={e => setExtratoFim(e.target.value)}
-                      className="input" style={{ width: 150 }} />
+                      className="input" style={{ width: '100%', minWidth: 0 }} />
                   </div>
                 </div>
               </div>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2" style={{ flex: '0 0 auto' }}>
                 <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Exportar / Imprimir</p>
-                <div className="flex gap-2 flex-wrap">
+                <div className="vendas-extrato-btns flex gap-2 flex-wrap">
                   <button className="btn btn-secondary flex items-center gap-2 text-sm"
                     onClick={() => imprimirExtrato('a4')} disabled={entradasExtrato.length === 0}
                     title="Imprimir em A4">
@@ -975,7 +1039,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
 
           {/* Totais do extrato */}
           {entradasExtrato.length > 0 && (
-            <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="grid gap-3 mb-4 vendas-extrato-3col" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
               <div className="card p-4">
                 <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Total Faturado</p>
                 <p className="text-xl font-bold" style={{ color: '#3b82f6' }}>{formatarMoeda(totalExtrato)}</p>
@@ -1023,7 +1087,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
               <TabelaVazia icone={FileText} mensagem="Nenhuma venda paga no período" submensagem="Ajuste as datas acima para ver o extrato." />
             ) : (
               <div className="table-wrapper">
-                <table>
+                <table className="vendas-tbl">
                   <thead>
                     <tr>
                       <th>Data</th>
@@ -1045,10 +1109,10 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                       const mesa = mesaDeEntrada(entrada)
                       return (
                         <tr key={entrada.id}>
-                          <td className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
+                          <td data-label="Data" className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
                             {entrada.data.slice(5).replace('-', '/')}
                           </td>
-                          <td>
+                          <td data-label="Hora">
                             <div className="flex items-center gap-1.5">
                               <Clock size={12} style={{ color: 'var(--text-muted)' }} />
                               <span className="font-mono text-sm font-semibold" style={{ color: 'var(--accent)' }}>
@@ -1056,8 +1120,8 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                               </span>
                             </div>
                           </td>
-                          <td className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{prato.nome}</td>
-                          <td>
+                          <td data-label="Produto" className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{prato.nome}</td>
+                          <td data-label="Origem">
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                               {entrada.canal === 'delivery' ? (
                                 <span className="text-xs px-2 py-0.5 rounded-full font-medium"
@@ -1082,13 +1146,13 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                               )}
                             </div>
                           </td>
-                          <td>
+                          <td data-label="Qtd">
                             <span className="font-bold" style={{ color: 'var(--text-primary)' }}>×{entrada.quantidade}</span>
                           </td>
-                          <td style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
+                          <td data-label="Unit." style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
                             {formatarMoeda((entrada.precoVendaUnit !== null && entrada.precoVendaUnit !== undefined ? Number(entrada.precoVendaUnit) : prato.precoVenda) + extrasUnit)}
                           </td>
-                          <td style={{ color: '#3b82f6', fontWeight: 600 }}>{formatarMoeda(receita)}</td>
+                          <td data-label="Total" style={{ color: '#3b82f6', fontWeight: 600 }}>{formatarMoeda(receita)}</td>
                         </tr>
                       )
                     })}
@@ -1117,7 +1181,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
           />
         ) : (
           <div className="table-wrapper">
-            <table>
+            <table className="vendas-tbl">
               <thead>
                 <tr>
                   {dataInicio !== dataFim && <th>Data</th>}
@@ -1143,11 +1207,11 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                   return (
                     <tr key={entrada.id}>
                       {dataInicio !== dataFim && (
-                        <td className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
+                        <td data-label="Data" className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
                           {entrada.data.slice(5).replace('-', '/')}
                         </td>
                       )}
-                      <td>
+                      <td data-label="Hora">
                         <div className="flex items-center gap-1.5">
                           <Clock size={12} style={{ color: 'var(--text-muted)' }} />
                           <span className="font-mono text-sm font-semibold" style={{ color: 'var(--accent)' }}>
@@ -1155,7 +1219,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                           </span>
                         </div>
                       </td>
-                      <td>
+                      <td data-label="Produto">
                         <button
                           className="font-medium text-sm text-left hover:underline"
                           style={{ color: 'var(--text-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
@@ -1164,7 +1228,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                           {prato.nome}
                         </button>
                       </td>
-                      <td>
+                      <td data-label="Origem">
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                           {entrada.canal === 'delivery' ? (
                             <span className="text-xs px-2 py-0.5 rounded-full font-medium"
@@ -1189,12 +1253,12 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                           )}
                         </div>
                       </td>
-                      <td>
+                      <td data-label="Qtd">
                         <span className="font-bold" style={{ color: 'var(--text-primary)' }}>×{entrada.quantidade}</span>
                       </td>
-                      <td style={{ color: '#3b82f6', fontWeight: 600 }}>{formatarMoeda(receita)}</td>
-                      <td style={{ color: '#16a34a', fontWeight: 600 }}>{formatarMoeda(lucro)}</td>
-                      <td>
+                      <td data-label="Receita" style={{ color: '#3b82f6', fontWeight: 600 }}>{formatarMoeda(receita)}</td>
+                      <td data-label="Lucro" style={{ color: '#16a34a', fontWeight: 600 }}>{formatarMoeda(lucro)}</td>
+                      <td data-label="Status">
                         {(() => {
                           const etapas = kanbanConfig?.etapas
                           const lastId = etapas?.[etapas.length - 1]?.id || 'completo'
@@ -1204,13 +1268,13 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                           if (pedido?.status === lastId) return (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                               <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(22,163,74,0.1)', color: '#16a34a' }}>Entregue</span>
-                              <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 20, background: 'rgba(249,115,22,0.1)', color: '#f97316' }}>Pend. pagamento</span>
+                              <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 20, background: 'rgba(249,115,22,0.1)', color: '#f97316' }}>Pend. pgto</span>
                             </div>
                           )
                           return <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(249,115,22,0.12)', color: '#f97316' }}>Pendente</span>
                         })()}
                       </td>
-                      <td>
+                      <td data-label="Ações">
                         <div className="flex justify-end">
                           <button className="btn btn-ghost p-1.5" style={{ color: '#ef4444' }}
                             onClick={() => removerEntradaVenda(entrada.id)} title="Remover lançamento">
@@ -1239,7 +1303,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Pedidos entregues aguardando confirmação de pagamento</p>
           </div>
           <div className="table-wrapper">
-            <table>
+            <table className="vendas-tbl">
               <thead>
                 <tr>
                   {dataInicio !== dataFim && <th>Data</th>}
@@ -1262,11 +1326,11 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                   return (
                     <tr key={entrada.id}>
                       {dataInicio !== dataFim && (
-                        <td className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
+                        <td data-label="Data" className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
                           {entrada.data.slice(5).replace('-', '/')}
                         </td>
                       )}
-                      <td>
+                      <td data-label="Hora">
                         <div className="flex items-center gap-1.5">
                           <Clock size={12} style={{ color: 'var(--text-muted)' }} />
                           <span className="font-mono text-sm font-semibold" style={{ color: '#f97316' }}>
@@ -1274,10 +1338,10 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                           </span>
                         </div>
                       </td>
-                      <td>
+                      <td data-label="Produto">
                         <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{prato.nome}</span>
                       </td>
-                      <td>
+                      <td data-label="Origem">
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                           {entrada.canal === 'delivery' ? (
                             <span className="text-xs px-2 py-0.5 rounded-full font-medium"
@@ -1302,11 +1366,11 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                           )}
                         </div>
                       </td>
-                      <td>
+                      <td data-label="Qtd">
                         <span className="font-bold" style={{ color: 'var(--text-primary)' }}>×{entrada.quantidade}</span>
                       </td>
-                      <td style={{ color: '#f97316', fontWeight: 600 }}>{formatarMoeda(receita)}</td>
-                      <td>
+                      <td data-label="Valor" style={{ color: '#f97316', fontWeight: 600 }}>{formatarMoeda(receita)}</td>
+                      <td data-label="Ações">
                         <div className="flex justify-end gap-1">
                           <button className="btn btn-ghost p-1.5" style={{ color: '#16a34a' }}
                             onClick={() => pedido && marcarPedidoPago(pedido.id)} title="Confirmar pagamento">

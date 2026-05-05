@@ -650,8 +650,13 @@ export default function VisaoGeral() {
         px.hora === entrada.hora &&
         px.itens?.some(i => i.pratoId === entrada.pratoId)
       )
-      // Pedido quitado: pago=true OU status terminal (completo/pronto/entregue)
-      const quitado = !ped || ped.cancelado || ped.pago === true || ['completo', 'pronto', 'entregue'].includes(ped.status)
+      // Pedido quitado: pago=true OU status terminal OU pedido de dia anterior.
+      // Pedidos de dias passados com pago=false nunca ficam como "pendente" —
+      // isso zeraria receitaPaga ao visualizar períodos históricos.
+      const pedidoEDeHoje = ped?.data === h
+      const quitado = !ped || ped.cancelado || ped.pago === true
+        || ['completo', 'pronto', 'entregue'].includes(ped.status)
+        || !pedidoEDeHoje
       if (!quitado) {
         receitaPendente += r
         lucroPendente += l

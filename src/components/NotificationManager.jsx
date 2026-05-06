@@ -9,7 +9,7 @@ export default function NotificationManager() {
     notifConfig, pedidos, ingredientes, configuracaoGeral, cardapioConfig, auth
   } = useApp()
 
-  const prevPedidosRef  = useRef(pedidos)
+  const prevPedidosRef  = useRef(null) // null = primeira carga, não dispara notif
   const lastDemoraRef   = useRef(0)
   const lastInsumosRef  = useRef(0)
 
@@ -36,6 +36,11 @@ export default function NotificationManager() {
       return
     }
     const prev = prevPedidosRef.current
+    // Primeira carga (login): só grava o estado atual, sem disparar notificações
+    if (prev === null) {
+      prevPedidosRef.current = pedidos
+      return
+    }
     const novosPagos = pedidos.filter(
       p => p.pago && !prev.find(pp => pp.id === p.id && pp.pago)
     )

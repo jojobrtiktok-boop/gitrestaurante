@@ -109,6 +109,34 @@ ALTER TABLE clientes ADD COLUMN IF NOT EXISTS aniversario TEXT;
 
 ALTER PUBLICATION supabase_realtime ADD TABLE movimentos_caixa;
 
+-- ── 7. saas_config ─────────────────────────────────────────────────────
+-- Configurações globais do SaaS: trial links, planos, gateways, suporte.
+-- Uma única linha com id = 1 (singleton). Acesso liberado para admins.
+
+CREATE TABLE IF NOT EXISTS saas_config (
+  id         INTEGER PRIMARY KEY DEFAULT 1,
+  config     JSONB NOT NULL DEFAULT '{}',
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Garante que só existe uma linha
+ALTER TABLE saas_config ADD CONSTRAINT saas_config_singleton CHECK (id = 1);
+
+-- RLS: apenas admins (is_admin = true em profiles) podem ler e escrever
+ALTER TABLE saas_config ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "admin_only" ON saas_config;
+CREATE POLICY "admin_only" ON saas_config FOR ALL
+  USING (
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = TRUE)
+  )
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = TRUE)
+  );
+
+-- Inserir linha inicial se ainda não existir
+INSERT INTO saas_config (id, config) VALUES (1, '{}') ON CONFLICT (id) DO NOTHING;
+
 -- ═══════════════════════════════════════════════════════════════
 -- FIM — Verificação rápida (rode para checar se tudo criou certo)
 -- ═══════════════════════════════════════════════════════════════

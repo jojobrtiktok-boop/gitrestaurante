@@ -866,9 +866,17 @@ function AbaConfiguracoes() {
   }, [])
 
   async function salvar() {
-    const { error } = await supabase.from('saas_config')
-      .upsert({ id: 1, config: cfg, updated_at: new Date().toISOString() })
-    if (error) return alert('Erro ao salvar: ' + error.message)
+    // tenta com updated_at; se der erro de coluna, tenta sem
+    let { error } = await supabase.from('saas_config')
+      .upsert({ id: 1, config: cfg, updated_at: new Date().toISOString() }, { onConflict: 'id' })
+    if (error && error.message?.includes('updated_at')) {
+      ;({ error } = await supabase.from('saas_config')
+        .upsert({ id: 1, config: cfg }, { onConflict: 'id' }))
+    }
+    if (error) {
+      console.error('saas_config save error:', error)
+      return alert('Erro ao salvar: ' + error.message)
+    }
     setSalvo(true)
     setTimeout(() => setSalvo(false), 2500)
   }

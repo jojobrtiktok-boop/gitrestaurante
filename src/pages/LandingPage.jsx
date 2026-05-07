@@ -639,39 +639,50 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── PRICING ───────────────────────────────────────────── */}
+      {/* ── CONTATO WHATSAPP ──────────────────────────────────── */}
       <section className="lp-section-dark">
         <div className="lp-inner-md">
-          <div style={{ textAlign: 'center' }}>
-            <h2 className="lp-section-title">Planos simples e transparentes</h2>
-            <p className="lp-section-sub">Sem surpresas. Cancele quando quiser.</p>
-          </div>
-          <div className="lp-plan-grid">
-            {plans.map(({ id, label, badge, desc, items, popular }) => (
-              <div key={id} className="lp-plan" style={{ background: popular ? 'linear-gradient(135deg, rgba(253,75,1,0.07), rgba(253,75,1,0.02))' : b.bg, border: `1.5px solid ${popular ? b.accentBdr : b.border}`, borderRadius: 20, padding: '28px 24px', position: 'relative' }}>
-                {badge && (
-                  <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: popular ? b.accent : b.surface2, color: '#fff', fontSize: 11, fontWeight: 700, padding: '4px 14px', borderRadius: 100, whiteSpace: 'nowrap', boxShadow: popular ? '0 4px 12px rgba(253,75,1,0.4)' : 'none' }}>
-                    {badge}
-                  </div>
-                )}
-                <p style={{ fontSize: 12, fontWeight: 700, color: b.muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>{label}</p>
-                <div style={{ fontSize: 32, fontWeight: 800, fontFamily: '"Clash Display", "Inter", sans-serif', color: b.text, letterSpacing: '-0.02em', marginBottom: 4 }}>Em breve</div>
-                <p style={{ fontSize: 13, color: b.muted, marginBottom: 24 }}>{desc}</p>
-                <button onClick={() => setModal('cadastro')} style={{ width: '100%', padding: '12px', borderRadius: 10, border: `1.5px solid ${popular ? b.accent : b.border2}`, background: popular ? b.accent : 'transparent', color: popular ? '#fff' : b.text, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 22, boxShadow: popular ? '0 4px 18px rgba(253,75,1,0.3)' : 'none' }}>
-                  Começar agora
-                </button>
-                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {items.map(item => (
-                    <li key={item} style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13.5, color: b.muted }}>
-                      <div style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0, background: b.accentDim, border: `1px solid ${b.accentBdr}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Check size={11} style={{ color: b.accent }} />
-                      </div>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+          <div style={{ textAlign: 'center', maxWidth: 560, margin: '0 auto' }}>
+            <div style={{ width: 64, height: 64, borderRadius: 20, background: 'rgba(37,211,102,0.12)', border: '1.5px solid rgba(37,211,102,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+              {/* WhatsApp SVG */}
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="#25d366">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+              </svg>
+            </div>
+            <h2 className="lp-section-title">Quer saber mais?</h2>
+            <p className="lp-section-sub" style={{ marginBottom: 36 }}>
+              Entre em contato conosco pelo WhatsApp e tire todas as suas dúvidas. Nossa equipe está pronta para te atender.
+            </p>
+            <a
+              href="https://wa.me/559381142846?text=Ol%C3%A1%2C%20quero%20saber%20mais%20sobre%20o%20Cheffya!"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '15px 36px',
+                borderRadius: 14,
+                border: 'none',
+                background: '#25d366',
+                color: '#fff',
+                fontSize: 16,
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                textDecoration: 'none',
+                boxShadow: '0 8px 28px rgba(37,211,102,0.35)',
+                transition: 'transform .15s, filter .15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.filter = 'brightness(1.07)' }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.filter = 'brightness(1)' }}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+              </svg>
+              Conversa no WhatsApp
+            </a>
+            <p style={{ marginTop: 18, fontSize: 12, color: b.subtle }}>+55 93 8114-2846 · Atendimento rápido</p>
           </div>
         </div>
       </section>
@@ -705,7 +716,6 @@ export default function LandingPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {[
                     { label: 'Funcionalidades', fn: null },
-                    { label: 'Planos',          fn: null },
                     { label: 'Entrar',          fn: () => setModal('entrar') },
                     { label: 'Criar conta',     fn: () => setModal('cadastro') },
                   ].map(({ label, fn }) => (
@@ -743,7 +753,7 @@ export default function LandingPage() {
                     onMouseLeave={e => e.currentTarget.style.color = b.muted}>
                     suporte@cheffya.com.br
                   </a>
-                  <a href="https://wa.me/5531999999999" target="_blank" rel="noreferrer" style={{ fontSize: 13.5, color: b.muted, textDecoration: 'none', transition: 'color .15s' }}
+                  <a href="https://wa.me/559381142846?text=Ol%C3%A1%2C%20quero%20saber%20mais%20sobre%20o%20Cheffya!" target="_blank" rel="noreferrer" style={{ fontSize: 13.5, color: b.muted, textDecoration: 'none', transition: 'color .15s' }}
                     onMouseEnter={e => e.currentTarget.style.color = '#fff'}
                     onMouseLeave={e => e.currentTarget.style.color = b.muted}>
                     WhatsApp

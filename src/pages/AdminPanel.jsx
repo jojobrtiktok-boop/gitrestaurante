@@ -855,27 +855,34 @@ const SAAS_CONFIG_PADRAO = {
 function AbaConfiguracoes() {
   const [cfg, setCfg] = useState(SAAS_CONFIG_PADRAO)
   const [salvo, setSalvo] = useState(false)
+  const [salvando, setSalvando] = useState(false)
+  const [erroSalvar, setErroSalvar] = useState(null)
   const [carregando, setCarregando] = useState(true)
 
   useEffect(() => {
     supabase.from('saas_config').select('config').eq('id', 1).maybeSingle()
-      .then(({ data }) => {
-        if (data?.config) setCfg({ ...SAAS_CONFIG_PADRAO, ...data.config })
+      .then(({ data, error }) => {
+        if (error) console.error('saas_config load error:', error)
+        if (data?.config) setCfg(prev => ({ ...prev, ...data.config }))
         setCarregando(false)
       })
   }, [])
 
   async function salvar() {
-    // tenta com updated_at; se der erro de coluna, tenta sem
+    setSalvando(true)
+    setErroSalvar(null)
+    // Tenta upsert; se falhar por updated_at ausente, tenta sem
     let { error } = await supabase.from('saas_config')
       .upsert({ id: 1, config: cfg, updated_at: new Date().toISOString() }, { onConflict: 'id' })
-    if (error && error.message?.includes('updated_at')) {
+    if (error?.message?.includes('updated_at') || error?.message?.includes('column')) {
       ;({ error } = await supabase.from('saas_config')
         .upsert({ id: 1, config: cfg }, { onConflict: 'id' }))
     }
+    setSalvando(false)
     if (error) {
       console.error('saas_config save error:', error)
-      return alert('Erro ao salvar: ' + error.message)
+      setErroSalvar(error.message)
+      return
     }
     setSalvo(true)
     setTimeout(() => setSalvo(false), 2500)
@@ -1166,8 +1173,13 @@ function AbaConfiguracoes() {
         </div>
       </div>
 
-      <button className="btn btn-primary" style={{ alignSelf: 'flex-start', gap: 6 }} onClick={salvar}>
-        <Save size={14} /> {salvo ? '✓ Salvo!' : 'Salvar configurações'}
+      {erroSalvar && (
+        <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontSize: 13 }}>
+          ❌ Erro ao salvar: {erroSalvar}
+        </div>
+      )}
+      <button className="btn btn-primary" style={{ alignSelf: 'flex-start', gap: 6 }} onClick={salvar} disabled={salvando}>
+        <Save size={14} /> {salvando ? 'Salvando...' : salvo ? '✓ Salvo!' : 'Salvar configurações'}
       </button>
     </div>
   )

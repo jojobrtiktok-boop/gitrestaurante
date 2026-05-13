@@ -834,30 +834,114 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
       ) : abaAtiva === 'so-pedidos' ? (() => {
         const pedidosLocal    = pedidosHoje.filter(p => p.canal !== 'delivery')
         const pedidosDelivery = pedidosHoje.filter(p => p.canal === 'delivery')
+
+        function nomeClientePedido(pedido) {
+          return pedido.clienteNome || clientes?.find(c => c.id === pedido.clienteId)?.nome || null
+        }
+
+        // Agrupa pedidos não pagos/cancelados por mesa ou cliente, histórico fica individual
+        function agruparLista(lista) {
+          const ativos = lista.filter(p => !p.pago && !p.cancelado)
+          const historico = lista.filter(p => p.pago || p.cancelado)
+          const grupos = {}
+          for (const p of ativos) {
+            const chave = chaveGrupo(p)
+            if (!grupos[chave]) grupos[chave] = []
+            grupos[chave].push(p)
+          }
+          return { grupos: Object.values(grupos), historico }
+        }
+
+        function CardGrupoPedidos({ grupo }) {
+          const [expandido, setExpandido] = useState(false)
+          const mesaId = grupo[0]?.mesaId
+          const mesa = mesaId ? mesas.find(m => m.id === mesaId) : null
+          const nomeCliente = nomeClientePedido(grupo[0])
+          const titulo = mesa ? mesa.nome : (nomeCliente || 'Pedido')
+          const subtitulo = mesa && nomeCliente ? nomeCliente : null
+          const garcon = garcons.find(g => g.id === grupo[0]?.garconId)
+          const todosItens = grupo.flatMap(p => p.itens || [])
+          const totalQtd = todosItens.reduce((s, i) => s + i.quantidade, 0)
+          const total = grupo.reduce((s, p) => s + valorPedidoCalc(p, pratos), 0)
+          const cor = 'var(--accent)'
+          return (
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: `3px solid ${cor}`, borderRadius: 10, overflow: 'hidden' }}>
+              <div onClick={() => setExpandido(v => !v)}
+                style={{ padding: '9px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', cursor: 'pointer' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--accent)' }}>{titulo}</span>
+                  {subtitulo && <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>· {subtitulo}</span>}
+                  {grupo.length > 1 && <span style={{ fontSize: 10, fontWeight: 700, background: 'var(--accent)', color: '#fff', borderRadius: 20, padding: '1px 7px' }}>{grupo.length} pedidos</span>}
+                  {garcon && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{garcon.nome}</span>}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{totalQtd} item{totalQtd !== 1 ? 's' : ''}</span>
+                  {cfg.caixaMostrarPrecos && <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)' }}>{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>}
+                  <button onClick={e => { e.stopPropagation(); abrirPagamento(grupo[0].id, mesaId || null) }}
+                    style={{ padding: '3px 10px', borderRadius: 7, border: 'none', background: '#16a34a', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                    <Check size={10} style={{ display: 'inline', marginRight: 3 }} />{mesaId ? `Pagar ${mesa?.nome || 'Mesa'}` : 'Pagar'}
+                  </button>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{expandido ? '▲' : '▼'}</span>
+                </div>
+              </div>
+              {expandido && (
+                <div style={{ borderTop: '1px solid var(--border)', padding: '8px 14px', background: 'var(--bg-hover)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {todosItens.map((item, idx) => {
+                    const p = pratos.find(x => x.id === item.pratoId)
+                    if (!p) return null
+                    const extras = (item.opcoes || []).reduce((s, o) => s + (Number(o.precoExtra) || 0), 0)
+                    return (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>×{item.quantidade} {p.nome}</span>
+                          {item.opcoes?.map((o, i) => <span key={i} style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', paddingLeft: 12 }}>· {o.nome}</span>)}
+                        </div>
+                        {cfg.caixaMostrarPrecos && (
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                            {((item.precoUnit != null ? item.precoUnit : p.precoVenda + extras) * item.quantidade).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )
+        }
+
         function ListaPedidos({ lista }) {
+          const { grupos, historico } = agruparLista(lista)
           return lista.length === 0
             ? <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-muted)', fontSize: 13 }}>Nenhum pedido</div>
             : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {[...lista].sort((a, b) => b.hora.localeCompare(a.hora)).map(pedido => {
+                {/* Grupos ativos agrupados */}
+                {grupos.map((grupo, idx) => (
+                  <CardGrupoPedidos key={`grupo-${idx}`} grupo={grupo} />
+                ))}
+                {/* Histórico (pagos/cancelados) individual */}
+                {historico.sort((a, b) => b.hora.localeCompare(a.hora)).map(pedido => {
                   const mesa   = mesas.find(m => m.id === pedido.mesaId)
                   const garcon = garcons.find(g => g.id === pedido.garconId)
+                  const nomeCliente = nomeClientePedido(pedido)
                   const total  = valorPedidoCalc(pedido, pratos)
                   const etapaSolida = etapas.find(e => e.id === pedido.status)
-                  const sCor = pedido.cancelado ? '#ef4444' : pedido.pago ? '#16a34a' : etapaSolida?.cor || 'var(--text-muted)'
-                  const sLabel = pedido.cancelado ? 'Cancelado' : pedido.pago ? 'Pago' : etapaSolida?.label || pedido.status
+                  const sCor = pedido.cancelado ? '#ef4444' : '#16a34a'
+                  const sLabel = pedido.cancelado ? 'Cancelado' : 'Pago'
                   const totalQtd = (pedido.itens || []).reduce((s, i) => s + i.quantidade, 0)
                   const expandido = !!expandidosPedido[pedido.id]
                   return (
-                    <div key={pedido.id} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: `3px solid ${sCor}`, borderRadius: 10, overflow: 'hidden' }}>
+                    <div key={pedido.id} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: `3px solid ${sCor}`, borderRadius: 10, overflow: 'hidden', opacity: 0.7 }}>
                       <div
                         onClick={() => setExpandidosPedido(prev => ({ ...prev, [pedido.id]: !prev[pedido.id] }))}
                         style={{ padding: '9px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', cursor: 'pointer' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>{pedido.hora}</span>
                           <span style={{ fontSize: 11, fontWeight: 700, padding: '1px 8px', borderRadius: 20, background: `${sCor}22`, color: sCor }}>{sLabel}</span>
-                          {mesa   && <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>{mesa.nome}</span>}
-                          {garcon && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{garcon.nome}</span>}
+                          {mesa      && <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>{mesa.nome}</span>}
+                          {nomeCliente && <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600 }}>{nomeCliente}</span>}
+                          {garcon    && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{garcon.nome}</span>}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{totalQtd} item{totalQtd !== 1 ? 's' : ''}</span>
@@ -1130,19 +1214,22 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
           return result.map((c, i) => i === lastIdx - 1 ? { ...c, proximoStatus: 'saindo', proximoLabel: '→ Saindo para Entregar' } : c)
         })()
 
+        function chaveGrupo(p) {
+          if (p.mesaId) return `mesa:${p.mesaId}`
+          // Normaliza clienteId: se não tem clienteId mas tem clienteNome, tenta resolver via array
+          let cId = p.clienteId
+          if (!cId && p.clienteNome) {
+            cId = clientes?.find(c => c.nome === p.clienteNome)?.id || null
+          }
+          if (cId) return `clienteId:${cId}`
+          if (p.clienteNome) return `clienteNome:${p.clienteNome}`
+          return `pedido:${p.id}`
+        }
+
         function agruparPedidosUltimaColuna(pedidosList) {
           const grupos = {}
           for (const p of pedidosList) {
-            let chave
-            if (p.mesaId) {
-              chave = `mesa:${p.mesaId}`
-            } else if (p.clienteId) {
-              chave = `clienteId:${p.clienteId}`
-            } else if (p.clienteNome) {
-              chave = `cliente:${p.clienteNome}`
-            } else {
-              chave = `pedido:${p.id}`
-            }
+            const chave = chaveGrupo(p)
             if (!grupos[chave]) grupos[chave] = []
             grupos[chave].push(p)
           }

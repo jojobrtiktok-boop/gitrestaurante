@@ -70,7 +70,7 @@ function CardIfood() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <div style={{ width: 48, height: 48, borderRadius: 12, background: cor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
-          <img src="/logo-ifood.png" alt="iFood" style={{ width: 38, height: 38, objectFit: 'contain' }} />
+          <img src="/logo-ifood.png" alt="iFood" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
         <div style={{ flex: 1 }}>
           <p style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)', margin: 0 }}>iFood</p>
@@ -229,7 +229,7 @@ function Card99() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <div style={{ width: 48, height: 48, borderRadius: 12, background: cor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
-          <img src="/logo-99food.png" alt="99food" style={{ width: 38, height: 38, objectFit: 'contain' }} />
+          <img src="/logo-99food.png" alt="99food" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
         <div style={{ flex: 1 }}>
           <p style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)', margin: 0 }}>99food</p>
@@ -305,7 +305,7 @@ function CardKetta() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <div style={{ width: 48, height: 48, borderRadius: 12, background: cor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
-          <img src="/logo-ketta.png" alt="Ketta" style={{ width: 38, height: 38, objectFit: 'contain' }} />
+          <img src="/logo-ketta.png" alt="Ketta" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
         <div style={{ flex: 1 }}>
           <p style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)', margin: 0 }}>Ketta</p>

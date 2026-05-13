@@ -226,14 +226,14 @@ export default function Receitas() {
                           {prato.categoria || '—'}
                         </span>
                       </td>
-                      <td style={{ color: 'var(--accent)', fontWeight: 600 }}>{formatarMoeda(prato.precoVenda)}</td>
+                      <td style={{ color: '#3b82f6', fontWeight: 600 }}>{formatarMoeda(prato.precoVenda)}</td>
                       <td style={{ color: '#ef4444' }}>{formatarMoeda(custo)}</td>
                       <td>
                         <Badge cor={cmv <= 30 ? 'green' : cmv <= 45 ? 'yellow' : 'red'}>
                           CMV {formatarPorcentagem(cmv)}
                         </Badge>
                       </td>
-                      <td style={{ color: lucro < 0 ? '#ef4444' : '#3b82f6', fontWeight: lucro < 0 ? 600 : undefined }}>{formatarMoeda(lucro)}</td>
+                      <td style={{ color: lucro < 0 ? '#ef4444' : '#22c55e', fontWeight: lucro < 0 ? 600 : undefined }}>{formatarMoeda(lucro)}</td>
                       <td><Badge cor={margemCor(margem)}>{formatarPorcentagem(margem)}</Badge></td>
                       <td>
                         <div className="flex gap-1 justify-end">
@@ -415,7 +415,7 @@ export default function Receitas() {
                   </div>
                   <div className="flex-1">
                     <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Preço sugerido</p>
-                    <p className="text-xl font-bold" style={{ color: 'var(--accent)' }}>
+                    <p className="text-xl font-bold" style={{ color: '#3b82f6' }}>
                       {precoSugerido > 0 ? formatarMoeda(precoSugerido) : '—'}
                     </p>
                   </div>
@@ -445,8 +445,8 @@ export default function Receitas() {
               {[
                 { label: 'Custo', valor: formatarMoeda(custoPreview), cor: '#ef4444' },
                 { label: 'CMV%', valor: formatarPorcentagem(cmvPreview), cor: cmvPreview <= 35 ? 'var(--accent)' : '#f59e0b' },
-                { label: 'Lucro', valor: formatarMoeda(lucroPreview), cor: lucroPreview >= 0 ? '#3b82f6' : '#ef4444' },
-                { label: 'Margem', valor: formatarPorcentagem(margemPreview), cor: margemPreview >= 30 ? 'var(--accent)' : '#f59e0b' },
+                { label: 'Lucro', valor: formatarMoeda(lucroPreview), cor: lucroPreview >= 0 ? '#22c55e' : '#ef4444' },
+                { label: 'Margem', valor: formatarPorcentagem(margemPreview), cor: margemPreview >= 60 ? '#16a34a' : margemPreview >= 30 ? '#d97706' : '#dc2626' },
               ].map(({ label, valor, cor }) => (
                 <div key={label}>
                   <p className="text-xs mb-0.5" style={{ color: 'var(--text-muted)' }}>{label}</p>

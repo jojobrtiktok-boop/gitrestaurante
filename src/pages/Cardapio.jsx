@@ -1349,7 +1349,7 @@ function ModalQRCode({ url, onClose }) {
 
 /* ─── Aba: Cardápio Digital Config ───────────────── */
 function CardapioDigitalConfig() {
-  const { cardapioConfig, atualizarCardapioConfig, definirSlugCardapio, garcons, adicionarGarcon, removerGarcon, pratos, auth } = useApp()
+  const { cardapioConfig, atualizarCardapioConfig, definirSlugCardapio, garcons, adicionarGarcon, removerGarcon, atualizarGarcon, kanbanConfig, atualizarKanbanConfig, pratos, auth } = useApp()
   const [novoGarcon, setNovoGarcon] = useState('')
   const [copiado, setCopiado] = useState(null)
   const [uploadandoLogo, setUploadandoLogo] = useState(false)
@@ -1556,6 +1556,28 @@ function CardapioDigitalConfig() {
           </button>
         </div>
 
+        {/* Toggles de funcionalidades */}
+        <div className="flex flex-col gap-2 mb-4 p-3 rounded-xl" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" checked={!!kanbanConfig.garconPodeFecharConta}
+              onChange={e => atualizarKanbanConfig({ garconPodeFecharConta: e.target.checked })}
+              className="w-4 h-4 rounded" />
+            <div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Garçom pode fechar conta</p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Permite ao garçom selecionar forma de pagamento e fechar a mesa pela comanda</p>
+            </div>
+          </label>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" checked={!!kanbanConfig.comissaoGarconAtivo}
+              onChange={e => atualizarKanbanConfig({ comissaoGarconAtivo: e.target.checked })}
+              className="w-4 h-4 rounded" />
+            <div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Comissão de garçom</p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Exibe o valor de comissão (informativo) no momento do pagamento</p>
+            </div>
+          </label>
+        </div>
+
         {garcons.filter(g => g.ativo !== false).length === 0 ? (
           <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted)' }}>Nenhum garçon cadastrado ainda.</p>
         ) : (
@@ -1572,6 +1594,20 @@ function CardapioDigitalConfig() {
                     <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{g.nome}</p>
                     <p className="text-xs font-mono truncate" style={{ color: 'var(--text-muted)' }}>/comanda/{g.token}</p>
                   </div>
+                  {kanbanConfig.comissaoGarconAtivo && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <input
+                        type="number" min="0" max="100" step="0.5"
+                        value={g.taxaComissao || ''}
+                        placeholder="0"
+                        onChange={e => atualizarGarcon(g.id, { taxaComissao: parseFloat(e.target.value) || 0 })}
+                        className="input text-xs text-center"
+                        style={{ width: 56, padding: '4px 6px' }}
+                        title="Comissão (%)"
+                      />
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>%</span>
+                    </div>
+                  )}
                   <button className="btn btn-secondary py-1 px-2.5 text-xs shrink-0" onClick={() => copiar(link, g.id)}>
                     {copiado === g.id ? <><Check size={11} /> Copiado!</> : <><Copy size={11} /> Link</>}
                   </button>

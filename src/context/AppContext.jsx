@@ -55,6 +55,8 @@ const KANBAN_CONFIG_PADRAO = {
   caixaImpressaoAtivo: false,
   telaoToken: null,
   pedidosDisplayToken: null,
+  comissaoGarconAtivo: false,
+  garconPodeFecharConta: false,
   etapas: [
     { id: 'novo',       label: 'Aguardando', cor: '#3b82f6' },
     { id: 'preparando', label: 'Preparando', cor: '#f59e0b' },
@@ -260,10 +262,10 @@ function rowToImposto(row) {
 }
 
 function garconToRow(g, uid) {
-  return { id: g.id, user_id: uid, nome: g.nome, token: g.token, ativo: g.ativo !== false }
+  return { id: g.id, user_id: uid, nome: g.nome, token: g.token, ativo: g.ativo !== false, taxa_comissao: g.taxaComissao || 0 }
 }
 function rowToGarcon(row) {
-  return { id: row.id, nome: row.nome, token: row.token, ativo: row.ativo !== false }
+  return { id: row.id, nome: row.nome, token: row.token, ativo: row.ativo !== false, taxaComissao: Number(row.taxa_comissao || 0) }
 }
 
 function clienteToRow(c, uid) {
@@ -1772,6 +1774,20 @@ export function AppProvider({ children }) {
     if (auth.userId) sbWrite(supabase.from('garcons').update({ ativo: false }).eq('id', id).eq('user_id', auth.userId))
   }
 
+  function atualizarGarcon(id, { nome, taxaComissao }) {
+    setGarcons(prev => prev.map(g => g.id === id ? {
+      ...g,
+      ...(nome !== undefined ? { nome } : {}),
+      ...(taxaComissao !== undefined ? { taxaComissao: Number(taxaComissao) || 0 } : {}),
+    } : g))
+    if (auth.userId) {
+      const patch = {}
+      if (nome !== undefined) patch.nome = nome
+      if (taxaComissao !== undefined) patch.taxa_comissao = Number(taxaComissao) || 0
+      sbWrite(supabase.from('garcons').update(patch).eq('id', id).eq('user_id', auth.userId))
+    }
+  }
+
   // ── Clientes ──────────────────────────────────────────────────────────
   function adicionarCliente({ nome, telefone, aniversario } = {}) {
     // aceita também string legada: adicionarCliente('Nome')
@@ -2480,7 +2496,7 @@ export function AppProvider({ children }) {
     registrosVendas, registrarVendas, buscarVendasDia,
     entradasVendas, adicionarEntradaVenda, removerEntradaVenda,
     cardapioConfig, atualizarCardapioConfig, definirSlugCardapio,
-    garcons, adicionarGarcon, removerGarcon,
+    garcons, adicionarGarcon, removerGarcon, atualizarGarcon,
     clientes, adicionarCliente, editarCliente, removerCliente,
     pedidos, adicionarPedido, adicionarPedidoDelivery, atualizarStatusPedido, aceitarPedidoDelivery, atribuirMotoboy, marcarEntregue, marcarPedidoPago, pagarMesa, cancelarPedido,
     caixaInicial, registrarCaixaInicial, getCaixaInicial, getCaixaInicialPeriodo,

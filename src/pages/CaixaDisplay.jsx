@@ -502,7 +502,7 @@ const FORMAS_LABEL = {
   cartao_credito: { label: 'Crédito', icon: '💳' },
   cartao_debito: { label: 'Débito', icon: '💳' },
 }
-function ModalPagamento({ total, cfg, pagamentosConfig, onConfirmar, onFechar }) {
+function ModalPagamento({ total, cfg, pagamentosConfig, comissaoInfo, onConfirmar, onFechar }) {
   const formas = [
     pagamentosConfig?.dinheiro !== false && 'dinheiro',
     pagamentosConfig?.pix !== false && 'pix',
@@ -521,6 +521,13 @@ function ModalPagamento({ total, cfg, pagamentosConfig, onConfirmar, onFechar })
         {cfg.caixaMostrarPrecos && (
           <div style={{ textAlign: 'center', fontSize: 26, fontWeight: 800, color: '#16a34a' }}>
             {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          </div>
+        )}
+        {comissaoInfo && comissaoInfo.valor > 0 && (
+          <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, padding: '8px 12px' }}>
+            <span style={{ fontSize: 13, color: '#166534' }}>
+              🤝 Comissão {comissaoInfo.nome}: {comissaoInfo.taxa}% = <strong>R$ {comissaoInfo.valor.toFixed(2)}</strong>
+            </span>
           </div>
         )}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -565,9 +572,23 @@ export default function CaixaDisplay() {
   }
 
   function abrirPagamento(pedidoId, mesaId) {
-    const pedido = pedidos.find(p => p.id === pedidoId)
-    const total = pedido ? calcTotal(pedido) : 0
-    setModalPagamento({ pedidoId, mesaId: mesaId || null, total })
+    let total = 0
+    let comissaoInfo = null
+    if (mesaId) {
+      // Soma todos os pedidos não pagos da mesa
+      const pedidosMesa = pedidos.filter(p => p.mesaId === mesaId && !p.pago && !p.cancelado)
+      total = pedidosMesa.reduce((s, p) => s + calcTotal(p), 0)
+      if (cfg.comissaoGarconAtivo) {
+        const garconId = pedidosMesa[0]?.garconId
+        const garcom = garcons.find(g => g.id === garconId)
+        if (garcom && garcom.taxaComissao > 0)
+          comissaoInfo = { nome: garcom.nome, taxa: garcom.taxaComissao, valor: (total * garcom.taxaComissao) / 100 }
+      }
+    } else {
+      const pedido = pedidos.find(p => p.id === pedidoId)
+      total = pedido ? calcTotal(pedido) : 0
+    }
+    setModalPagamento({ pedidoId, mesaId: mesaId || null, total, comissaoInfo })
   }
 
   function confirmarPagamento(formaPagamento) {
@@ -738,6 +759,7 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
           total={modalPagamento.total}
           cfg={cfg}
           pagamentosConfig={pagamentosConfig}
+          comissaoInfo={modalPagamento.comissaoInfo || null}
           onConfirmar={confirmarPagamento}
           onFechar={() => setModalPagamento(null)}
         />
@@ -1108,6 +1130,124 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
           return result.map((c, i) => i === lastIdx - 1 ? { ...c, proximoStatus: 'saindo', proximoLabel: '→ Saindo para Entregar' } : c)
         })()
 
+        function agruparPedidosUltimaColuna(pedidosList) {
+          const grupos = {}
+          for (const p of pedidosList) {
+            let chave
+            if (p.mesaId) {
+              chave = `mesa:${p.mesaId}`
+            } else if (p.clienteNome) {
+              chave = `cliente:${p.clienteNome}`
+            } else {
+              chave = `pedido:${p.id}`
+            }
+            if (!grupos[chave]) grupos[chave] = []
+            grupos[chave].push(p)
+          }
+          return Object.values(grupos)
+        }
+
+        function CardGrupoMesa({ grupo, col, isDelivery }) {
+          const [confirmando, setConfirmando] = useState(false)
+          const mesaId = grupo[0]?.mesaId
+          const mesa = mesaId ? mesas.find(m => m.id === mesaId) : null
+          const nomeGrupo = mesa ? mesa.nome : (grupo[0]?.clienteNome || 'Cliente')
+          const todosItens = grupo.flatMap(p => (p.itens || []).map(item => ({ ...item, _pedidoId: p.id })))
+          const total = grupo.reduce((s, p) => s + calcTotal(p), 0)
+
+          // Comissão
+          let comissaoInfo = null
+          if (cfg.comissaoGarconAtivo) {
+            const garconId = grupo[0]?.garconId
+            const garcom = garcons.find(g => g.id === garconId)
+            if (garcom && garcom.taxaComissao > 0)
+              comissaoInfo = { nome: garcom.nome, taxa: garcom.taxaComissao, valor: (total * garcom.taxaComissao) / 100 }
+          }
+
+          return (
+            <div style={{ borderRadius: 12, border: `1.5px solid ${col.cor}44`, background: 'var(--bg-card)', overflow: 'hidden' }}>
+              {/* Header */}
+              <div style={{ padding: '8px 12px', background: `${col.cor}18`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <span style={{ fontWeight: 800, fontSize: 13, color: col.cor }}>{nomeGrupo}</span>
+                {grupo.length > 1 && (
+                  <span style={{ fontSize: 10, fontWeight: 700, background: col.cor, color: '#fff', borderRadius: 20, padding: '1px 7px' }}>
+                    {grupo.length} pedidos
+                  </span>
+                )}
+              </div>
+              {/* Itens */}
+              <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {todosItens.map((item, idx) => {
+                  const prato = pratos.find(x => x.id === item.pratoId)
+                  const nomeItem = prato?.nome || item.ifoodItemName || 'Item'
+                  return (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)' }}>
+                      <span>{item.quantidade}× {nomeItem}</span>
+                      {cfg.caixaMostrarPrecos && (
+                        <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                          {((item.precoUnit || prato?.precoVenda || 0) * item.quantidade).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              {/* Total + comissão */}
+              {cfg.caixaMostrarPrecos && (
+                <div style={{ padding: '6px 12px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Total</span>
+                  <span style={{ fontWeight: 800, fontSize: 14, color: '#16a34a' }}>
+                    {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </span>
+                </div>
+              )}
+              {comissaoInfo && (
+                <div style={{ padding: '4px 12px 6px', fontSize: 11, color: '#166534', background: '#f0fdf4' }}>
+                  🤝 Comissão {comissaoInfo.nome}: {comissaoInfo.taxa}% = R$ {comissaoInfo.valor.toFixed(2)}
+                </div>
+              )}
+              {/* Botão pagar */}
+              <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)' }}>
+                {!confirmando ? (
+                  <button
+                    onClick={() => setConfirmando(true)}
+                    style={{ width: '100%', padding: '7px 0', borderRadius: 8, border: 'none', background: '#16a34a', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                    ✓ Pagar {mesa ? mesa.nome : nomeGrupo}
+                  </button>
+                ) : (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', alignSelf: 'center' }}>Forma de pagamento:</span>
+                    {[
+                      pagamentosConfig?.dinheiro !== false && { id: 'dinheiro', label: '💵 Dinheiro' },
+                      pagamentosConfig?.pix !== false && { id: 'pix', label: '📱 Pix' },
+                      pagamentosConfig?.cartaoCredito !== false && { id: 'cartao_credito', label: '💳 Crédito' },
+                      pagamentosConfig?.cartaoDebito !== false && { id: 'cartao_debito', label: '💳 Débito' },
+                    ].filter(Boolean).map(f => (
+                      <button key={f.id} onClick={() => {
+                        if (mesaId) {
+                          abrirPagamento(grupo[0].id, mesaId)
+                          // override: pay directly
+                          pagarMesa(mesaId, f.id)
+                          setStatusMesa(mesaId, 'livre')
+                          setPagarMesaConfirm({ pedidoId: grupo[0].id, mesaId })
+                        } else {
+                          grupo.forEach(p => marcarPedidoPago(p.id, f.id))
+                        }
+                        setConfirmando(false)
+                      }}
+                        style={{ padding: '5px 10px', borderRadius: 7, border: '1.5px solid var(--border)', background: 'var(--bg-hover)', color: 'var(--text-primary)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                        {f.label}
+                      </button>
+                    ))}
+                    <button onClick={() => setConfirmando(false)}
+                      style={{ padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 10, cursor: 'pointer' }}>✕</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        }
+
         function BoardColunas({ lista, titulo, icone, colunas, isDelivery }) {
           const cols = colunas || colunasDef
           return (
@@ -1157,36 +1297,69 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
                       }}>
                         {cards.length === 0
                           ? <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text-muted)', fontSize: 13 }}>—</div>
-                          : cards.map(pedido => {
-                            const motoboy = motoboys?.find(m => m.id === pedido.motoboyId)
-                            return (
-                              <div key={pedido.id}>
-                                <CardCaixa
-                                  pedido={pedido}
-                                  coluna={col}
-                                  pratos={pratos}
-                                  garcons={garcons}
-                                  mesas={mesas}
-                                  clientes={clientes}
-                                  onAvancar={isDelivery ? handleAvancarDelivery : atualizarStatusPedido}
-                                  onPagar={(id) => abrirPagamento(id, null)}
-                                  onAceitar={(id) => isDelivery ? aceitarPedidoDelivery(id) : atualizarStatusPedido(id, 'preparando')}
-                                  onCancelar={(id) => cancelarPedido(id)}
-                                  cfg={cfg}
-                                  isNovo={isPrimeiro && (Date.now() - new Date(pedido.timestamps?.novo || pedido.timestamps?.pendente).getTime()) < 300000}
-                                />
-                                {/* Entregador na coluna saindo */}
-                                {col.id === 'saindo' && motoboy && (
-                                  <div style={{ marginTop: -4, padding: '4px 10px', borderRadius: '0 0 10px 10px', background: `${motoboy.cor || '#8b5cf6'}18`, border: `1px solid ${motoboy.cor || '#8b5cf6'}33`, borderTop: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <div style={{ width: 18, height: 18, borderRadius: '50%', background: motoboy.cor || '#8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 9, flexShrink: 0 }}>
-                                      {motoboy.nome.charAt(0).toUpperCase()}
-                                    </div>
-                                    <span style={{ fontSize: 11, fontWeight: 700, color: motoboy.cor || '#8b5cf6' }}>🛵 {motoboy.nome}</span>
+                          : (isUltimo && !isDelivery
+                            ? agruparPedidosUltimaColuna(cards).map(grupo => {
+                              if (grupo.length === 1) {
+                                const pedido = grupo[0]
+                                const motoboy = motoboys?.find(m => m.id === pedido.motoboyId)
+                                return (
+                                  <div key={pedido.id}>
+                                    <CardCaixa
+                                      pedido={pedido}
+                                      coluna={col}
+                                      pratos={pratos}
+                                      garcons={garcons}
+                                      mesas={mesas}
+                                      clientes={clientes}
+                                      onAvancar={atualizarStatusPedido}
+                                      onPagar={(id) => abrirPagamento(id, pedido.mesaId || null)}
+                                      onAceitar={(id) => atualizarStatusPedido(id, 'preparando')}
+                                      onCancelar={(id) => cancelarPedido(id)}
+                                      cfg={cfg}
+                                      isNovo={false}
+                                    />
                                   </div>
-                                )}
-                              </div>
-                            )
-                          })
+                                )
+                              }
+                              return (
+                                <CardGrupoMesa
+                                  key={grupo[0].mesaId ? `mesa:${grupo[0].mesaId}` : `cliente:${grupo[0].clienteNome}`}
+                                  grupo={grupo}
+                                  col={col}
+                                  isDelivery={false}
+                                />
+                              )
+                            })
+                            : cards.map(pedido => {
+                              const motoboy = motoboys?.find(m => m.id === pedido.motoboyId)
+                              return (
+                                <div key={pedido.id}>
+                                  <CardCaixa
+                                    pedido={pedido}
+                                    coluna={col}
+                                    pratos={pratos}
+                                    garcons={garcons}
+                                    mesas={mesas}
+                                    clientes={clientes}
+                                    onAvancar={isDelivery ? handleAvancarDelivery : atualizarStatusPedido}
+                                    onPagar={(id) => abrirPagamento(id, null)}
+                                    onAceitar={(id) => isDelivery ? aceitarPedidoDelivery(id) : atualizarStatusPedido(id, 'preparando')}
+                                    onCancelar={(id) => cancelarPedido(id)}
+                                    cfg={cfg}
+                                    isNovo={isPrimeiro && (Date.now() - new Date(pedido.timestamps?.novo || pedido.timestamps?.pendente).getTime()) < 300000}
+                                  />
+                                  {/* Entregador na coluna saindo */}
+                                  {col.id === 'saindo' && motoboy && (
+                                    <div style={{ marginTop: -4, padding: '4px 10px', borderRadius: '0 0 10px 10px', background: `${motoboy.cor || '#8b5cf6'}18`, border: `1px solid ${motoboy.cor || '#8b5cf6'}33`, borderTop: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: motoboy.cor || '#8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 9, flexShrink: 0 }}>
+                                        {motoboy.nome.charAt(0).toUpperCase()}
+                                      </div>
+                                      <span style={{ fontSize: 11, fontWeight: 700, color: motoboy.cor || '#8b5cf6' }}>🛵 {motoboy.nome}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            }))
                         }
                       </div>
                     </div>

@@ -229,6 +229,11 @@ CREATE POLICY "own_data" ON integracoes_config FOR ALL
   USING  (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+-- ── 12b. Comissão por garçom ───────────────────────────────────────────────────
+-- taxa_comissao: percentual de comissão do garçom (ex: 10 = 10%). Zero por padrão.
+
+ALTER TABLE garcons ADD COLUMN IF NOT EXISTS taxa_comissao NUMERIC DEFAULT 0;
+
 -- ── 12. Colunas para pedidos de plataformas (99food, Keeta, etc.) ─────────────
 -- plataforma_taxa  : taxa/comissão cobrada pela plataforma no pedido
 -- plataforma_pedido_id : ID externo do pedido na plataforma (redundante com ifood_order_id

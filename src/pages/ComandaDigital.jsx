@@ -37,7 +37,7 @@ function dispararNotificacao(msg) {
 
 export default function ComandaDigital() {
   const { token } = useParams()
-  const { garcons, pratos, cardapioConfig, adicionarPedido, atualizarStatusPedido, pedidos, mesas, authLoading, displayReady } = useApp()
+  const { garcons, pratos, cardapioConfig, adicionarPedido, atualizarStatusPedido, pedidos, mesas, pagarMesa, setStatusMesa, pagamentosConfig, kanbanConfig, authLoading, displayReady } = useApp()
 
   const garcon = garcons.find(g => g.token === token)
 
@@ -46,10 +46,16 @@ export default function ComandaDigital() {
   const [carrinho, setCarrinho] = useState([]) // [{ uid, pratoId, quantidade, opcoes }]
   const [obs, setObs] = useState('')
   const [carrinhoAberto, setCarrinhoAberto] = useState(false)
-  const [pedidoEnviado, setPedidoEnviado] = useState(false)
+  const [feedbackMsg, setFeedbackMsg] = useState(null)
+  const pedidoEnviado = !!feedbackMsg
+  function mostrarFeedback(msg = 'Pedido enviado com sucesso!') {
+    setFeedbackMsg(msg)
+    setTimeout(() => setFeedbackMsg(null), 3000)
+  }
   const [pratoOpcoes, setPratoOpcoes] = useState(null)
   const [mesaId, setMesaId] = useState(null)
   const [clienteId, setClienteId] = useState(null)
+  const [fecharContaInfo, setFecharContaInfo] = useState(null) // { mesaId, mesa, pedidosMesa, total }
   const prontoIdsRef = useRef(new Set())
 
   const pedidosHoje = pedidos.filter(p => p.garconId === garcon?.id && p.data === hoje())
@@ -191,8 +197,7 @@ export default function ComandaDigital() {
     setMesaId(null)
     setClienteId(null)
     setCarrinhoAberto(false)
-    setPedidoEnviado(true)
-    setTimeout(() => setPedidoEnviado(false), 3000)
+    mostrarFeedback('Pedido enviado com sucesso!')
   }
 
   return (
@@ -241,11 +246,11 @@ export default function ComandaDigital() {
       </div>
 
       <div style={{ maxWidth: 700, margin: '0 auto', padding: '16px 16px' }}>
-        {/* Feedback pedido enviado */}
-        {pedidoEnviado && (
+        {/* Feedback */}
+        {feedbackMsg && (
           <div style={{ background: '#16a34a', borderRadius: 12, padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
             <Check size={16} color="#fff" />
-            <span style={{ color: '#fff', fontWeight: 600, fontSize: 14 }}>Pedido enviado com sucesso!</span>
+            <span style={{ color: '#fff', fontWeight: 600, fontSize: 14 }}>{feedbackMsg}</span>
           </div>
         )}
 
@@ -306,6 +311,52 @@ export default function ComandaDigital() {
             </div>
           </div>
         )}
+
+        {/* ── Fechar Conta por Mesa ── */}
+        {(kanbanConfig?.garconPodeFecharConta || kanbanConfig?.comissaoGarconAtivo) && (() => {
+          // Mesas que este garçon tem pedidos não pagos hoje
+          const mesasAbertas = mesas.filter(m => {
+            const pedidosMesa = pedidos.filter(p =>
+              p.mesaId === m.id && p.garconId === garcon.id && !p.pago && !p.cancelado && p.data === hoje()
+            )
+            return pedidosMesa.length > 0
+          })
+          if (mesasAbertas.length === 0) return null
+          return (
+            <div style={{ marginBottom: 20 }}>
+              <p style={{ fontWeight: 800, fontSize: 13, color: textoSecundario, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
+                💳 Fechar Conta
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {mesasAbertas.map(m => {
+                  const pedidosMesa = pedidos.filter(p =>
+                    p.mesaId === m.id && p.garconId === garcon.id && !p.pago && !p.cancelado && p.data === hoje()
+                  )
+                  const totalMesa = pedidosMesa.reduce((s, p) => s + (p.itens || []).reduce((ss, item) => {
+                    const prato = pratos.find(x => x.id === item.pratoId)
+                    const extras = (item.opcoes || []).reduce((e, o) => e + (o.precoExtra || 0), 0)
+                    return ss + ((item.precoUnit != null ? item.precoUnit : (prato?.precoVenda || 0) + extras)) * item.quantidade
+                  }, 0), 0)
+                  return (
+                    <div key={m.id} style={{ background: bgCard, border: `1px solid ${border}`, borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                      <div>
+                        <span style={{ fontWeight: 700, fontSize: 13, color: textoPrimario }}>🪑 {m.nome}</span>
+                        <span style={{ fontSize: 11, color: textoSecundario, marginLeft: 6 }}>
+                          {pedidosMesa.length} pedido{pedidosMesa.length !== 1 ? 's' : ''}
+                          {config.mostrarPrecos ? ` · ${totalMesa.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}` : ''}
+                        </span>
+                      </div>
+                      <button onClick={() => setFecharContaInfo({ mesaId: m.id, mesa: m, pedidosMesa, total: totalMesa })}
+                        style={{ padding: '7px 14px', borderRadius: 9, border: 'none', background: destaque, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                        Fechar Conta
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Busca */}
         <div style={{ position: 'relative', marginBottom: 12 }}>
@@ -590,6 +641,93 @@ export default function ComandaDigital() {
           </div>
         </div>
       )}
+
+      {/* Modal Fechar Conta */}
+      {fecharContaInfo && (() => {
+        const { mesa, pedidosMesa, total } = fecharContaInfo
+        const todosItens = pedidosMesa.flatMap(p => (p.itens || []).map(item => ({ ...item, _pedidoId: p.id })))
+        const comissaoAtiva = kanbanConfig?.comissaoGarconAtivo
+        const comissaoValor = comissaoAtiva && garcon.taxaComissao > 0 ? (total * garcon.taxaComissao) / 100 : 0
+        const formasPag = [
+          pagamentosConfig?.dinheiro !== false && { id: 'dinheiro', label: '💵 Dinheiro' },
+          pagamentosConfig?.pix !== false && { id: 'pix', label: '📱 Pix' },
+          pagamentosConfig?.cartaoCredito !== false && { id: 'cartao_credito', label: '💳 Crédito' },
+          pagamentosConfig?.cartaoDebito !== false && { id: 'cartao_debito', label: '💳 Débito' },
+        ].filter(Boolean)
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+            onClick={e => e.target === e.currentTarget && setFecharContaInfo(null)}>
+            <div style={{ width: '100%', maxWidth: 480, background: isEscuro ? '#1e293b' : '#fff', borderRadius: '20px 20px 0 0', padding: '20px 18px 32px', maxHeight: '85vh', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div>
+                  <p style={{ fontWeight: 800, fontSize: 16, color: textoPrimario, margin: 0 }}>Fechar Conta</p>
+                  <p style={{ fontSize: 12, color: textoSecundario, margin: '2px 0 0' }}>{mesa.nome}</p>
+                </div>
+                <button onClick={() => setFecharContaInfo(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: textoSecundario }}>
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Itens */}
+              <div style={{ marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {todosItens.map((item, idx) => {
+                  const prato = pratos.find(x => x.id === item.pratoId)
+                  const nomeItem = prato?.nome || item.ifoodItemName || 'Item'
+                  const precoUnit = item.precoUnit != null ? item.precoUnit : (prato?.precoVenda || 0)
+                  return (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: textoPrimario }}>
+                      <span>{item.quantidade}× {nomeItem}</span>
+                      {config.mostrarPrecos && (
+                        <span style={{ color: textoSecundario }}>{(precoUnit * item.quantidade).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Total */}
+              {config.mostrarPrecos && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 10, borderTop: `1px solid ${border}`, marginBottom: 10 }}>
+                  <span style={{ fontWeight: 700, fontSize: 15, color: textoPrimario }}>Total</span>
+                  <span style={{ fontWeight: 800, fontSize: 16, color: destaque }}>
+                    {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </span>
+                </div>
+              )}
+
+              {/* Comissão */}
+              {comissaoAtiva && comissaoValor > 0 && (
+                <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, padding: '8px 12px', marginBottom: 14 }}>
+                  <span style={{ fontSize: 13, color: '#166534' }}>
+                    🤝 Sua comissão ({garcon.taxaComissao}%) = <strong>R$ {comissaoValor.toFixed(2)}</strong>
+                  </span>
+                </div>
+              )}
+
+              {/* Formas de pagamento */}
+              <p style={{ fontSize: 12, fontWeight: 700, color: textoSecundario, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.04em' }}>Forma de Pagamento</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+                {formasPag.map(f => (
+                  <button key={f.id}
+                    onClick={() => {
+                      pagarMesa(fecharContaInfo.mesaId, f.id)
+                      setStatusMesa(fecharContaInfo.mesaId, 'livre')
+                      setFecharContaInfo(null)
+                      mostrarFeedback(`✓ ${mesa.nome} — conta fechada!`)
+                    }}
+                    style={{ padding: '13px 8px', borderRadius: 12, border: `1.5px solid ${border}`, background: bgHover, color: textoPrimario, fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => { pagarMesa(fecharContaInfo.mesaId, null); setStatusMesa(fecharContaInfo.mesaId, 'livre'); setFecharContaInfo(null); mostrarFeedback(`✓ ${mesa.nome} — conta fechada!`) }}
+                style={{ width: '100%', padding: '8px', borderRadius: 8, border: `1px solid ${border}`, background: 'transparent', color: textoSecundario, fontSize: 12, cursor: 'pointer' }}>
+                Registrar sem forma de pagamento
+              </button>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

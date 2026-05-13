@@ -73,7 +73,7 @@ const FORMAS_PGTO = [
   { id: 'cartaoDebito',  label: 'Débito',      emoji: '💳' },
 ]
 
-function ModalPagar({ cliente, onConfirmar, onFechar }) {
+function ModalPagar({ cliente, comissaoInfo, onConfirmar, onFechar }) {
   const [telefone,       setTelefone]       = useState(cliente?.telefone    || '')
   const [aniversario,    setAniversario]    = useState(cliente?.aniversario || '')
   const [formaPagamento, setFormaPagamento] = useState('')
@@ -91,6 +91,15 @@ function ModalPagar({ cliente, onConfirmar, onFechar }) {
             <X size={15} />
           </button>
         </div>
+
+        {/* Comissão do garçom (informativo) */}
+        {comissaoInfo && comissaoInfo.valor > 0 && (
+          <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, padding: '8px 12px' }}>
+            <span style={{ fontSize: 13, color: '#166534' }}>
+              🤝 Comissão {comissaoInfo.nome}: {comissaoInfo.taxa}% = <strong>R$ {comissaoInfo.valor.toFixed(2)}</strong>
+            </span>
+          </div>
+        )}
 
         {/* Forma de pagamento */}
         <div>
@@ -168,7 +177,7 @@ function ModalOcupar({ mesaNome, onConfirmar, onFechar }) {
 }
 
 export default function Mesas() {
-  const { mesas, adicionarMesa, editarMesa, removerMesa, setStatusMesa, pagarMesa, pedidos, pratos, sessoesMesas, clientes, editarCliente } = useApp()
+  const { mesas, adicionarMesa, editarMesa, removerMesa, setStatusMesa, pagarMesa, pedidos, pratos, sessoesMesas, clientes, editarCliente, garcons, kanbanConfig } = useApp()
   const [aba, setAba] = useState('mesas')
   const [modal, setModal] = useState(false)
   const [editando, setEditando] = useState(null)
@@ -603,19 +612,34 @@ export default function Mesas() {
         />
       )}
 
-      {pagarInfo && (
-        <ModalPagar
-          cliente={clientes.find(c => c.id === pagarInfo.clienteId) || null}
-          onConfirmar={({ telefone, aniversario, formaPagamento }) => {
-            if (pagarInfo.clienteId && (telefone || aniversario)) {
-              editarCliente(pagarInfo.clienteId, { telefone, aniversario })
-            }
-            pagarMesa(pagarInfo.mesaId, formaPagamento)
-            setStatusMesa(pagarInfo.mesaId, 'livre')
-            setPagarInfo(null)
-          }}
-          onFechar={() => setPagarInfo(null)}
-        />
+      {pagarInfo && (() => {
+        const pedidosMesa = pedidos.filter(p => p.mesaId === pagarInfo.mesaId && !p.pago && !p.cancelado)
+        const totalNaoPago = pedidosMesa.reduce((s, p) => s + (p.itens || []).reduce((ss, item) => {
+          const prato = pratos.find(x => x.id === item.pratoId)
+          const extras = (item.opcoes || []).reduce((e, o) => e + (o.precoExtra || 0), 0)
+          return ss + ((prato?.precoVenda || 0) + extras) * item.quantidade
+        }, 0), 0)
+        const garconId = pedidosMesa[0]?.garconId
+        const garcom = garcons.find(g => g.id === garconId)
+        const comissaoInfo = (kanbanConfig.comissaoGarconAtivo && garcom && garcom.taxaComissao > 0)
+          ? { nome: garcom.nome, taxa: garcom.taxaComissao, valor: (totalNaoPago * garcom.taxaComissao) / 100 }
+          : null
+        return (
+          <ModalPagar
+            cliente={clientes.find(c => c.id === pagarInfo.clienteId) || null}
+            comissaoInfo={comissaoInfo}
+            onConfirmar={({ telefone, aniversario, formaPagamento }) => {
+              if (pagarInfo.clienteId && (telefone || aniversario)) {
+                editarCliente(pagarInfo.clienteId, { telefone, aniversario })
+              }
+              pagarMesa(pagarInfo.mesaId, formaPagamento)
+              setStatusMesa(pagarInfo.mesaId, 'livre')
+              setPagarInfo(null)
+            }}
+            onFechar={() => setPagarInfo(null)}
+          />
+        )
+      })()}
       )}
     </div>
   )

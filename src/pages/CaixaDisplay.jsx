@@ -503,6 +503,7 @@ const FORMAS_LABEL = {
   cartao_debito: { label: 'Débito', icon: '💳' },
 }
 function ModalPagamento({ total, cfg, pagamentosConfig, comissaoInfo, onConfirmar, onFechar }) {
+  const [comissaoAtiva, setComissaoAtiva] = useState(true)
   const formas = [
     pagamentosConfig?.dinheiro !== false && 'dinheiro',
     pagamentosConfig?.pix !== false && 'pix',
@@ -524,10 +525,26 @@ function ModalPagamento({ total, cfg, pagamentosConfig, comissaoInfo, onConfirma
           </div>
         )}
         {comissaoInfo && comissaoInfo.valor > 0 && (
-          <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, padding: '8px 12px' }}>
-            <span style={{ fontSize: 13, color: '#166534' }}>
-              🤝 Comissão {comissaoInfo.nome}: {comissaoInfo.taxa}% = <strong>R$ {comissaoInfo.valor.toFixed(2)}</strong>
-            </span>
+          <div style={{ background: comissaoAtiva ? '#f0fdf4' : 'var(--bg-hover)', border: `1px solid ${comissaoAtiva ? '#86efac' : 'var(--border)'}`, borderRadius: 10, padding: '10px 12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <div>
+                <span style={{ fontSize: 12, color: comissaoAtiva ? '#166534' : 'var(--text-muted)' }}>
+                  🤝 Comissão {comissaoInfo.nome} ({comissaoInfo.taxa}%)
+                </span>
+                {comissaoAtiva && (
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#166534', marginTop: 2 }}>
+                    {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    {' + '}
+                    <strong>{comissaoInfo.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => setComissaoAtiva(v => !v)}
+                style={{ flexShrink: 0, padding: '4px 12px', borderRadius: 20, border: 'none', background: comissaoAtiva ? '#16a34a' : '#e5e7eb', color: comissaoAtiva ? '#fff' : '#6b7280', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                {comissaoAtiva ? '✓ Sim' : '✕ Não'}
+              </button>
+            </div>
           </div>
         )}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>

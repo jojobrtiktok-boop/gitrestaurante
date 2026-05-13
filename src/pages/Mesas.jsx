@@ -73,10 +73,11 @@ const FORMAS_PGTO = [
   { id: 'cartaoDebito',  label: 'Débito',      emoji: '💳' },
 ]
 
-function ModalPagar({ cliente, comissaoInfo, onConfirmar, onFechar }) {
+function ModalPagar({ cliente, comissaoInfo, totalNaoPago, onConfirmar, onFechar }) {
   const [telefone,       setTelefone]       = useState(cliente?.telefone    || '')
   const [aniversario,    setAniversario]    = useState(cliente?.aniversario || '')
   const [formaPagamento, setFormaPagamento] = useState('')
+  const [comissaoAtiva,  setComissaoAtiva]  = useState(true)
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
@@ -92,12 +93,28 @@ function ModalPagar({ cliente, comissaoInfo, onConfirmar, onFechar }) {
           </button>
         </div>
 
-        {/* Comissão do garçom (informativo) */}
+        {/* Comissão do garçom */}
         {comissaoInfo && comissaoInfo.valor > 0 && (
-          <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, padding: '8px 12px' }}>
-            <span style={{ fontSize: 13, color: '#166534' }}>
-              🤝 Comissão {comissaoInfo.nome}: {comissaoInfo.taxa}% = <strong>R$ {comissaoInfo.valor.toFixed(2)}</strong>
-            </span>
+          <div style={{ background: comissaoAtiva ? '#f0fdf4' : 'var(--bg-hover)', border: `1px solid ${comissaoAtiva ? '#86efac' : 'var(--border)'}`, borderRadius: 10, padding: '10px 12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <div>
+                <span style={{ fontSize: 12, color: comissaoAtiva ? '#166534' : 'var(--text-muted)' }}>
+                  🤝 Comissão {comissaoInfo.nome} ({comissaoInfo.taxa}%)
+                </span>
+                {comissaoAtiva && totalNaoPago > 0 && (
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#166534', marginTop: 2 }}>
+                    {totalNaoPago.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    {' + '}
+                    <strong>{comissaoInfo.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => setComissaoAtiva(v => !v)}
+                style={{ flexShrink: 0, padding: '4px 12px', borderRadius: 20, border: 'none', background: comissaoAtiva ? '#16a34a' : '#e5e7eb', color: comissaoAtiva ? '#fff' : '#6b7280', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                {comissaoAtiva ? '✓ Sim' : '✕ Não'}
+              </button>
+            </div>
           </div>
         )}
 
@@ -628,6 +645,7 @@ export default function Mesas() {
           <ModalPagar
             cliente={clientes.find(c => c.id === pagarInfo.clienteId) || null}
             comissaoInfo={comissaoInfo}
+            totalNaoPago={totalNaoPago}
             onConfirmar={({ telefone, aniversario, formaPagamento }) => {
               if (pagarInfo.clienteId && (telefone || aniversario)) {
                 editarCliente(pagarInfo.clienteId, { telefone, aniversario })

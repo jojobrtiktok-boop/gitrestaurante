@@ -56,6 +56,7 @@ export default function ComandaDigital() {
   const [mesaId, setMesaId] = useState(null)
   const [clienteId, setClienteId] = useState(null)
   const [fecharContaInfo, setFecharContaInfo] = useState(null) // { mesaId, mesa, pedidosMesa, total }
+  const [comissaoFecharAtiva, setComissaoFecharAtiva] = useState(true)
   const prontoIdsRef = useRef(new Set())
 
   const pedidosHoje = pedidos.filter(p => p.garconId === garcon?.id && p.data === hoje())
@@ -769,10 +770,26 @@ export default function ComandaDigital() {
 
               {/* Comissão */}
               {comissaoAtiva && comissaoValor > 0 && (
-                <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, padding: '8px 12px', marginBottom: 14 }}>
-                  <span style={{ fontSize: 13, color: '#166534' }}>
-                    🤝 Sua comissão ({garcon.taxaComissao}%) = <strong>R$ {comissaoValor.toFixed(2)}</strong>
-                  </span>
+                <div style={{ background: comissaoFecharAtiva ? '#f0fdf4' : bgCard, border: `1px solid ${comissaoFecharAtiva ? '#86efac' : border}`, borderRadius: 10, padding: '10px 12px', marginBottom: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <div>
+                      <span style={{ fontSize: 12, color: comissaoFecharAtiva ? '#166534' : textoSecundario }}>
+                        🤝 Sua comissão ({garcon.taxaComissao}%)
+                      </span>
+                      {comissaoFecharAtiva && (
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#166534', marginTop: 2 }}>
+                          {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          {' + '}
+                          <strong>{comissaoValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setComissaoFecharAtiva(v => !v)}
+                      style={{ flexShrink: 0, padding: '4px 12px', borderRadius: 20, border: 'none', background: comissaoFecharAtiva ? '#16a34a' : '#e5e7eb', color: comissaoFecharAtiva ? '#fff' : '#6b7280', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                      {comissaoFecharAtiva ? '✓ Sim' : '✕ Não'}
+                    </button>
+                  </div>
                 </div>
               )}
 

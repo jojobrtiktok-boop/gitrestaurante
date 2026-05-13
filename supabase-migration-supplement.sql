@@ -137,6 +137,22 @@ CREATE POLICY "admin_only" ON saas_config FOR ALL
 -- Inserir linha inicial se ainda não existir
 INSERT INTO saas_config (id, config) VALUES (1, '{}') ON CONFLICT (id) DO NOTHING;
 
+-- ── 8. Colunas faltantes em pratos ─────────────────────────────────────
+-- Colunas necessárias para produtos customizáveis (variações, tamanhos, etc.)
+-- e campos gerais. Sem elas, o .update() falha silenciosamente.
+
+ALTER TABLE pratos ADD COLUMN IF NOT EXISTS descricao        TEXT DEFAULT '';
+ALTER TABLE pratos ADD COLUMN IF NOT EXISTS tipo             TEXT DEFAULT 'normal';
+ALTER TABLE pratos ADD COLUMN IF NOT EXISTS meia_a_meia      BOOLEAN DEFAULT FALSE;
+ALTER TABLE pratos ADD COLUMN IF NOT EXISTS calc_variacao    TEXT DEFAULT 'maior';
+ALTER TABLE pratos ADD COLUMN IF NOT EXISTS max_sabores      INTEGER DEFAULT 1;
+ALTER TABLE pratos ADD COLUMN IF NOT EXISTS bordas           JSONB DEFAULT '[]';
+ALTER TABLE pratos ADD COLUMN IF NOT EXISTS tamanhos         JSONB DEFAULT '[]';
+ALTER TABLE pratos ADD COLUMN IF NOT EXISTS label_sabores    TEXT;
+ALTER TABLE pratos ADD COLUMN IF NOT EXISTS label_bordas     TEXT;
+ALTER TABLE pratos ADD COLUMN IF NOT EXISTS visivel_individual BOOLEAN DEFAULT TRUE;
+ALTER TABLE pratos ADD COLUMN IF NOT EXISTS aparece_cozinha  BOOLEAN DEFAULT TRUE;
+
 -- ═══════════════════════════════════════════════════════════════
 -- FIM — Verificação rápida (rode para checar se tudo criou certo)
 -- ═══════════════════════════════════════════════════════════════

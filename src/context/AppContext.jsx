@@ -126,6 +126,7 @@ function pratoToRow(p, uid) {
     id: p.id,
     user_id: uid,
     nome: p.nome,
+    descricao: p.descricao || '',
     preco_venda: p.precoVenda || 0,
     categoria: p.categoria || '',
     em_destaque: p.emDestaque || false,
@@ -151,6 +152,7 @@ function rowToPrato(row) {
   return {
     id: row.id,
     nome: row.nome,
+    descricao: row.descricao || '',
     precoVenda: Number(row.preco_venda || 0),
     categoria: row.categoria || '',
     emDestaque: row.em_destaque || false,

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Clock, Check, ChefHat, Volume2, Settings, Plus, Trash2, Copy, ExternalLink, RefreshCw, Link2, Truck, Printer, Usb, Bluetooth } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import { hoje } from '../utils/formatacao.js'
+import { isDelivery, getPlataf } from '../utils/plataformas.js'
 import { buildComanda, conectarUSB, imprimirUSB, conectarSerial, imprimirSerial, suportaUSB, suportaSerial, usbConectado, serialConectado } from '../utils/escpos.js'
 
 function IconMotoqueiro({ size = 24, color = 'currentColor' }) {
@@ -126,11 +127,14 @@ function CardPedido({ pedido, coluna, pratos, garcons, mesas, onAvancar, cfg }) 
               {mesa.nome}
             </span>
           )}
-          {pedido.canal === 'delivery' && (
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#f04000', background: 'rgba(240,64,0,0.12)', padding: '1px 7px', borderRadius: 20, border: '1px solid rgba(240,64,0,0.35)', display: 'flex', alignItems: 'center', gap: 3 }}>
-              <Truck size={9} />Delivery
-            </span>
-          )}
+          {isDelivery(pedido.canal) && (() => {
+            const pl = getPlataf(pedido.canal)
+            return (
+              <span style={{ fontSize: 10, fontWeight: 700, color: pl.cor, background: pl.bg, padding: '1px 7px', borderRadius: 20, border: `1px solid ${pl.borda}`, display: 'flex', alignItems: 'center', gap: 3 }}>
+                <Truck size={9} />{pl.label}
+              </span>
+            )
+          })()}
         </div>
         {coluna.proximoStatus !== null && inicioEstagio
           ? <TimerVivo isoInicio={inicioEstagio} limiteAmarelo={cfg.limiteAmareloMin || 10} limiteVermelho={cfg.limiteVermelhoMin || 20} />
@@ -450,7 +454,7 @@ export default function Kanban() {
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(${COLUNAS.length}, minmax(200px, 1fr))`, gap: 12, minWidth: `${COLUNAS.length * 210}px` }}>
             {COLUNAS.map(col => {
               const cards = pedidosFiltrados
-                .filter(p => p.status === col.id && p.canal !== 'delivery')
+                .filter(p => p.status === col.id && !isDelivery(p.canal))
                 .sort((a, b) => (a.timestamps?.[col.id] || '').localeCompare(b.timestamps?.[col.id] || ''))
               return (
                 <div key={col.id} style={{ display: 'flex', flexDirection: 'column' }}>
@@ -497,7 +501,7 @@ export default function Kanban() {
               const isPrimeiro = colIdx === 0
               const cards = pedidosFiltrados
                 .filter(p => {
-                  if (p.canal !== 'delivery') return false
+                  if (!isDelivery(p.canal)) return false
                   // primeira coluna: aceita 'novo' e 'pendente'
                   if (isPrimeiro) return p.status === col.id || p.status === 'pendente'
                   return p.status === col.id

@@ -268,12 +268,25 @@ function Card99() {
           {salvando ? 'Salvando...' : salvo ? <><Check size={14} /> Salvo!</> : <><Check size={14} /> Salvar credenciais</>}
         </button>
       </div>
+
+      {/* URL do webhook */}
+      {apiKey && (
+        <div style={{ padding: '12px 16px', borderRadius: 10, background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.05em' }}>URL do Webhook</p>
+          <p style={{ fontSize: 11, color: 'var(--text-primary)', fontFamily: 'monospace', wordBreak: 'break-all', margin: 0 }}>
+            {SUPABASE_URL}/functions/v1/99food-webhook
+          </p>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '6px 0 0' }}>
+            Configure essa URL no painel do 99food em Integrações → Webhook.
+          </p>
+        </div>
+      )}
     </div>
   )
 }
 
-// ── Ketta ─────────────────────────────────────────────────────────────────────
-function CardKetta() {
+// ── Keeta ─────────────────────────────────────────────────────────────────────
+function CardKeeta() {
   const { auth } = useApp()
   const [token,    setToken]    = useState('')
   const [lojaId,   setLojaId]   = useState('')
@@ -283,16 +296,16 @@ function CardKetta() {
   useEffect(() => {
     if (!auth.userId) return
     carregarIntegracoes(auth.userId).then(cfg => {
-      if (cfg.ketta) {
-        setToken(cfg.ketta.token || '')
-        setLojaId(cfg.ketta.loja_id || '')
+      if (cfg.keeta) {
+        setToken(cfg.keeta.token || '')
+        setLojaId(cfg.keeta.loja_id || '')
       }
     })
   }, [auth.userId])
 
   async function salvar() {
     setSalvando(true)
-    await salvarIntegracao(auth.userId, 'ketta', { token, loja_id: lojaId })
+    await salvarIntegracao(auth.userId, 'keeta', { token, loja_id: lojaId })
     setSalvando(false)
     setSalvo(true)
     setTimeout(() => setSalvo(false), 2500)
@@ -305,11 +318,11 @@ function CardKetta() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <div style={{ width: 48, height: 48, borderRadius: 12, background: cor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
-          <img src="/logo-ketta.png" alt="Ketta" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img src="/logo-keeta.png" alt="Keeta" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
         <div style={{ flex: 1 }}>
-          <p style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)', margin: 0 }}>Ketta</p>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '3px 0 0' }}>Integre seus pedidos Ketta com o Cheffya</p>
+          <p style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)', margin: 0 }}>Keeta</p>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '3px 0 0' }}>Integre seus pedidos Keeta com o Cheffya</p>
         </div>
         {token && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 20, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)' }}>
@@ -322,7 +335,7 @@ function CardKetta() {
       {/* Instrução */}
       <div style={{ padding: '12px 16px', borderRadius: 10, background: 'var(--bg-hover)', border: '1px solid var(--border)', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
         <strong>Como obter as credenciais:</strong><br />
-        1. Acesse seu painel na <strong>Ketta</strong><br />
+        1. Acesse seu painel na <strong>Keeta</strong><br />
         2. Vá em <strong>Configurações → Integrações → API</strong><br />
         3. Copie seu <strong>Token</strong> e o <strong>ID da loja</strong>
       </div>
@@ -331,7 +344,7 @@ function CardKetta() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div>
           <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 5 }}>Token de acesso</label>
-          <input className="input" type="text" placeholder="ex: ketta_tok_..." value={token} onChange={e => setToken(e.target.value)} />
+          <input className="input" type="text" placeholder="ex: keeta_tok_..." value={token} onChange={e => setToken(e.target.value)} />
         </div>
         <div>
           <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 5 }}>ID da Loja</label>
@@ -344,6 +357,19 @@ function CardKetta() {
           {salvando ? 'Salvando...' : salvo ? <><Check size={14} /> Salvo!</> : <><Check size={14} /> Salvar credenciais</>}
         </button>
       </div>
+
+      {/* URL do webhook */}
+      {token && (
+        <div style={{ padding: '12px 16px', borderRadius: 10, background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.05em' }}>URL do Webhook</p>
+          <p style={{ fontSize: 11, color: 'var(--text-primary)', fontFamily: 'monospace', wordBreak: 'break-all', margin: 0 }}>
+            {SUPABASE_URL}/functions/v1/keeta-webhook
+          </p>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '6px 0 0' }}>
+            Configure essa URL no painel da Keeta em Configurações → Webhook.
+          </p>
+        </div>
+      )}
     </div>
   )
 }
@@ -364,7 +390,7 @@ export default function Integracoes() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <CardIfood />
         <Card99 />
-        <CardKetta />
+        <CardKeeta />
       </div>
     </div>
   )

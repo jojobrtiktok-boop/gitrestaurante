@@ -4,6 +4,7 @@ import { ShoppingBag, Check, Clock, AlertTriangle, ChefHat, Plus, LayoutGrid, X,
 import { useApp } from '../context/AppContext.jsx'
 import PDVPage from './PDV.jsx'
 import { hoje } from '../utils/formatacao.js'
+import { isDelivery, getPlataf } from '../utils/plataformas.js'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function minutosDecorridos(isoInicio) {
@@ -63,16 +64,19 @@ function CardCaixa({ pedido, coluna, pratos, garcons, mesas, clientes, onAvancar
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 13, fontWeight: 800, color: coluna.cor }}>{pedido.hora}</span>
-          {pedido.canal === 'delivery' ? (
+          {isDelivery(pedido.canal) ? (
             pedido.enderecoEntrega === 'Retirada no local' ? (
               <span style={{ fontSize: 10, fontWeight: 900, color: '#7c3aed', background: 'rgba(124,58,237,0.15)', padding: '2px 9px', borderRadius: 20, border: '2px solid rgba(124,58,237,0.5)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                 🏪 Retirada
               </span>
-            ) : (
-              <span style={{ fontSize: 10, fontWeight: 700, color: '#f04000', background: 'rgba(240,64,0,0.12)', padding: '1px 7px', borderRadius: 20, border: '1px solid rgba(240,64,0,0.3)' }}>
-                🛵 Delivery
-              </span>
-            )
+            ) : (() => {
+              const pl = getPlataf(pedido.canal)
+              return (
+                <span style={{ fontSize: 10, fontWeight: 700, color: pl.cor, background: pl.bg, padding: '1px 7px', borderRadius: 20, border: `1px solid ${pl.borda}` }}>
+                  🛵 {pl.label}
+                </span>
+              )
+            })()
           ) : (
             <span style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 7px', borderRadius: 20 }}>
               {garcon ? garcon.nome : 'Caixa'}

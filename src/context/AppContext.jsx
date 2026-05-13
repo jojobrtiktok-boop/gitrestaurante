@@ -371,6 +371,8 @@ function rowToPedido(row) {
     formaPagamento: row.forma_pagamento || null,
     ifoodOrderId: row.ifood_order_id || null,
     ifoodShortId: row.ifood_short_id || null,
+    plataformaTaxa: row.plataforma_taxa || 0,
+    plataformaPedidoId: row.plataforma_pedido_id || null,
   }
 }
 

@@ -4,6 +4,7 @@ import { ChefHat, Check, Clock, AlertTriangle, Truck } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import { hoje } from '../utils/formatacao.js'
 import { tocarSom } from '../utils/sons.js'
+import { isDelivery, getPlataf } from '../utils/plataformas.js'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function minutosDecorridos(isoInicio) {
@@ -83,11 +84,14 @@ function CardCozinha({ pedido, coluna, pratos, garcons, mesas, clientes, onAvanc
             <span style={{ fontSize: 12, color: '#64748b', background: '#f1f5f9', padding: '2px 8px', borderRadius: 20 }}>
               {garcon ? garcon.nome : 'Caixa'}
             </span>
-            {pedido.canal === 'delivery' && (
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#f04000', background: 'rgba(240,64,0,0.1)', padding: '2px 8px', borderRadius: 20, border: '1px solid rgba(240,64,0,0.3)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                <Truck size={10} />Delivery
-              </span>
-            )}
+            {isDelivery(pedido.canal) && (() => {
+              const pl = getPlataf(pedido.canal)
+              return (
+                <span style={{ fontSize: 11, fontWeight: 700, color: pl.cor, background: pl.bg, padding: '2px 8px', borderRadius: 20, border: `1px solid ${pl.borda}`, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                  <Truck size={10} />{pl.label}
+                </span>
+              )
+            })()}
           </div>
         </div>
         {inicioEstagio && (
@@ -156,7 +160,7 @@ function CardCozinha({ pedido, coluna, pratos, garcons, mesas, clientes, onAvanc
         })}
       </div>
 
-      {pedido.canal === 'delivery' && (pedido.clienteNome || pedido.enderecoEntrega) && (
+      {isDelivery(pedido.canal) && (pedido.clienteNome || pedido.enderecoEntrega) && (
         <div style={{ background: 'rgba(240,64,0,0.06)', border: '1px solid rgba(240,64,0,0.2)', borderRadius: 8, padding: '6px 10px' }}>
           {pedido.clienteNome && <p style={{ fontSize: 13, fontWeight: 700, color: '#f04000', margin: 0 }}>{pedido.clienteNome}</p>}
           {pedido.enderecoEntrega && <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0', fontStyle: 'italic' }}>{pedido.enderecoEntrega}</p>}
@@ -169,7 +173,7 @@ function CardCozinha({ pedido, coluna, pratos, garcons, mesas, clientes, onAvanc
       )}
 
       {/* Botão avançar — delivery em "pronto" fica aguardando o balcão/motoboy */}
-      {coluna.proximoStatus && !pedido.cancelado && !(pedido.canal === 'delivery' && coluna.id === 'pronto') && (
+      {coluna.proximoStatus && !pedido.cancelado && !(isDelivery(pedido.canal) && coluna.id === 'pronto') && (
         <button onClick={() => onAvancar(pedido.id, coluna.proximoStatus)}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -181,7 +185,7 @@ function CardCozinha({ pedido, coluna, pratos, garcons, mesas, clientes, onAvanc
           {coluna.proximoLabel}
         </button>
       )}
-      {pedido.canal === 'delivery' && coluna.id === 'pronto' && !pedido.cancelado && (
+      {isDelivery(pedido.canal) && coluna.id === 'pronto' && !pedido.cancelado && (
         <div style={{ padding: '7px 12px', borderRadius: 10, background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.25)', marginTop: 4, textAlign: 'center' }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: '#8b5cf6' }}>🛵 Aguardando entregador</span>
         </div>

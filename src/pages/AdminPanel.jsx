@@ -578,6 +578,18 @@ function AbaFaturamento({ usuarios }) {
 function AbaPlanos() {
   const [planos, setPlanos] = useState(() => lerLS('saas_planos', PLANOS_PADRAO))
   const [apiConfig, setApiConfig] = useState(() => lerLS('saas_api_config', { plataforma: '', webhook_secret: '', api_key: '', api_url: '' }))
+
+  // Carrega api_config do banco ao montar (tem prioridade sobre localStorage)
+  useEffect(() => {
+    supabase.from('saas_config').select('config').eq('id', 1).single()
+      .then(({ data }) => {
+        if (data?.config?.api_config) {
+          setApiConfig(data.config.api_config)
+          salvarLS('saas_api_config', data.config.api_config)
+        }
+      })
+  }, [])
+
   const [modalAberto, setModalAberto] = useState(false)
   const [editando, setEditando] = useState(null)
   const formVazio = { nome: '', preco: '', periodo: 'mensal', descricao: '', plataforma: '', produto_id: '', ativo: true }
@@ -604,8 +616,14 @@ function AbaPlanos() {
     setPlanos(next); salvarLS('saas_planos', next)
   }
 
-  function salvarApi() {
-    salvarLS('saas_api_config', apiConfig)
+  async function salvarApi() {
+    salvarLS('saas_api_config', apiConfig) // cache local como fallback
+    // Persiste no banco (saas_config.config.api_config)
+    const { data: atual } = await supabase.from('saas_config').select('config').eq('id', 1).single()
+    const configAtual = atual?.config || {}
+    const { error } = await supabase.from('saas_config')
+      .upsert({ id: 1, config: { ...configAtual, api_config: apiConfig } }, { onConflict: 'id' })
+    if (error) { alert('Erro ao salvar: ' + error.message); return }
     alert('Configurações salvas!')
   }
 

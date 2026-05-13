@@ -1445,7 +1445,7 @@ function CardapioDigitalConfig() {
     setIsDragging(true)
     setDragStartY(clientY)
     setDragBaseOffset(offsetY)
-    e.preventDefault()
+    if (!e.touches) e.preventDefault() // só mouse — touch usa touchAction:none no CSS
   }
 
   function handleDragMove(e) {

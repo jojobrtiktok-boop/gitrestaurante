@@ -82,9 +82,14 @@ function CardCaixa({ pedido, coluna, pratos, garcons, mesas, onAvancar, onPagar,
               {mesa.nome}
             </span>
           )}
-          {pedido.clienteNome && (
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', padding: '1px 5px' }}>
-              👤 {pedido.clienteNome}
+          {!mesa && pedido.clienteNome && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', background: '#f04000', padding: '1px 9px', borderRadius: 20 }}>
+              {pedido.clienteNome}
+            </span>
+          )}
+          {mesa && pedido.clienteNome && (
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#f04000', background: 'rgba(240,64,0,0.1)', padding: '1px 7px', borderRadius: 20, border: '1px solid rgba(240,64,0,0.25)' }}>
+              {pedido.clienteNome}
             </span>
           )}
         </div>

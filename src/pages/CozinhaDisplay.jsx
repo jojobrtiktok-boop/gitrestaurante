@@ -37,6 +37,7 @@ function TimerVivo({ isoInicio, limiteAmarelo, limiteVermelho }) {
 function CardCozinha({ pedido, coluna, pratos, garcons, mesas, onAvancar, cfg }) {
   const garcon = garcons.find(g => g.id === pedido.garconId)
   const mesa = mesas?.find(m => m.id === pedido.mesaId)
+  const nomeCliente = pedido.clienteNome || null
   const inicioEstagio = pedido.timestamps?.[coluna.id]
   const [mins, setMins] = useState(() => minutosDecorridos(inicioEstagio))
 
@@ -67,6 +68,16 @@ function CardCozinha({ pedido, coluna, pratos, garcons, mesas, onAvancar, cfg })
             {mesa && (
               <span style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: coluna.cor, padding: '2px 10px', borderRadius: 20 }}>
                 {mesa.nome}
+              </span>
+            )}
+            {!mesa && nomeCliente && (
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: '#f04000', padding: '2px 10px', borderRadius: 20 }}>
+                {nomeCliente}
+              </span>
+            )}
+            {mesa && nomeCliente && (
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#f04000', background: 'rgba(240,64,0,0.1)', padding: '2px 8px', borderRadius: 20, border: '1px solid rgba(240,64,0,0.25)' }}>
+                {nomeCliente}
               </span>
             )}
             <span style={{ fontSize: 12, color: '#64748b', background: '#f1f5f9', padding: '2px 8px', borderRadius: 20 }}>

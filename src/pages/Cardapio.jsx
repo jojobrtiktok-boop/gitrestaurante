@@ -1379,40 +1379,41 @@ function GarconsConfig() {
           <Settings size={16} style={{ color: 'var(--accent)' }} />
           <h2 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Configurações da Comanda</h2>
         </div>
-        <div className="flex flex-col gap-3">
-          {/* Toggle: Fechar conta */}
-          <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl" style={{ background: 'var(--bg-hover)', border: `1px solid ${podeFechar ? 'var(--accent)' : 'var(--border)'}` }}>
-            <div style={{ position: 'relative', width: 36, height: 20, flexShrink: 0 }}>
-              <input type="checkbox" checked={podeFechar}
-                onChange={e => atualizarKanbanConfig({ garconPodeFecharConta: e.target.checked })}
-                style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }} />
-              <div style={{ position: 'absolute', inset: 0, borderRadius: 20, background: podeFechar ? 'var(--accent)' : 'var(--border)', transition: 'background .2s', cursor: 'pointer' }}
-                onClick={() => atualizarKanbanConfig({ garconPodeFecharConta: !podeFechar })}>
-                <div style={{ position: 'absolute', top: 2, left: podeFechar ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-              </div>
-            </div>
+        <div className="flex flex-col gap-2">
+
+          {/* Checkbox: Fechar conta */}
+          <label className="flex items-start gap-3 cursor-pointer p-3 rounded-xl select-none"
+            style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+            <input
+              type="checkbox"
+              checked={podeFechar}
+              onChange={e => atualizarKanbanConfig({ garconPodeFecharConta: e.target.checked })}
+              style={{ width: 16, height: 16, marginTop: 2, accentColor: 'var(--accent)', cursor: 'pointer', flexShrink: 0 }}
+            />
             <div>
               <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Garçom pode fechar conta</p>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Garçom vê botão "Fechar Conta" na comanda e seleciona a forma de pagamento</p>
             </div>
           </label>
 
-          {/* Toggle: Comissão */}
-          <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl" style={{ background: 'var(--bg-hover)', border: `1px solid ${comissaoAtivo ? 'var(--accent)' : 'var(--border)'}` }}>
-            <div style={{ position: 'relative', width: 36, height: 20, flexShrink: 0 }}>
-              <input type="checkbox" checked={comissaoAtivo}
-                onChange={e => atualizarKanbanConfig({ comissaoGarconAtivo: e.target.checked })}
-                style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }} />
-              <div style={{ position: 'absolute', inset: 0, borderRadius: 20, background: comissaoAtivo ? 'var(--accent)' : 'var(--border)', transition: 'background .2s', cursor: 'pointer' }}
-                onClick={() => atualizarKanbanConfig({ comissaoGarconAtivo: !comissaoAtivo })}>
-                <div style={{ position: 'absolute', top: 2, left: comissaoAtivo ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-              </div>
-            </div>
+          {/* Checkbox: Comissão */}
+          <label className="flex items-start gap-3 cursor-pointer p-3 rounded-xl select-none"
+            style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+            <input
+              type="checkbox"
+              checked={comissaoAtivo}
+              onChange={e => atualizarKanbanConfig({ comissaoGarconAtivo: e.target.checked })}
+              style={{ width: 16, height: 16, marginTop: 2, accentColor: 'var(--accent)', cursor: 'pointer', flexShrink: 0 }}
+            />
             <div>
               <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Comissão de garçom</p>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Exibe o valor de comissão por garçom (informativo) no momento do pagamento. Configure o % em cada garçom abaixo.</p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Exibe o valor de comissão (informativo) no momento do pagamento.
+                {comissaoAtivo && <span style={{ color: 'var(--accent)' }}> Configure o % em cada garçom abaixo.</span>}
+              </p>
             </div>
           </label>
+
         </div>
       </div>
 
@@ -1474,33 +1475,34 @@ function GarconsConfig() {
                     </button>
                   </div>
 
-                  {/* Linha de opções extras (só aparece se alguma feature estiver ativa) */}
+                  {/* Linha extra: badges + campo % de comissão (só quando features ativas) */}
                   {(podeFechar || comissaoAtivo) && (
-                    <div className="flex items-center gap-4 px-3 py-2" style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+                    <div className="flex flex-col gap-2 px-3 py-2" style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-card)' }}>
                       {podeFechar && (
                         <div className="flex items-center gap-1.5">
-                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a' }} />
-                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Pode fechar conta</span>
+                          <Check size={11} style={{ color: '#16a34a' }} />
+                          <span className="text-xs" style={{ color: '#16a34a', fontWeight: 600 }}>Pode fechar conta</span>
                         </div>
                       )}
                       {comissaoAtivo && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>Comissão:</span>
-                          <input
-                            type="number" min="0" max="100" step="0.5"
-                            value={g.taxaComissao || ''}
-                            placeholder="0"
-                            onChange={e => atualizarGarcon(g.id, { taxaComissao: parseFloat(e.target.value) || 0 })}
-                            className="input text-xs text-center"
-                            style={{ width: 54, padding: '3px 6px' }}
-                            title="Percentual de comissão (%)"
-                          />
-                          <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>%</span>
-                          {g.taxaComissao > 0 && (
-                            <span className="text-xs" style={{ color: 'var(--accent)', fontWeight: 600 }}>
-                              ({g.taxaComissao}% configurado)
-                            </span>
-                          )}
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>Comissão deste garçom:</span>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number" min="0" max="100" step="0.5"
+                              value={g.taxaComissao || ''}
+                              placeholder="0"
+                              onChange={e => atualizarGarcon(g.id, { taxaComissao: parseFloat(e.target.value) || 0 })}
+                              className="input text-sm"
+                              style={{ width: 80, padding: '5px 8px' }}
+                            />
+                            <span className="text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>%</span>
+                            {g.taxaComissao > 0 && (
+                              <span className="text-xs" style={{ color: 'var(--accent)', fontWeight: 600 }}>
+                                ✓ {g.taxaComissao}% configurado
+                              </span>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>

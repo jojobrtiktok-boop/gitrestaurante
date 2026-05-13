@@ -265,7 +265,7 @@ function RelatorioTempo({ pedidos, pratos, dataInicio, dataFim }) {
 }
 
 export default function Vendas() {
-  const { entradasVendas, removerEntradaVenda, pratos, ingredientes, garcons, pedidos, mesas, clientes, sessoesMesas, kanbanConfig, marcarPedidoPago, cardapioConfig, marcarEntregue, carregarPeriodo } = useApp()
+  const { entradasVendas, removerEntradaVenda, pratos, ingredientes, garcons, pedidos, mesas, clientes, sessoesMesas, kanbanConfig, marcarPedidoPago, cardapioConfig, marcarEntregue, carregarPeriodo, comissoesPagas } = useApp()
   const h = hoje()
   const [periodo, setPeriodo] = useState(() => {
     try {
@@ -393,6 +393,9 @@ export default function Vendas() {
   }, 0)
   const totalCMV = totalReceita - totalLucro
   const margemBruta = totalReceita > 0 ? (totalLucro / totalReceita * 100) : 0
+
+  const comissoesPeriodo = (comissoesPagas || []).filter(c => c.data >= dataInicio && c.data <= dataFim)
+  const totalComissoes = comissoesPeriodo.reduce((s, c) => s + c.comissaoValor, 0)
 
   // ── Extrato de Vendas Pagas ──
   const entradasExtrato = entradasVendas
@@ -762,10 +765,11 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
 
       <div className="grid gap-3 mb-6 vendas-summary" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>
         {[
-          { label: 'Faturamento', valor: formatarMoeda(totalReceita), cor: '#3b82f6' },
-          { label: 'Lucro Bruto', valor: formatarMoeda(totalLucro), cor: '#16a34a' },
+          { label: 'Faturamento', valor: formatarMoeda(totalReceita + totalComissoes), cor: '#3b82f6' },
+          { label: 'Lucro Bruto', valor: formatarMoeda(totalLucro - totalComissoes), cor: '#16a34a' },
           { label: 'Ag. Pagamento', valor: entradasPendentes.length === 0 ? 'Nenhum' : `${entradasPendentes.length} pedido${entradasPendentes.length !== 1 ? 's' : ''}`, cor: entradasPendentes.length > 0 ? '#f97316' : '#6b7280' },
           { label: 'CMV', valor: formatarMoeda(totalCMV), cor: '#ef4444' },
+          ...(totalComissoes > 0 ? [{ label: 'Comissão Garçons', valor: formatarMoeda(totalComissoes), cor: '#f59e0b' }] : []),
         ].map(({ label, valor, cor }) => (
           <div key={label} className="card p-4">
             <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{label}</p>
@@ -773,6 +777,34 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
           </div>
         ))}
       </div>
+
+      {/* Comissão de Garçons */}
+      {totalComissoes > 0 && (() => {
+        const porGarcon = {}
+        comissoesPeriodo.forEach(c => {
+          const nome = c.garconNome || 'Desconhecido'
+          if (!porGarcon[nome]) porGarcon[nome] = { nome, taxa: c.taxa, totalComissao: 0, fechamentos: 0 }
+          porGarcon[nome].totalComissao += c.comissaoValor
+          porGarcon[nome].fechamentos += 1
+        })
+        const lista = Object.values(porGarcon).sort((a, b) => b.totalComissao - a.totalComissao)
+        return (
+          <div className="card p-4 mb-6">
+            <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>Comissão de Garçons</p>
+            <div className="flex flex-col gap-2">
+              {lista.map(g => (
+                <div key={g.nome} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                  <div>
+                    <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{g.nome}</p>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{g.taxa}% · {g.fechamentos} fechamento{g.fechamentos !== 1 ? 's' : ''}</p>
+                  </div>
+                  <p className="font-bold text-sm" style={{ color: '#f59e0b' }}>{formatarMoeda(g.totalComissao)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Abas */}
       <div style={{ overflowX: 'auto', paddingBottom: 2, marginBottom: 16 }}>

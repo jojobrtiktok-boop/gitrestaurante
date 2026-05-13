@@ -268,6 +268,37 @@ function rowToGarcon(row) {
   return { id: row.id, nome: row.nome, token: row.token, ativo: row.ativo !== false, taxaComissao: Number(row.taxa_comissao || 0) }
 }
 
+function comissaoToRow(c, uid) {
+  return {
+    id: c.id,
+    user_id: uid,
+    garcon_id: c.garconId || null,
+    garcon_nome: c.garconNome || '',
+    data: c.data,
+    total_base: c.totalBase || 0,
+    comissao_valor: c.comissaoValor || 0,
+    taxa: c.taxa || 0,
+    mesa_id: c.mesaId || null,
+    mesa_nome: c.mesaNome || '',
+    forma_pagamento: c.formaPagamento || '',
+  }
+}
+function rowToComissao(row) {
+  return {
+    id: row.id,
+    garconId: row.garcon_id,
+    garconNome: row.garcon_nome || '',
+    data: row.data,
+    totalBase: Number(row.total_base || 0),
+    comissaoValor: Number(row.comissao_valor || 0),
+    taxa: Number(row.taxa || 0),
+    mesaId: row.mesa_id,
+    mesaNome: row.mesa_nome || '',
+    formaPagamento: row.forma_pagamento || '',
+    criadoEm: row.criado_em,
+  }
+}
+
 function clienteToRow(c, uid) {
   return {
     id: c.id,
@@ -627,6 +658,7 @@ export function AppProvider({ children }) {
   const [perfil, setPerfil] = useState({ foto: null, nomeExibicao: '' })
   const [motoboys, setMotoboys] = useState([])
   const [movimentosCaixa, setMovimentosCaixa] = useState([])
+  const [comissoesPagas, setComissoesPagas] = useState([])
   const [periodoCarregado, setPeriodoCarregado] = useState(null) // dataInicio mais antiga carregada
   const periodoCarregadoRef = useRef(null) // ref síncrono — evita stale closure no guard
 
@@ -1070,6 +1102,9 @@ export function AppProvider({ children }) {
       if (profRaw?.nome_exibicao) setPerfil(prev => ({ ...prev, nomeExibicao: profRaw.nome_exibicao }))
       if (profRaw?.foto)          setPerfil(prev => ({ ...prev, foto: profRaw.foto }))
 
+      const { data: comissRaw } = await supabase.from('comissoes_pagas').select('*').eq('user_id', uid).gte('data', dataLimite)
+      if (comissRaw) setComissoesPagas(comissRaw.map(rowToComissao))
+
     } catch (e) {
       console.error('[loadAllData]', e)
     } finally {
@@ -1202,10 +1237,11 @@ export function AppProvider({ children }) {
     // Marca imediatamente (síncrono) para bloquear chamadas concorrentes
     periodoCarregadoRef.current = dataInicio
     const uid = auth.userId
-    const [{ data: pdsRaw }, { data: evsRaw }, { data: mvsRaw }] = await Promise.all([
+    const [{ data: pdsRaw }, { data: evsRaw }, { data: mvsRaw }, { data: comissRaw }] = await Promise.all([
       supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', dataInicio),
       supabase.from('entradas_vendas').select('*').eq('user_id', uid).gte('data', dataInicio),
       supabase.from('movimentos_caixa').select('*').eq('user_id', uid).gte('data', dataInicio).then(r => r, () => ({ data: [] })),
+      supabase.from('comissoes_pagas').select('*').eq('user_id', uid).gte('data', dataInicio).then(r => r, () => ({ data: [] })),
     ])
     if (pdsRaw) setPedidos(prev => {
       const m = new Map(prev.map(p => [p.id, p]))
@@ -1220,6 +1256,11 @@ export function AppProvider({ children }) {
     if (mvsRaw) setMovimentosCaixa(prev => {
       const m = new Map(prev.map(mv => [mv.id, mv]))
       mvsRaw.map(rowToMovimentoCaixa).forEach(mv => m.set(mv.id, mv))
+      return Array.from(m.values())
+    })
+    if (comissRaw) setComissoesPagas(prev => {
+      const m = new Map(prev.map(c => [c.id, c]))
+      comissRaw.map(rowToComissao).forEach(c => m.set(c.id, c))
       return Array.from(m.values())
     })
     periodoCarregadoRef.current = dataInicio
@@ -2397,6 +2438,26 @@ export function AppProvider({ children }) {
     // NÃO libera a mesa aqui — o display decide com "Deixar Livre" / "Manter Ocupada"
   }
 
+  // ── Comissões Pagas ───────────────────────────────────────────────────
+  function registrarComissao({ garconId, garconNome, totalBase, comissaoValor, taxa, mesaId, mesaNome, formaPagamento }) {
+    if (!auth.userId || !comissaoValor || comissaoValor <= 0) return
+    const nova = {
+      id: crypto.randomUUID(),
+      garconId: garconId || null,
+      garconNome: garconNome || '',
+      data: hojeBrasilia(),
+      totalBase: Number(totalBase) || 0,
+      comissaoValor: Number(comissaoValor) || 0,
+      taxa: Number(taxa) || 0,
+      mesaId: mesaId || null,
+      mesaNome: mesaNome || '',
+      formaPagamento: formaPagamento || '',
+      criadoEm: agoraBrasiliaISO(),
+    }
+    setComissoesPagas(prev => [...prev, nova])
+    sbWrite(supabase.from('comissoes_pagas').insert(comissaoToRow(nova, auth.userId)))
+  }
+
   // ── Despesas ──────────────────────────────────────────────────────────
   function adicionarDespesa({ descricao, categoria, valor, data }) {
     const novo = { id: crypto.randomUUID(), descricao: descricao.trim(), categoria, valor: Number(valor), data, criadoEm: agoraBrasiliaISO() }
@@ -2522,6 +2583,7 @@ export function AppProvider({ children }) {
     perfil, atualizarPerfil,
     alterarSenha,
     motoboys, adicionarMotoboy, editarMotoboy, removerMotoboy,
+    comissoesPagas, registrarComissao,
     notifConfigRef, cardapioConfigRef, ingredientesRef, pedidosRef, configuracaoGeralRef,
     periodoCarregado, carregarPeriodo,
   }

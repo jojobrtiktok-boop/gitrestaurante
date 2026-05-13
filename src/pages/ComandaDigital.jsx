@@ -37,7 +37,7 @@ function dispararNotificacao(msg) {
 
 export default function ComandaDigital() {
   const { token } = useParams()
-  const { garcons, pratos, clientes, cardapioConfig, adicionarPedido, atualizarStatusPedido, pedidos, mesas, pagarMesa, setStatusMesa, marcarPedidoPago, pagamentosConfig, kanbanConfig, authLoading, displayReady } = useApp()
+  const { garcons, pratos, clientes, cardapioConfig, adicionarPedido, atualizarStatusPedido, pedidos, mesas, pagarMesa, setStatusMesa, marcarPedidoPago, pagamentosConfig, kanbanConfig, authLoading, displayReady, registrarComissao } = useApp()
 
   const garcon = garcons.find(g => g.token === token)
 
@@ -837,11 +837,20 @@ export default function ComandaDigital() {
 
               {/* Total */}
               {config.mostrarPrecos && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 10, borderTop: `1px solid ${border}`, marginBottom: 10 }}>
-                  <span style={{ fontWeight: 700, fontSize: 15, color: textoPrimario }}>Total</span>
-                  <span style={{ fontWeight: 800, fontSize: 16, color: destaque }}>
-                    {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                  </span>
+                <div style={{ paddingTop: 10, borderTop: `1px solid ${border}`, marginBottom: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontWeight: 700, fontSize: 15, color: textoPrimario }}>Total</span>
+                    <span style={{ fontWeight: 800, fontSize: 16, color: destaque }}>
+                      {comissaoAtiva && comissaoValor > 0
+                        ? (total + comissaoValor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                        : total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
+                  </div>
+                  {comissaoAtiva && comissaoValor > 0 && (
+                    <div style={{ fontSize: 11, color: textoSecundario, textAlign: 'right', marginTop: 2 }}>
+                      {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} + comissão {comissaoValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} = {(total + comissaoValor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -884,6 +893,18 @@ export default function ComandaDigital() {
                         pedidosMesa.forEach(p => marcarPedidoPago(p.id, f.id))
                         mostrarFeedback(`✓ ${nomeClienteFechar || 'Conta'} — fechada!`)
                       }
+                      if (comissaoAtiva && comissaoValor > 0 && garcon) {
+                        registrarComissao({
+                          garconId: garcon.id,
+                          garconNome: garcon.nome,
+                          totalBase: fecharContaInfo.total,
+                          comissaoValor,
+                          taxa: garcon.taxaComissao,
+                          mesaId: fecharContaInfo.mesaId || null,
+                          mesaNome: fecharContaInfo.mesa?.nome || '',
+                          formaPagamento: f.id,
+                        })
+                      }
                       setFecharContaInfo(null)
                     }}
                     style={{ padding: '13px 8px', borderRadius: 12, border: `1.5px solid ${border}`, background: bgHover, color: textoPrimario, fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
@@ -897,6 +918,18 @@ export default function ComandaDigital() {
                   setStatusMesa(fecharContaInfo.mesaId, 'livre')
                 } else {
                   pedidosMesa.forEach(p => marcarPedidoPago(p.id, null))
+                }
+                if (comissaoAtiva && comissaoValor > 0 && garcon) {
+                  registrarComissao({
+                    garconId: garcon.id,
+                    garconNome: garcon.nome,
+                    totalBase: fecharContaInfo.total,
+                    comissaoValor,
+                    taxa: garcon.taxaComissao,
+                    mesaId: fecharContaInfo.mesaId || null,
+                    mesaNome: fecharContaInfo.mesa?.nome || '',
+                    formaPagamento: null,
+                  })
                 }
                 setFecharContaInfo(null)
                 mostrarFeedback('✓ Conta fechada!')

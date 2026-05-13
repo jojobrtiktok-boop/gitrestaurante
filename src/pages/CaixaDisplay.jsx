@@ -502,7 +502,7 @@ const FORMAS_LABEL = {
   cartao_credito: { label: 'Crédito', icon: '💳' },
   cartao_debito: { label: 'Débito', icon: '💳' },
 }
-function ModalPagamento({ total, cfg, pagamentosConfig, comissaoInfo, onConfirmar, onFechar }) {
+function ModalPagamento({ total, cfg, pagamentosConfig, comissaoInfo, itens, onConfirmar, onFechar }) {
   const [comissaoAtiva, setComissaoAtiva] = useState(true)
   const formas = [
     pagamentosConfig?.dinheiro !== false && 'dinheiro',
@@ -510,6 +510,7 @@ function ModalPagamento({ total, cfg, pagamentosConfig, comissaoInfo, onConfirma
     pagamentosConfig?.cartaoCredito !== false && 'cartao_credito',
     pagamentosConfig?.cartaoDebito !== false && 'cartao_debito',
   ].filter(Boolean)
+  const totalComComissao = comissaoAtiva && comissaoInfo?.valor > 0 ? total + comissaoInfo.valor : total
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       onClick={onFechar}>
@@ -520,8 +521,25 @@ function ModalPagamento({ total, cfg, pagamentosConfig, comissaoInfo, onConfirma
           <button onClick={onFechar} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={18} /></button>
         </div>
         {cfg.caixaMostrarPrecos && (
-          <div style={{ textAlign: 'center', fontSize: 26, fontWeight: 800, color: '#16a34a' }}>
-            {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 26, fontWeight: 800, color: '#16a34a' }}>
+              {totalComComissao.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            </div>
+            {comissaoAtiva && comissaoInfo?.valor > 0 && (
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} produtos + {comissaoInfo.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} comissão
+              </div>
+            )}
+          </div>
+        )}
+        {itens?.length > 0 && (
+          <div style={{ maxHeight: 120, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, background: 'var(--bg-hover)', borderRadius: 8, padding: '8px 10px' }}>
+            {itens.map((item, idx) => (
+              <div key={idx} style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', gap: 4 }}>
+                <span style={{ fontWeight: 700 }}>{item.quantidade}×</span>
+                <span>{item.nomeItem}</span>
+              </div>
+            ))}
           </div>
         )}
         {comissaoInfo && comissaoInfo.valor > 0 && (
@@ -533,8 +551,6 @@ function ModalPagamento({ total, cfg, pagamentosConfig, comissaoInfo, onConfirma
                 </span>
                 {comissaoAtiva && (
                   <div style={{ fontSize: 14, fontWeight: 700, color: '#166534', marginTop: 2 }}>
-                    {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    {' + '}
                     <strong>{comissaoInfo.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
                   </div>
                 )}
@@ -549,7 +565,7 @@ function ModalPagamento({ total, cfg, pagamentosConfig, comissaoInfo, onConfirma
         )}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           {formas.map(f => (
-            <button key={f} onClick={() => onConfirmar(f)}
+            <button key={f} onClick={() => onConfirmar(f, comissaoAtiva ? (comissaoInfo?.valor || 0) : 0)}
               style={{ padding: '14px 8px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-hover)', color: 'var(--text-primary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, transition: 'all .1s' }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = '#16a34a'; e.currentTarget.style.background = 'rgba(22,163,74,0.1)' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg-hover)' }}>
@@ -558,7 +574,7 @@ function ModalPagamento({ total, cfg, pagamentosConfig, comissaoInfo, onConfirma
             </button>
           ))}
         </div>
-        <button onClick={() => onConfirmar(null)}
+        <button onClick={() => onConfirmar(null, comissaoAtiva ? (comissaoInfo?.valor || 0) : 0)}
           style={{ padding: '8px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }}>
           Registrar sem forma de pagamento
         </button>
@@ -569,7 +585,7 @@ function ModalPagamento({ total, cfg, pagamentosConfig, comissaoInfo, onConfirma
 
 export default function CaixaDisplay() {
   const { token } = useParams()
-  const { pedidos, pratos, garcons, mesas, clientes, kanbanConfig, pagamentosConfig, atualizarStatusPedido, aceitarPedidoDelivery, atribuirMotoboy, marcarPedidoPago, pagarMesa, cancelarPedido, adicionarMesa, setStatusMesa, adicionarCliente, authLoading, displayReady, motoboys } = useApp()
+  const { pedidos, pratos, garcons, mesas, clientes, kanbanConfig, pagamentosConfig, atualizarStatusPedido, aceitarPedidoDelivery, atribuirMotoboy, marcarPedidoPago, pagarMesa, cancelarPedido, adicionarMesa, setStatusMesa, adicionarCliente, authLoading, displayReady, motoboys, registrarComissao, comissoesPagas } = useApp()
   const cfg = kanbanConfig
 
   const [abaAtiva, setAbaAtiva] = useState('pedidos') // 'pedidos' | 'novo-pedido'
@@ -593,30 +609,52 @@ export default function CaixaDisplay() {
     let total = 0
     let comissaoInfo = null
     let garconId = null
+    let garconNome = ''
+    let mesaNome = ''
+    let itens = []
     if (mesaId) {
       const pedidosMesa = pedidos.filter(p => p.mesaId === mesaId && !p.pago && !p.cancelado)
       total = pedidosMesa.reduce((s, p) => s + calcTotal(p), 0)
       garconId = pedidosMesa[0]?.garconId
+      const mesa = mesas.find(m => m.id === mesaId)
+      mesaNome = mesa?.nome || ''
+      itens = pedidosMesa.flatMap(p => (p.itens || []).map(item => {
+        const prato = pratos.find(x => x.id === item.pratoId)
+        return { nomeItem: prato?.nome || item.ifoodItemName || 'Item', quantidade: item.quantidade }
+      }))
     } else if (grupoIds?.length) {
       const grupo = grupoIds.map(id => pedidos.find(p => p.id === id)).filter(Boolean)
       total = grupo.reduce((s, p) => s + calcTotal(p), 0)
       garconId = grupo[0]?.garconId
+      itens = grupo.flatMap(p => (p.itens || []).map(item => {
+        const prato = pratos.find(x => x.id === item.pratoId)
+        return { nomeItem: prato?.nome || item.ifoodItemName || 'Item', quantidade: item.quantidade }
+      }))
     } else {
       const pedido = pedidos.find(p => p.id === pedidoId)
       total = pedido ? calcTotal(pedido) : 0
       garconId = pedido?.garconId
+      if (pedido?.mesaId) {
+        const mesa = mesas.find(m => m.id === pedido.mesaId)
+        mesaNome = mesa?.nome || ''
+      }
+      itens = (pedido?.itens || []).map(item => {
+        const prato = pratos.find(x => x.id === item.pratoId)
+        return { nomeItem: prato?.nome || item.ifoodItemName || 'Item', quantidade: item.quantidade }
+      })
     }
-    if (cfg.comissaoGarconAtivo && garconId) {
+    if (garconId) {
       const garcom = garcons.find(g => g.id === garconId)
-      if (garcom && garcom.taxaComissao > 0)
+      garconNome = garcom?.nome || ''
+      if (cfg.comissaoGarconAtivo && garcom && garcom.taxaComissao > 0)
         comissaoInfo = { nome: garcom.nome, taxa: garcom.taxaComissao, valor: (total * garcom.taxaComissao) / 100 }
     }
-    setModalPagamento({ pedidoId, pedidoIds: grupoIds || null, mesaId: mesaId || null, total, comissaoInfo })
+    setModalPagamento({ pedidoId, pedidoIds: grupoIds || null, mesaId: mesaId || null, total, comissaoInfo, garconId, garconNome, mesaNome, itens })
   }
 
-  function confirmarPagamento(formaPagamento) {
+  function confirmarPagamento(formaPagamento, comissaoEfetiva = 0) {
     if (!modalPagamento) return
-    const { pedidoId, pedidoIds, mesaId } = modalPagamento
+    const { pedidoId, pedidoIds, mesaId, garconId, garconNome, mesaNome } = modalPagamento
     if (mesaId) {
       pagarMesa(mesaId, formaPagamento)
       setPagarMesaConfirm({ pedidoId, mesaId })
@@ -624,6 +662,18 @@ export default function CaixaDisplay() {
       pedidoIds.forEach(id => marcarPedidoPago(id, formaPagamento))
     } else {
       marcarPedidoPago(pedidoId, formaPagamento)
+    }
+    if (comissaoEfetiva > 0) {
+      registrarComissao({
+        garconId,
+        garconNome,
+        totalBase: modalPagamento.total,
+        comissaoValor: comissaoEfetiva,
+        taxa: modalPagamento.comissaoInfo?.taxa || 0,
+        mesaId: mesaId || null,
+        mesaNome: mesaNome || '',
+        formaPagamento,
+      })
     }
     setModalPagamento(null)
   }
@@ -785,6 +835,7 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
           cfg={cfg}
           pagamentosConfig={pagamentosConfig}
           comissaoInfo={modalPagamento.comissaoInfo || null}
+          itens={modalPagamento.itens || []}
           onConfirmar={confirmarPagamento}
           onFechar={() => setModalPagamento(null)}
         />
@@ -1271,7 +1322,6 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
         }
 
         function CardGrupoMesa({ grupo, col, isDelivery }) {
-          const [confirmando, setConfirmando] = useState(false)
           const mesaId = grupo[0]?.mesaId
           const mesa = mesaId ? mesas.find(m => m.id === mesaId) : null
           const clienteId = grupo[0]?.clienteId
@@ -1288,6 +1338,8 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
             if (garcom && garcom.taxaComissao > 0)
               comissaoInfo = { nome: garcom.nome, taxa: garcom.taxaComissao, valor: (total * garcom.taxaComissao) / 100 }
           }
+
+          const totalComComissao = comissaoInfo ? total + comissaoInfo.valor : total
 
           return (
             <div style={{ borderRadius: 12, border: `1.5px solid ${col.cor}44`, background: 'var(--bg-card)', overflow: 'hidden' }}>
@@ -1322,55 +1374,24 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
                   )
                 })}
               </div>
-              {/* Total + comissão */}
+              {/* Total */}
               {cfg.caixaMostrarPrecos && (
                 <div style={{ padding: '6px 12px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Total</span>
-                  <span style={{ fontWeight: 800, fontSize: 14, color: '#16a34a' }}>
-                    {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    Total{comissaoInfo ? <span style={{ fontSize: 10, marginLeft: 4, background: '#f0fdf4', color: '#166534', borderRadius: 4, padding: '1px 5px', fontWeight: 700 }}>c/ comissão</span> : null}
                   </span>
-                </div>
-              )}
-              {comissaoInfo && (
-                <div style={{ padding: '4px 12px 6px', fontSize: 11, color: '#166534', background: '#f0fdf4' }}>
-                  🤝 Comissão {comissaoInfo.nome}: {comissaoInfo.taxa}% = R$ {comissaoInfo.valor.toFixed(2)}
+                  <span style={{ fontWeight: 800, fontSize: 14, color: '#16a34a' }}>
+                    {totalComComissao.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </span>
                 </div>
               )}
               {/* Botão pagar */}
               <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)' }}>
-                {!confirmando ? (
-                  <button
-                    onClick={() => setConfirmando(true)}
-                    style={{ width: '100%', padding: '7px 0', borderRadius: 8, border: 'none', background: '#16a34a', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-                    ✓ Pagar {mesa ? mesa.nome : nomeGrupo}
-                  </button>
-                ) : (
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', alignSelf: 'center' }}>Forma de pagamento:</span>
-                    {[
-                      pagamentosConfig?.dinheiro !== false && { id: 'dinheiro', label: '💵 Dinheiro' },
-                      pagamentosConfig?.pix !== false && { id: 'pix', label: '📱 Pix' },
-                      pagamentosConfig?.cartaoCredito !== false && { id: 'cartao_credito', label: '💳 Crédito' },
-                      pagamentosConfig?.cartaoDebito !== false && { id: 'cartao_debito', label: '💳 Débito' },
-                    ].filter(Boolean).map(f => (
-                      <button key={f.id} onClick={() => {
-                        if (mesaId) {
-                          pagarMesa(mesaId, f.id)
-                          setStatusMesa(mesaId, 'livre')
-                          setPagarMesaConfirm({ pedidoId: grupo[0].id, mesaId })
-                        } else {
-                          grupo.forEach(p => marcarPedidoPago(p.id, f.id))
-                        }
-                        setConfirmando(false)
-                      }}
-                        style={{ padding: '5px 10px', borderRadius: 7, border: '1.5px solid var(--border)', background: 'var(--bg-hover)', color: 'var(--text-primary)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-                        {f.label}
-                      </button>
-                    ))}
-                    <button onClick={() => setConfirmando(false)}
-                      style={{ padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 10, cursor: 'pointer' }}>✕</button>
-                  </div>
-                )}
+                <button
+                  onClick={() => abrirPagamento(grupo[0].id, mesaId || null, mesaId ? null : grupo.map(p => p.id))}
+                  style={{ width: '100%', padding: '7px 0', borderRadius: 8, border: 'none', background: '#16a34a', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                  ✓ Pagar {mesa ? mesa.nome : nomeGrupo}
+                </button>
               </div>
             </div>
           )

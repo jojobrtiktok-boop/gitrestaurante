@@ -72,6 +72,7 @@ export default function ComandaDigital() {
       if (!prontoIdsRef.current.has(p.id)) {
         prontoIdsRef.current.add(p.id)
         tocarBeep()
+        navigator.vibrate?.([200, 100, 200])
         const mesa = mesas.find(m => m.id === p.mesaId)
         dispararNotificacao(mesa ? `Mesa ${mesa.nome} — pronto para entregar!` : 'Pedido pronto para entregar!')
       }
@@ -466,43 +467,122 @@ export default function ComandaDigital() {
         })()}
 
         {/* Pedidos do dia */}
-        {pedidosHoje.length > 0 && (
-          <div>
-            <style>{`@keyframes pulsarPronto { 0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,0.4)} 50%{box-shadow:0 0 0 8px rgba(22,163,74,0)} }`}</style>
-            <p style={{ fontWeight: 700, fontSize: 13, color: textoSecundario, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>Pedidos de hoje</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {pedidosHoje.filter(p => p.status !== 'pronto').map(ped => {
-                const mesa = mesas.find(m => m.id === ped.mesaId)
-                const statusMap = {
-                  novo:       { label: '🆕 Novo',        bg: '#3b82f622', cor: '#3b82f6' },
-                  preparando: { label: '⏳ Preparando',  bg: '#f59e0b22', cor: '#d97706' },
-                  completo:   { label: '✓ Entregue',     bg: '#16a34a22', cor: '#16a34a' },
-                  cancelado:  { label: '✕ Cancelado',    bg: '#ef444422', cor: '#ef4444' },
-                }
-                const s = ped.cancelado ? statusMap.cancelado : (statusMap[ped.status] || { label: ped.status, bg: '#3b82f622', cor: '#3b82f6' })
-                return (
-                  <div key={ped.id} style={{ background: bgCard, border: `1px solid ${border}`, borderRadius: 12, padding: '10px 14px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Clock size={12} style={{ color: textoSecundario }} />
-                        <span style={{ fontSize: 13, fontWeight: 700, color: destaque }}>{ped.hora}</span>
-                        {mesa && <span style={{ fontSize: 11, fontWeight: 700, color: destaque }}>· {mesa.nome}</span>}
+        {pedidosHoje.length > 0 && (() => {
+          const statusMap = {
+            novo:       { label: '🆕 Novo',               bg: '#3b82f622', cor: '#3b82f6' },
+            preparando: { label: '⏳ Preparando',          bg: '#f59e0b22', cor: '#d97706' },
+            pronto:     { label: '🔔 Pronto para buscar!', bg: '#16a34a22', cor: '#16a34a', pulsar: true },
+            completo:   { label: '✓ Entregue',             bg: '#16a34a22', cor: '#16a34a' },
+            cancelado:  { label: '✕ Cancelado',            bg: '#ef444422', cor: '#ef4444' },
+          }
+          function getStatus(ped) {
+            return ped.cancelado ? statusMap.cancelado : (statusMap[ped.status] || { label: ped.status, bg: '#3b82f622', cor: '#3b82f6' })
+          }
+          function calcTotalPed(ped) {
+            return (ped.itens || []).reduce((s, item) => {
+              const prato = pratos.find(x => x.id === item.pratoId)
+              const preco = item.precoUnit != null ? item.precoUnit : (prato?.precoVenda || 0)
+              return s + preco * item.quantidade
+            }, 0)
+          }
+
+          // Agrupa por mesa
+          const gruposMesa = {}
+          const semMesa = []
+          pedidosHoje.forEach(ped => {
+            if (ped.mesaId) {
+              if (!gruposMesa[ped.mesaId]) gruposMesa[ped.mesaId] = []
+              gruposMesa[ped.mesaId].push(ped)
+            } else {
+              semMesa.push(ped)
+            }
+          })
+
+          const podeFechar = !!kanbanConfig?.garconPodeFecharConta
+
+          return (
+            <div>
+              <style>{`@keyframes pulsarPronto { 0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,0.4)} 50%{box-shadow:0 0 0 8px rgba(22,163,74,0)} }`}</style>
+              <p style={{ fontWeight: 700, fontSize: 13, color: textoSecundario, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>Pedidos de hoje</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+
+                {/* Grupos por mesa */}
+                {Object.entries(gruposMesa).map(([mId, pedsMesa]) => {
+                  const mesa = mesas.find(m => m.id === mId)
+                  const naoPageos = pedsMesa.filter(p => !p.pago && !p.cancelado)
+                  const total = naoPageos.reduce((s, p) => s + calcTotalPed(p), 0)
+                  const temPronto = pedsMesa.some(p => p.status === 'pronto' && !p.pago && !p.cancelado)
+                  return (
+                    <div key={mId} style={{ background: bgCard, border: `1.5px solid ${temPronto ? '#16a34a88' : border}`, borderRadius: 14, padding: '12px 14px', animation: temPronto ? 'pulsarPronto 1.5s infinite' : 'none' }}>
+                      {/* Cabeçalho da mesa */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <span style={{ fontWeight: 800, fontSize: 14, color: destaque }}>{mesa?.nome || 'Mesa'}</span>
+                        {config.mostrarPrecos && naoPageos.length > 0 && (
+                          <span style={{ fontSize: 13, fontWeight: 700, color: textoPrimario }}>
+                            {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </span>
+                        )}
                       </div>
-                      <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: s.bg, color: s.cor }}>
-                        {s.label}
-                      </span>
+                      {/* Pedidos da mesa */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: podeFechar && naoPageos.length > 0 ? 10 : 0 }}>
+                        {pedsMesa.map((ped, idx) => {
+                          const s = getStatus(ped)
+                          return (
+                            <div key={ped.id} style={{ paddingBottom: idx < pedsMesa.length - 1 ? 6 : 0, borderBottom: idx < pedsMesa.length - 1 ? `1px solid ${border}` : 'none' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                  <Clock size={11} style={{ color: textoSecundario }} />
+                                  <span style={{ fontSize: 12, color: textoSecundario }}>{ped.hora}</span>
+                                </div>
+                                <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: s.bg, color: s.cor }}>{s.label}</span>
+                              </div>
+                              {ped.itens.map(item => {
+                                const p = pratos.find(x => x.id === item.pratoId)
+                                return p ? <p key={item.uid || item.pratoId} style={{ fontSize: 12, color: textoSecundario, margin: 0 }}>• {p.nome} ×{item.quantidade}</p> : null
+                              })}
+                              {ped.obs && <p style={{ fontSize: 11, color: textoSecundario, fontStyle: 'italic', margin: '2px 0 0' }}>"{ped.obs}"</p>}
+                            </div>
+                          )
+                        })}
+                      </div>
+                      {/* Botão Fechar Conta */}
+                      {podeFechar && naoPageos.length > 0 && (
+                        <button
+                          onClick={() => setFecharContaInfo({ mesaId: mId, mesa: mesa || { nome: 'Mesa' }, pedidosMesa: naoPageos, total })}
+                          style={{ width: '100%', padding: '9px', borderRadius: 10, border: 'none', background: destaque, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                          💳 Fechar Conta
+                        </button>
+                      )}
                     </div>
-                    {ped.itens.map(item => {
-                      const p = pratos.find(x => x.id === item.pratoId)
-                      return p ? <p key={item.uid || item.pratoId} style={{ fontSize: 13, color: textoSecundario }}>• {p.nome} ×{item.quantidade}</p> : null
-                    })}
-                    {ped.obs && <p style={{ fontSize: 12, color: textoSecundario, fontStyle: 'italic', marginTop: 4 }}>"{ped.obs}"</p>}
-                  </div>
-                )
-              })}
+                  )
+                })}
+
+                {/* Pedidos sem mesa (individuais) */}
+                {semMesa.map(ped => {
+                  const s = getStatus(ped)
+                  return (
+                    <div key={ped.id} style={{ background: bgCard, border: `1px solid ${s.pulsar ? '#16a34a55' : border}`, borderRadius: 12, padding: '10px 14px', animation: s.pulsar ? 'pulsarPronto 1.5s infinite' : 'none' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Clock size={12} style={{ color: textoSecundario }} />
+                          <span style={{ fontSize: 13, fontWeight: 700, color: destaque }}>{ped.hora}</span>
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: s.bg, color: s.cor }}>
+                          {s.label}
+                        </span>
+                      </div>
+                      {ped.itens.map(item => {
+                        const p = pratos.find(x => x.id === item.pratoId)
+                        return p ? <p key={item.uid || item.pratoId} style={{ fontSize: 13, color: textoSecundario }}>• {p.nome} ×{item.quantidade}</p> : null
+                      })}
+                      {ped.obs && <p style={{ fontSize: 12, color: textoSecundario, fontStyle: 'italic', marginTop: 4 }}>"{ped.obs}"</p>}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
       </div>
 
       {/* Botão flutuante do carrinho */}

@@ -242,6 +242,36 @@ ALTER TABLE garcons ADD COLUMN IF NOT EXISTS taxa_comissao NUMERIC DEFAULT 0;
 ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS plataforma_taxa      NUMERIC DEFAULT 0;
 ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS plataforma_pedido_id TEXT;
 
+-- ── 13. Bootstrap kanban_config — fix "configurações não salvam" ───────────────
+-- O upsert do app falha silenciosamente se ainda não existe linha para o usuário
+-- (INSERT via RLS pode ser bloqueado antes do primeiro save manual).
+-- Esta query cria a linha vazia para todos os usuários existentes.
+-- Após rodar, alterar qualquer toggle no app fará UPDATE (não INSERT), resolvendo o bug.
+
+INSERT INTO kanban_config (user_id, config)
+SELECT u.id, '{}'::jsonb
+FROM auth.users u
+WHERE NOT EXISTS (
+  SELECT 1 FROM kanban_config k WHERE k.user_id = u.id
+)
+ON CONFLICT (user_id) DO NOTHING;
+
+-- Trigger: garante que novos usuários já têm linha em kanban_config ao se cadastrar.
+CREATE OR REPLACE FUNCTION public.handle_new_user_kanban_config()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  INSERT INTO public.kanban_config (user_id, config)
+  VALUES (NEW.id, '{}')
+  ON CONFLICT (user_id) DO NOTHING;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created_kanban ON auth.users;
+CREATE TRIGGER on_auth_user_created_kanban
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user_kanban_config();
+
 -- ═══════════════════════════════════════════════════════════════
 -- FIM — Verificação rápida (rode para checar se tudo criou certo)
 -- ═══════════════════════════════════════════════════════════════

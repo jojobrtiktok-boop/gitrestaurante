@@ -212,6 +212,23 @@ $$;
 -- Permissão: usuários autenticados podem chamar a função (RLS já protege por user_id)
 GRANT EXECUTE ON FUNCTION public.activate_trial(UUID, INT, TEXT) TO authenticated;
 
+-- ── 11. integracoes_config ─────────────────────────────────────────────────
+-- Armazena credenciais de integrações (99food, Ketta, etc.) por usuário.
+-- iFood usa tabela própria (ifood_config). Esta guarda as demais via JSONB.
+
+CREATE TABLE IF NOT EXISTS integracoes_config (
+  id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id  UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  config   JSONB DEFAULT '{}'
+);
+
+ALTER TABLE integracoes_config ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "own_data" ON integracoes_config;
+CREATE POLICY "own_data" ON integracoes_config FOR ALL
+  USING  (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
 -- ═══════════════════════════════════════════════════════════════
 -- FIM — Verificação rápida (rode para checar se tudo criou certo)
 -- ═══════════════════════════════════════════════════════════════

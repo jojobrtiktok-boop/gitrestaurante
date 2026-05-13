@@ -825,8 +825,8 @@ function TabConfiguracoes() {
   )
 }
 
-// ── iFood Tab ─────────────────────────────────────────────────────────────────
-function TabIfood() {
+// ── iFood Tab (movido para /integracoes) ──────────────────────────────────────
+function TabIfood_REMOVIDO() {
   const { auth, pratos } = useApp()
   const SUPABASE_URL = 'https://api.cheffya.com.br'
 
@@ -1001,7 +1001,6 @@ export default function DeliveryGerenciar() {
   const tabs = [
     { id: 'configuracoes', label: 'Cardápio de Pedido', icon: SlidersHorizontal },
     { id: 'motoboys',      label: 'Motoboys',      icon: IconMoto },
-    { id: 'ifood',         label: 'iFood',         icon: Truck },
   ]
 
   return (
@@ -1032,7 +1031,6 @@ export default function DeliveryGerenciar() {
 
       {aba === 'configuracoes' && <TabConfiguracoes />}
       {aba === 'motoboys'      && <TabMotoboys />}
-      {aba === 'ifood'         && <TabIfood />}
     </div>
   )
 }

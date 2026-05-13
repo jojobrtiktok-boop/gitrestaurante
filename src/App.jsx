@@ -34,6 +34,7 @@ const ResetPassword    = lazy(() => import('./pages/ResetPassword.jsx'))
 const EmailConfirmado  = lazy(() => import('./pages/EmailConfirmado.jsx'))
 const Trial            = lazy(() => import('./pages/Trial.jsx'))
 const Presel           = lazy(() => import('./pages/Presel.jsx'))
+const Integracoes      = lazy(() => import('./pages/Integracoes.jsx'))
 
 function PageLoader() {
   return (
@@ -379,6 +380,7 @@ export default function App() {
             <Route path="/pdv" element={<PDV />} />
             <Route path="/mesas" element={<Mesas />} />
             <Route path="/displays" element={<Displays />} />
+            <Route path="/integracoes" element={<Integracoes />} />
             <Route path="/configuracoes" element={<Configuracoes />} />
             <Route path="/despesas" element={<Despesas />} />
             <Route path="/delivery" element={<DeliveryGerenciar />} />

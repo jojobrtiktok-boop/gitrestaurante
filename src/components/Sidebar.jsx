@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   BarChart2, Banknote, Package, ChefHat, UtensilsCrossed,
-  Smartphone, TrendingUp, Columns2, Settings,
+  Smartphone, TrendingUp, Columns2, Settings, Plug2,
   Sun, Moon, LogOut, ShieldCheck,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
@@ -42,6 +42,7 @@ const menu = [
   { path: '/whatsapp',      label: 'WhatsApp',      icon: IconWhatsApp },
   { path: '/vendas',        label: 'Vendas',        icon: TrendingUp },
   { path: '/kanban',        label: 'Fluxo',         icon: Columns2 },
+  { path: '/integracoes',   label: 'Integrações',   icon: Plug2 },
   { path: '/configuracoes', label: 'Configurações', icon: Settings },
 ]
 

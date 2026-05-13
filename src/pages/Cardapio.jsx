@@ -1347,10 +1347,178 @@ function ModalQRCode({ url, onClose }) {
   )
 }
 
+/* ─── Aba: Garçons ────────────────────────────────── */
+function GarconsConfig() {
+  const { garcons, adicionarGarcon, removerGarcon, atualizarGarcon, kanbanConfig, atualizarKanbanConfig } = useApp()
+  const [novoGarcon, setNovoGarcon] = useState('')
+  const [copiado, setCopiado] = useState(null)
+
+  const base = window.location.origin
+  const comissaoAtivo = !!kanbanConfig.comissaoGarconAtivo
+  const podeFechar = !!kanbanConfig.garconPodeFecharConta
+
+  function addGarcon() {
+    if (!novoGarcon.trim()) return
+    adicionarGarcon(novoGarcon.trim())
+    setNovoGarcon('')
+  }
+  function copiar(texto, key) {
+    navigator.clipboard.writeText(texto)
+    setCopiado(key)
+    setTimeout(() => setCopiado(null), 2000)
+  }
+
+  const ativos = garcons.filter(g => g.ativo !== false)
+
+  return (
+    <div className="flex flex-col gap-6" style={{ maxWidth: 640 }}>
+
+      {/* Configurações gerais */}
+      <div className="card p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Settings size={16} style={{ color: 'var(--accent)' }} />
+          <h2 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Configurações da Comanda</h2>
+        </div>
+        <div className="flex flex-col gap-3">
+          {/* Toggle: Fechar conta */}
+          <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl" style={{ background: 'var(--bg-hover)', border: `1px solid ${podeFechar ? 'var(--accent)' : 'var(--border)'}` }}>
+            <div style={{ position: 'relative', width: 36, height: 20, flexShrink: 0 }}>
+              <input type="checkbox" checked={podeFechar}
+                onChange={e => atualizarKanbanConfig({ garconPodeFecharConta: e.target.checked })}
+                style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }} />
+              <div style={{ position: 'absolute', inset: 0, borderRadius: 20, background: podeFechar ? 'var(--accent)' : 'var(--border)', transition: 'background .2s', cursor: 'pointer' }}
+                onClick={() => atualizarKanbanConfig({ garconPodeFecharConta: !podeFechar })}>
+                <div style={{ position: 'absolute', top: 2, left: podeFechar ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Garçom pode fechar conta</p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Garçom vê botão "Fechar Conta" na comanda e seleciona a forma de pagamento</p>
+            </div>
+          </label>
+
+          {/* Toggle: Comissão */}
+          <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl" style={{ background: 'var(--bg-hover)', border: `1px solid ${comissaoAtivo ? 'var(--accent)' : 'var(--border)'}` }}>
+            <div style={{ position: 'relative', width: 36, height: 20, flexShrink: 0 }}>
+              <input type="checkbox" checked={comissaoAtivo}
+                onChange={e => atualizarKanbanConfig({ comissaoGarconAtivo: e.target.checked })}
+                style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }} />
+              <div style={{ position: 'absolute', inset: 0, borderRadius: 20, background: comissaoAtivo ? 'var(--accent)' : 'var(--border)', transition: 'background .2s', cursor: 'pointer' }}
+                onClick={() => atualizarKanbanConfig({ comissaoGarconAtivo: !comissaoAtivo })}>
+                <div style={{ position: 'absolute', top: 2, left: comissaoAtivo ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Comissão de garçom</p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Exibe o valor de comissão por garçom (informativo) no momento do pagamento. Configure o % em cada garçom abaixo.</p>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      {/* Lista de garçons */}
+      <div className="card p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Users size={16} style={{ color: 'var(--accent)' }} />
+          <h2 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Garçons</h2>
+          {ativos.length > 0 && (
+            <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'var(--accent-bg)', color: 'var(--accent)' }}>{ativos.length}</span>
+          )}
+        </div>
+
+        {/* Adicionar */}
+        <div className="flex gap-2 mb-4">
+          <input className="input flex-1" placeholder="Nome do garçon (ex: João)" value={novoGarcon}
+            onChange={e => setNovoGarcon(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addGarcon()} />
+          <button className="btn btn-primary px-4" onClick={addGarcon}>
+            <Plus size={14} /> Adicionar
+          </button>
+        </div>
+
+        {ativos.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-8" style={{ color: 'var(--text-muted)' }}>
+            <Users size={28} style={{ opacity: 0.3 }} />
+            <p className="text-sm">Nenhum garçon cadastrado ainda.</p>
+            <p className="text-xs">Digite o nome acima e clique em Adicionar.</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {ativos.map(g => {
+              const link = `${base}/comanda/${g.token}`
+              return (
+                <div key={g.id} className="rounded-xl" style={{ border: '1px solid var(--border)', overflow: 'hidden' }}>
+                  {/* Linha principal */}
+                  <div className="flex items-center gap-3 p-3" style={{ background: 'var(--bg-hover)' }}>
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                      style={{ background: 'var(--accent-bg)', color: 'var(--accent)' }}>
+                      {g.nome[0].toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{g.nome}</p>
+                      <p className="text-xs font-mono truncate" style={{ color: 'var(--text-muted)' }}>/comanda/{g.token}</p>
+                    </div>
+                    <button className="btn btn-secondary py-1 px-2.5 text-xs shrink-0" onClick={() => copiar(link, g.id)}>
+                      {copiado === g.id ? <><Check size={11} /> Copiado!</> : <><Copy size={11} /> Link</>}
+                    </button>
+                    <a href={`/comanda/${g.token}`} target="_blank" className="btn btn-ghost p-1.5 shrink-0" title="Abrir comanda">
+                      <Smartphone size={13} />
+                    </a>
+                    <button className="btn btn-ghost p-1.5 shrink-0" style={{ color: '#ef4444' }}
+                      title="Desativar garçon (histórico de vendas é preservado)"
+                      onClick={() => {
+                        if (window.confirm(`Desativar "${g.nome}"?\n\nO garçon será removido da lista ativa, mas todo o histórico de vendas e pedidos dele continuará salvo no sistema.`))
+                          removerGarcon(g.id)
+                      }}>
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+
+                  {/* Linha de opções extras (só aparece se alguma feature estiver ativa) */}
+                  {(podeFechar || comissaoAtivo) && (
+                    <div className="flex items-center gap-4 px-3 py-2" style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+                      {podeFechar && (
+                        <div className="flex items-center gap-1.5">
+                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a' }} />
+                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Pode fechar conta</span>
+                        </div>
+                      )}
+                      {comissaoAtivo && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>Comissão:</span>
+                          <input
+                            type="number" min="0" max="100" step="0.5"
+                            value={g.taxaComissao || ''}
+                            placeholder="0"
+                            onChange={e => atualizarGarcon(g.id, { taxaComissao: parseFloat(e.target.value) || 0 })}
+                            className="input text-xs text-center"
+                            style={{ width: 54, padding: '3px 6px' }}
+                            title="Percentual de comissão (%)"
+                          />
+                          <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>%</span>
+                          {g.taxaComissao > 0 && (
+                            <span className="text-xs" style={{ color: 'var(--accent)', fontWeight: 600 }}>
+                              ({g.taxaComissao}% configurado)
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+    </div>
+  )
+}
+
 /* ─── Aba: Cardápio Digital Config ───────────────── */
 function CardapioDigitalConfig() {
-  const { cardapioConfig, atualizarCardapioConfig, definirSlugCardapio, garcons, adicionarGarcon, removerGarcon, atualizarGarcon, kanbanConfig, atualizarKanbanConfig, pratos, auth } = useApp()
-  const [novoGarcon, setNovoGarcon] = useState('')
+  const { cardapioConfig, atualizarCardapioConfig, definirSlugCardapio, pratos, auth } = useApp()
   const [copiado, setCopiado] = useState(null)
   const [uploadandoLogo, setUploadandoLogo] = useState(false)
   const [uploadandoBanner, setUploadandoBanner] = useState(false)
@@ -1391,12 +1559,6 @@ function CardapioDigitalConfig() {
     if (res.erro) return setErroSlug(res.erro)
     setOkSlug(true)
     setTimeout(() => setOkSlug(false), 2500)
-  }
-
-  function addGarcon() {
-    if (!novoGarcon.trim()) return
-    adicionarGarcon(novoGarcon.trim())
-    setNovoGarcon('')
   }
 
   async function handleLogo(e) {
@@ -1539,95 +1701,6 @@ function CardapioDigitalConfig() {
 
       {/* Modal QR Code */}
       {showQR && urlMenu && <ModalQRCode url={urlMenu} onClose={() => setShowQR(false)} />}
-
-      {/* Comanda digital */}
-      <div className="card p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Users size={16} style={{ color: 'var(--accent)' }} />
-          <h2 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Comanda Digital por Garçon</h2>
-        </div>
-
-        <div className="flex gap-2 mb-4">
-          <input className="input flex-1" placeholder="Nome do garçon (ex: João)" value={novoGarcon}
-            onChange={e => setNovoGarcon(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && addGarcon()} />
-          <button className="btn btn-primary px-4" onClick={addGarcon}>
-            <Plus size={14} /> Adicionar
-          </button>
-        </div>
-
-        {/* Toggles de funcionalidades */}
-        <div className="flex flex-col gap-2 mb-4 p-3 rounded-xl" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" checked={!!kanbanConfig.garconPodeFecharConta}
-              onChange={e => atualizarKanbanConfig({ garconPodeFecharConta: e.target.checked })}
-              className="w-4 h-4 rounded" />
-            <div>
-              <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Garçom pode fechar conta</p>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Permite ao garçom selecionar forma de pagamento e fechar a mesa pela comanda</p>
-            </div>
-          </label>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" checked={!!kanbanConfig.comissaoGarconAtivo}
-              onChange={e => atualizarKanbanConfig({ comissaoGarconAtivo: e.target.checked })}
-              className="w-4 h-4 rounded" />
-            <div>
-              <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Comissão de garçom</p>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Exibe o valor de comissão (informativo) no momento do pagamento</p>
-            </div>
-          </label>
-        </div>
-
-        {garcons.filter(g => g.ativo !== false).length === 0 ? (
-          <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted)' }}>Nenhum garçon cadastrado ainda.</p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {garcons.filter(g => g.ativo !== false).map(g => {
-              const link = `${base}/comanda/${g.token}`
-              return (
-                <div key={g.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
-                    style={{ background: 'var(--accent-bg)', color: 'var(--accent)' }}>
-                    {g.nome[0].toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{g.nome}</p>
-                    <p className="text-xs font-mono truncate" style={{ color: 'var(--text-muted)' }}>/comanda/{g.token}</p>
-                  </div>
-                  {kanbanConfig.comissaoGarconAtivo && (
-                    <div className="flex items-center gap-1 shrink-0">
-                      <input
-                        type="number" min="0" max="100" step="0.5"
-                        value={g.taxaComissao || ''}
-                        placeholder="0"
-                        onChange={e => atualizarGarcon(g.id, { taxaComissao: parseFloat(e.target.value) || 0 })}
-                        className="input text-xs text-center"
-                        style={{ width: 56, padding: '4px 6px' }}
-                        title="Comissão (%)"
-                      />
-                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>%</span>
-                    </div>
-                  )}
-                  <button className="btn btn-secondary py-1 px-2.5 text-xs shrink-0" onClick={() => copiar(link, g.id)}>
-                    {copiado === g.id ? <><Check size={11} /> Copiado!</> : <><Copy size={11} /> Link</>}
-                  </button>
-                  <a href={`/comanda/${g.token}`} target="_blank" className="btn btn-ghost p-1.5 shrink-0" title="Abrir comanda">
-                    <Smartphone size={13} />
-                  </a>
-                  <button className="btn btn-ghost p-1.5 shrink-0" style={{ color: '#ef4444' }}
-                    title="Desativar garçon (histórico de vendas é preservado)"
-                    onClick={() => {
-                      if (window.confirm(`Desativar "${g.nome}"?\n\nO garçon será removido da lista ativa, mas todo o histórico de vendas e pedidos dele continuará salvo no sistema.`))
-                        removerGarcon(g.id)
-                    }}>
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
 
       {/* Configurações visuais */}
       <div className="card p-5">
@@ -2521,6 +2594,7 @@ export default function Cardapio() {
         {[
           { id: 'cardapio',  label: 'Cardápio' },
           { id: 'digital',   label: 'Cardápio Digital' },
+          { id: 'garcons',   label: 'Garçons' },
           { id: 'displays',  label: 'Displays' },
           { id: 'pdf',       label: 'PDF' },
         ].map(a => (
@@ -2535,7 +2609,8 @@ export default function Cardapio() {
       </div>
 
       {aba === 'digital' ? <CardapioDigitalConfig />
-: aba === 'displays' ? <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}><PainelCozinha /><PainelCaixa /></div>
+        : aba === 'garcons' ? <GarconsConfig />
+        : aba === 'displays' ? <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}><PainelCozinha /><PainelCaixa /></div>
         : aba === 'pdf' ? <CardapioPDFConfig />
         : (
         <>

@@ -280,9 +280,9 @@ export default function ComandaDigital() {
             pedidos.some(p => p.mesaId === m.id && p.garconId === garcon.id && !p.pago && !p.cancelado && p.data === hoje())
           )
           // Clientes sem mesa com pedidos não pagos (agrupa por clienteId ou clienteNome)
-          const semMesaAtivos = pedidos.filter(p => !p.mesaId && p.garconId === garcon.id && !p.pago && !p.cancelado && p.data === hoje())
+          const semMesaAtivosFechar = pedidos.filter(p => !p.mesaId && p.garconId === garcon.id && !p.pago && !p.cancelado && p.data === hoje())
           const gruposCliente = {}
-          semMesaAtivos.forEach(p => {
+          semMesaAtivosFechar.forEach(p => {
             const key = p.clienteId || p.clienteNome || p.id
             if (!gruposCliente[key]) gruposCliente[key] = []
             gruposCliente[key].push(p)
@@ -481,17 +481,24 @@ export default function ComandaDigital() {
             }, 0)
           }
 
-          // Agrupa por mesa
-          const gruposMesa = {}
-          const semMesa = []
-          pedidosHoje.forEach(ped => {
+          // Separa ativos (não pagos, não cancelados) do histórico
+          const ativos    = pedidosHoje.filter(p => !p.pago && !p.cancelado)
+          const historico = pedidosHoje.filter(p => p.pago || p.cancelado)
+
+          // Agrupa ativos por mesa; sem mesa fica individual
+          const gruposMesaMap = {}
+          const semMesaAtivos = []
+          ativos.forEach(ped => {
             if (ped.mesaId) {
-              if (!gruposMesa[ped.mesaId]) gruposMesa[ped.mesaId] = []
-              gruposMesa[ped.mesaId].push(ped)
+              if (!gruposMesaMap[ped.mesaId]) gruposMesaMap[ped.mesaId] = []
+              gruposMesaMap[ped.mesaId].push(ped)
             } else {
-              semMesa.push(ped)
+              semMesaAtivos.push(ped)
             }
           })
+          // Ordena grupos de mesa pelo pedido mais recente (primeiro do array = mais recente pois pedidosHoje já está desc)
+          const gruposMesaOrdenados = Object.entries(gruposMesaMap)
+            .sort(([,a],[,b]) => b[0].hora.localeCompare(a[0].hora))
 
           const podeFechar = !!kanbanConfig?.garconPodeFecharConta
 
@@ -501,8 +508,8 @@ export default function ComandaDigital() {
               <p style={{ fontWeight: 700, fontSize: 13, color: textoSecundario, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>Pedidos de hoje</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
 
-                {/* Grupos por mesa */}
-                {Object.entries(gruposMesa).map(([mId, pedsMesa]) => {
+                {/* Grupos por mesa (só ativos) */}
+                {gruposMesaOrdenados.map(([mId, pedsMesa]) => {
                   const mesa = mesas.find(m => m.id === mId)
                   const naoPageos = pedsMesa.filter(p => !p.pago && !p.cancelado)
                   const total = naoPageos.reduce((s, p) => s + calcTotalPed(p), 0)
@@ -576,14 +583,13 @@ export default function ComandaDigital() {
                   )
                 })}
 
-                {/* Pedidos sem mesa (individuais) */}
-                {semMesa.map(ped => {
+                {/* Pedidos sem mesa ativos (individuais) */}
+                {semMesaAtivos.map(ped => {
                   const s = getStatus(ped)
                   const nome = nomeCliente(ped)
-                  const isPronto = ped.status === 'pronto' && !ped.pago && !ped.cancelado
+                  const isPronto = ped.status === 'pronto'
                   return (
                     <div key={ped.id} style={{ background: s.pulsar ? 'rgba(34,197,94,0.08)' : bgCard, border: `1.5px solid ${s.pulsar ? '#22c55e' : border}`, borderRadius: 12, padding: '10px 14px', animation: s.pulsar ? 'pulsarPronto 1.5s infinite' : 'none' }}>
-                      {/* Header */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           {s.pulsar && <span style={{ fontSize: 13 }}>🔔</span>}
@@ -591,20 +597,15 @@ export default function ComandaDigital() {
                           <span style={{ fontSize: 11, color: textoSecundario }}>{ped.hora}</span>
                         </div>
                       </div>
-                      {/* Itens */}
                       {ped.itens.map(item => {
                         const p = pratos.find(x => x.id === item.pratoId)
-                        return p ? <p key={item.uid || item.pratoId} style={{ fontSize: 13, color: textoSecundario, margin: 0 }}>• {p.nome} ×{item.quantidade}</p> : null
+                        return p ? <p key={item.uid || item.pratoId} style={{ fontSize: 12, color: textoSecundario, margin: 0 }}>• {p.nome} ×{item.quantidade}</p> : null
                       })}
                       {ped.obs && <p style={{ fontSize: 12, color: textoSecundario, fontStyle: 'italic', margin: '4px 0 0' }}>"{ped.obs}"</p>}
-                      {/* Status + botão entregar */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
-                        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: s.bg, color: s.cor }}>
-                          {s.label}
-                        </span>
+                        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: s.bg, color: s.cor }}>{s.label}</span>
                         {isPronto && (
-                          <button
-                            onClick={() => atualizarStatusPedido(ped.id, statusEntregue)}
+                          <button onClick={() => atualizarStatusPedido(ped.id, statusEntregue)}
                             style={{ fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 20, border: 'none', background: '#16a34a', color: '#fff', cursor: 'pointer' }}>
                             ✓ Marcar como entregue
                           </button>
@@ -613,6 +614,32 @@ export default function ComandaDigital() {
                     </div>
                   )
                 })}
+
+                {/* Histórico do dia (pagos/cancelados) */}
+                {historico.length > 0 && (
+                  <>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: textoSecundario, textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: 4, marginBottom: 2 }}>Histórico de hoje</p>
+                    {historico.map(ped => {
+                      const s = getStatus(ped)
+                      const nome = nomeCliente(ped)
+                      const mesa = mesas.find(m => m.id === ped.mesaId)
+                      return (
+                        <div key={ped.id} style={{ background: bgCard, border: `1px solid ${border}`, borderRadius: 10, padding: '8px 12px', opacity: 0.6 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                            {mesa && <span style={{ fontSize: 12, fontWeight: 700, color: textoSecundario }}>{mesa.nome}</span>}
+                            {nome && <span style={{ fontSize: 12, color: textoSecundario }}>· {nome}</span>}
+                            <span style={{ fontSize: 11, color: textoSecundario }}>{ped.hora}</span>
+                            <span style={{ fontSize: 11, fontWeight: 600, padding: '1px 7px', borderRadius: 20, background: s.bg, color: s.cor, marginLeft: 'auto' }}>{s.label}</span>
+                          </div>
+                          {ped.itens.map(item => {
+                            const p = pratos.find(x => x.id === item.pratoId)
+                            return p ? <p key={item.uid || item.pratoId} style={{ fontSize: 11, color: textoSecundario, margin: 0 }}>• {p.nome} ×{item.quantidade}</p> : null
+                          })}
+                        </div>
+                      )
+                    })}
+                  </>
+                )}
               </div>
             </div>
           )
@@ -775,7 +802,7 @@ export default function ComandaDigital() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                 <div>
                   <p style={{ fontWeight: 800, fontSize: 16, color: textoPrimario, margin: 0 }}>Fechar Conta</p>
-                  <p style={{ fontSize: 12, color: textoSecundario, margin: '2px 0 0' }}>{mesa.nome}</p>
+                  <p style={{ fontSize: 12, color: textoSecundario, margin: '2px 0 0' }}>{mesa?.nome || nomeClienteFechar || 'Cliente'}</p>
                 </div>
                 <button onClick={() => setFecharContaInfo(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: textoSecundario }}>
                   <X size={18} />

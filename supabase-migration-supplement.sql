@@ -183,6 +183,35 @@ CREATE POLICY "imagens_auth_update" ON storage.objects
 CREATE POLICY "imagens_auth_delete" ON storage.objects
   FOR DELETE TO authenticated USING (bucket_id = 'imagens');
 
+-- ── 10. Trial: colunas plano em profiles + função activate_trial ──────────
+-- Sem isso o trial nunca ativa (app chama supabase.rpc('activate_trial')).
+
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS plano_ativo TEXT    DEFAULT NULL;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS plano_fim   DATE    DEFAULT NULL;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS trial_slug  TEXT    DEFAULT NULL;
+
+-- Função RPC chamada pelo app no primeiro login após signup via link trial
+CREATE OR REPLACE FUNCTION public.activate_trial(
+  p_user_id UUID,
+  p_dias     INT,
+  p_slug     TEXT
+)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  UPDATE profiles
+  SET
+    plano_ativo = 'trial',
+    plano_fim   = CURRENT_DATE + p_dias,
+    trial_slug  = p_slug
+  WHERE id = p_user_id
+    AND (plano_ativo IS NULL OR plano_ativo = '')
+    AND (plano_fim IS NULL OR plano_fim < CURRENT_DATE);
+END;
+$$;
+
+-- Permissão: usuários autenticados podem chamar a função (RLS já protege por user_id)
+GRANT EXECUTE ON FUNCTION public.activate_trial(UUID, INT, TEXT) TO authenticated;
+
 -- ═══════════════════════════════════════════════════════════════
 -- FIM — Verificação rápida (rode para checar se tudo criou certo)
 -- ═══════════════════════════════════════════════════════════════

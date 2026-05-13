@@ -1420,14 +1420,16 @@ function CardapioDigitalConfig() {
     setUploadandoBanner(true)
     try {
       const url = await uploadImagem(file, 'cardapio', `banner-${auth.userId}`, { maxW: 1400, maxH: 600, quality: 0.85 })
+      // cache-buster: mesmo arquivo, URL diferente para forçar recarga no browser/CDN
+      const urlFresh = `${url.split('?')[0]}?t=${Date.now()}`
       const img = new Image()
       img.onload = () => {
         setBannerInfo({ w: img.naturalWidth, h: img.naturalHeight })
         setOffsetY(50)
         setDragMode(true)
       }
-      img.src = url
-      atualizarCardapioConfig({ banner: url, bannerPos: '50% 50%', bannerAltura: cardapioConfig.bannerAltura || 180 })
+      img.src = urlFresh
+      atualizarCardapioConfig({ banner: urlFresh, bannerPos: '50% 50%', bannerAltura: cardapioConfig.bannerAltura || 180 })
     } catch { alert('Erro ao enviar banner. Tente novamente.') }
     finally { setUploadandoBanner(false) }
   }

@@ -2030,6 +2030,7 @@ export function AppProvider({ children }) {
   }
 
   function setStatusMesa(id, status, nomeCliente = null) {
+    const uid = auth.userId || displayUserId
     const mesa = mesas.find(m => m.id === id)
     if (mesa?.status === 'ocupada' && status === 'livre' && mesa.inicioSessao) {
       const total = pedidos
@@ -2049,7 +2050,7 @@ export function AppProvider({ children }) {
         total,
       }
       setSessoesMesas(prev => [...prev, sessao])
-      if (auth.userId) sbWrite(supabase.from('sessoes_mesas').insert(sessaoMesaToRow(sessao, auth.userId)))
+      if (uid) sbWrite(supabase.from('sessoes_mesas').insert(sessaoMesaToRow(sessao, uid)))
     }
     setMesas(prev => prev.map(m => {
       if (m.id !== id) return m
@@ -2058,7 +2059,7 @@ export function AppProvider({ children }) {
         inicioSessao: status === 'ocupada' ? agoraBrasiliaISO() : (status === 'livre' ? null : m.inicioSessao),
         nomeCliente: status === 'ocupada' ? (nomeCliente || null) : (status === 'livre' ? null : m.nomeCliente),
       }
-      if (auth.userId) sbWrite(supabase.from('mesas').update(mesaToRow(updated, auth.userId)).eq('id', id))
+      if (uid) sbWrite(supabase.from('mesas').update(mesaToRow(updated, uid)).eq('id', id))
       return updated
     }))
   }

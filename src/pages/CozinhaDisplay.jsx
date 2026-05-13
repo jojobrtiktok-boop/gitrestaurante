@@ -34,10 +34,10 @@ function TimerVivo({ isoInicio, limiteAmarelo, limiteVermelho }) {
 }
 
 // ── Card de pedido da cozinha ─────────────────────────────────────────────────
-function CardCozinha({ pedido, coluna, pratos, garcons, mesas, onAvancar, cfg }) {
+function CardCozinha({ pedido, coluna, pratos, garcons, mesas, clientes, onAvancar, cfg }) {
   const garcon = garcons.find(g => g.id === pedido.garconId)
   const mesa = mesas?.find(m => m.id === pedido.mesaId)
-  const nomeCliente = pedido.clienteNome || null
+  const nomeCliente = pedido.clienteNome || clientes?.find(c => c.id === pedido.clienteId)?.nome || null
   const inicioEstagio = pedido.timestamps?.[coluna.id]
   const [mins, setMins] = useState(() => minutosDecorridos(inicioEstagio))
 
@@ -193,7 +193,7 @@ function CardCozinha({ pedido, coluna, pratos, garcons, mesas, onAvancar, cfg })
 // ── Página principal ──────────────────────────────────────────────────────────
 export default function CozinhaDisplay() {
   const { token } = useParams()
-  const { pedidos, pratos, garcons, mesas, kanbanConfig, atualizarStatusPedido, authLoading, displayReady } = useApp()
+  const { pedidos, pratos, garcons, mesas, clientes, kanbanConfig, atualizarStatusPedido, authLoading, displayReady } = useApp()
   const cfg = kanbanConfig
 
   // Auto-refresh tick
@@ -341,6 +341,7 @@ export default function CozinhaDisplay() {
                       pratos={pratos}
                       garcons={garcons}
                       mesas={mesas}
+                      clientes={clientes}
                       onAvancar={atualizarStatusPedido}
                       cfg={cfg}
                     />

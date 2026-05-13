@@ -34,9 +34,10 @@ function TimerVivo({ isoInicio, limiteAmarelo, limiteVermelho }) {
 }
 
 // ── Card do caixa ─────────────────────────────────────────────────────────────
-function CardCaixa({ pedido, coluna, pratos, garcons, mesas, onAvancar, onPagar, onAceitar, onCancelar, cfg, isNovo = false }) {
+function CardCaixa({ pedido, coluna, pratos, garcons, mesas, clientes, onAvancar, onPagar, onAceitar, onCancelar, cfg, isNovo = false }) {
   const garcon = garcons.find(g => g.id === pedido.garconId)
   const mesa = mesas?.find(m => m.id === pedido.mesaId)
+  const nomeCliente = pedido.clienteNome || clientes?.find(c => c.id === pedido.clienteId)?.nome || null
   const inicioEstagio = pedido.timestamps?.[coluna.id]
 
   const total = pedido.itens?.reduce((s, i) => {
@@ -82,14 +83,14 @@ function CardCaixa({ pedido, coluna, pratos, garcons, mesas, onAvancar, onPagar,
               {mesa.nome}
             </span>
           )}
-          {!mesa && pedido.clienteNome && (
+          {!mesa && nomeCliente && (
             <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', background: '#f04000', padding: '1px 9px', borderRadius: 20 }}>
-              {pedido.clienteNome}
+              {nomeCliente}
             </span>
           )}
-          {mesa && pedido.clienteNome && (
+          {mesa && nomeCliente && (
             <span style={{ fontSize: 11, fontWeight: 600, color: '#f04000', background: 'rgba(240,64,0,0.1)', padding: '1px 7px', borderRadius: 20, border: '1px solid rgba(240,64,0,0.25)' }}>
-              {pedido.clienteNome}
+              {nomeCliente}
             </span>
           )}
         </div>
@@ -1146,6 +1147,7 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
                                   pratos={pratos}
                                   garcons={garcons}
                                   mesas={mesas}
+                                  clientes={clientes}
                                   onAvancar={isDelivery ? handleAvancarDelivery : atualizarStatusPedido}
                                   onPagar={(id) => abrirPagamento(id, null)}
                                   onAceitar={(id) => isDelivery ? aceitarPedidoDelivery(id) : atualizarStatusPedido(id, 'preparando')}

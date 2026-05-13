@@ -1136,6 +1136,8 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
             let chave
             if (p.mesaId) {
               chave = `mesa:${p.mesaId}`
+            } else if (p.clienteId) {
+              chave = `clienteId:${p.clienteId}`
             } else if (p.clienteNome) {
               chave = `cliente:${p.clienteNome}`
             } else {
@@ -1151,7 +1153,9 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
           const [confirmando, setConfirmando] = useState(false)
           const mesaId = grupo[0]?.mesaId
           const mesa = mesaId ? mesas.find(m => m.id === mesaId) : null
-          const nomeGrupo = mesa ? mesa.nome : (grupo[0]?.clienteNome || 'Cliente')
+          const clienteId = grupo[0]?.clienteId
+          const nomeCliente = grupo[0]?.clienteNome || clientes?.find(c => c.id === clienteId)?.nome || null
+          const nomeGrupo = mesa ? mesa.nome : (nomeCliente || 'Cliente')
           const todosItens = grupo.flatMap(p => (p.itens || []).map(item => ({ ...item, _pedidoId: p.id })))
           const total = grupo.reduce((s, p) => s + calcTotal(p), 0)
 
@@ -1168,9 +1172,14 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
             <div style={{ borderRadius: 12, border: `1.5px solid ${col.cor}44`, background: 'var(--bg-card)', overflow: 'hidden' }}>
               {/* Header */}
               <div style={{ padding: '8px 12px', background: `${col.cor}18`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <span style={{ fontWeight: 800, fontSize: 13, color: col.cor }}>{nomeGrupo}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                  <span style={{ fontWeight: 800, fontSize: 13, color: col.cor }}>{nomeGrupo}</span>
+                  {mesa && nomeCliente && (
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>· {nomeCliente}</span>
+                  )}
+                </div>
                 {grupo.length > 1 && (
-                  <span style={{ fontSize: 10, fontWeight: 700, background: col.cor, color: '#fff', borderRadius: 20, padding: '1px 7px' }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, background: col.cor, color: '#fff', borderRadius: 20, padding: '1px 7px', flexShrink: 0 }}>
                     {grupo.length} pedidos
                   </span>
                 )}
@@ -1323,7 +1332,7 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
                               }
                               return (
                                 <CardGrupoMesa
-                                  key={grupo[0].mesaId ? `mesa:${grupo[0].mesaId}` : `cliente:${grupo[0].clienteNome}`}
+                                  key={grupo[0].mesaId ? `mesa:${grupo[0].mesaId}` : grupo[0].clienteId ? `clienteId:${grupo[0].clienteId}` : `cliente:${grupo[0].clienteNome || grupo[0].id}`}
                                   grupo={grupo}
                                   col={col}
                                   isDelivery={false}

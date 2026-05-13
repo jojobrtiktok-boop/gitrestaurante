@@ -233,7 +233,7 @@ export default function Receitas() {
                           CMV {formatarPorcentagem(cmv)}
                         </Badge>
                       </td>
-                      <td style={{ color: '#3b82f6' }}>{formatarMoeda(lucro)}</td>
+                      <td style={{ color: lucro < 0 ? '#ef4444' : '#3b82f6', fontWeight: lucro < 0 ? 600 : undefined }}>{formatarMoeda(lucro)}</td>
                       <td><Badge cor={margemCor(margem)}>{formatarPorcentagem(margem)}</Badge></td>
                       <td>
                         <div className="flex gap-1 justify-end">

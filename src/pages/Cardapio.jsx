@@ -1429,7 +1429,7 @@ function GarconsConfig() {
 
         {/* Adicionar */}
         <div className="flex gap-2 mb-4">
-          <input className="input flex-1" placeholder="Nome do garçon (ex: João)" value={novoGarcon}
+          <input className="input flex-1" placeholder="Nome do garçom (ex: João)" value={novoGarcon}
             onChange={e => setNovoGarcon(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && addGarcon()} />
           <button className="btn btn-primary px-4" onClick={addGarcon}>
@@ -1440,7 +1440,7 @@ function GarconsConfig() {
         {ativos.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-8" style={{ color: 'var(--text-muted)' }}>
             <Users size={28} style={{ opacity: 0.3 }} />
-            <p className="text-sm">Nenhum garçon cadastrado ainda.</p>
+            <p className="text-sm">Nenhum garçom cadastrado ainda.</p>
             <p className="text-xs">Digite o nome acima e clique em Adicionar.</p>
           </div>
         ) : (
@@ -1466,9 +1466,9 @@ function GarconsConfig() {
                       <Smartphone size={13} />
                     </a>
                     <button className="btn btn-ghost p-1.5 shrink-0" style={{ color: '#ef4444' }}
-                      title="Desativar garçon (histórico de vendas é preservado)"
+                      title="Desativar garçom (histórico de vendas é preservado)"
                       onClick={() => {
-                        if (window.confirm(`Desativar "${g.nome}"?\n\nO garçon será removido da lista ativa, mas todo o histórico de vendas e pedidos dele continuará salvo no sistema.`))
+                        if (window.confirm(`Desativar "${g.nome}"?\n\nO garçom será removido da lista ativa, mas todo o histórico de vendas e pedidos dele continuará salvo no sistema.`))
                           removerGarcon(g.id)
                       }}>
                       <Trash2 size={13} />

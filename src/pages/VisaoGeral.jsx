@@ -931,7 +931,7 @@ export default function VisaoGeral() {
               {rankingGarcons.length === 0 ? (
                 <div className="py-8 text-center">
                   <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                    {garcons.length === 0 ? 'Nenhum garçon cadastrado.' : 'Nenhum pedido registrado no período.'}
+                    {garcons.length === 0 ? 'Nenhum garçom cadastrado.' : 'Nenhum pedido registrado no período.'}
                   </p>
                 </div>
               ) : (

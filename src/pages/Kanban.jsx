@@ -113,7 +113,7 @@ function CardPedido({ pedido, coluna, pratos, garcons, mesas, onAvancar, cfg }) 
       borderLeft: `3px solid ${coluna.cor}`, borderRadius: 14, padding: pad,
       display: 'flex', flexDirection: 'column', gap,
     }}>
-      {/* Hora + garçon + timer */}
+      {/* Hora + garçom + timer */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           <span style={{ fontSize: compact ? 11 : 12, fontWeight: 700, color: coluna.cor }}>{pedido.hora}</span>

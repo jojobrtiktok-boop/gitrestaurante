@@ -96,7 +96,7 @@ export default function ComandaDigital() {
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: '#fff', gap: 12 }}>
         <span style={{ fontSize: 48 }}>❌</span>
         <p style={{ fontSize: 18, fontWeight: 700 }}>Comanda não encontrada</p>
-        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>Link inválido ou garçon removido.</p>
+        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>Link inválido ou garçom removido.</p>
       </div>
     )
   }
@@ -315,7 +315,7 @@ export default function ComandaDigital() {
 
         {/* ── Fechar Conta por Mesa ── */}
         {(kanbanConfig?.garconPodeFecharConta || kanbanConfig?.comissaoGarconAtivo) && (() => {
-          // Mesas que este garçon tem pedidos não pagos hoje
+          // Mesas que este garçom tem pedidos não pagos hoje
           const mesasAbertas = mesas.filter(m => {
             const pedidosMesa = pedidos.filter(p =>
               p.mesaId === m.id && p.garconId === garcon.id && !p.pago && !p.cancelado && p.data === hoje()

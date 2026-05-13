@@ -1496,7 +1496,9 @@ export function AppProvider({ children }) {
     setIngredientes(prev => prev.map(ing => {
       const linha = prato.ingredientes.find(l => l.ingredienteId === ing.id)
       if (!linha) return ing
-      const ajuste = fromBase(linha.quantidade, ing.unidade) * diff
+      // usa unidadeDisplay salva na receita para não errar se a unidade do insumo foi alterada depois
+      const unidade = linha.unidadeDisplay || ing.unidade
+      const ajuste = fromBase(linha.quantidade, unidade) * diff
       const updated = { ...ing, quantidadeEstoque: ing.quantidadeEstoque - ajuste }
       if (auth.userId) sbWrite(supabase.from('ingredientes').update({ quantidade_estoque: updated.quantidadeEstoque }).eq('id', ing.id))
       return updated
@@ -1948,7 +1950,8 @@ export function AppProvider({ children }) {
           setIngredientes(prev => prev.map(ing => {
             const linha = subPrato.ingredientes.find(l => l.ingredienteId === ing.id)
             if (!linha) return ing
-            const deduct = fromBase(linha.quantidade, ing.unidade) * quantidade * fator
+            const unidade = linha.unidadeDisplay || ing.unidade
+            const deduct = fromBase(linha.quantidade, unidade) * quantidade * fator
             const upd = { ...ing, quantidadeEstoque: ing.quantidadeEstoque - deduct }
             if (uid) sbWrite(supabase.from('ingredientes').update({ quantidade_estoque: upd.quantidadeEstoque }).eq('id', ing.id))
             return upd
@@ -1961,7 +1964,8 @@ export function AppProvider({ children }) {
           setIngredientes(prev => prev.map(ing => {
             const linha = mainPrato.ingredientes.find(l => l.ingredienteId === ing.id)
             if (!linha) return ing
-            const deduct = fromBase(linha.quantidade, ing.unidade) * quantidade
+            const unidade = linha.unidadeDisplay || ing.unidade
+            const deduct = fromBase(linha.quantidade, unidade) * quantidade
             const upd = { ...ing, quantidadeEstoque: ing.quantidadeEstoque - deduct }
             if (uid) sbWrite(supabase.from('ingredientes').update({ quantidade_estoque: upd.quantidadeEstoque }).eq('id', ing.id))
             return upd
@@ -2176,7 +2180,8 @@ export function AppProvider({ children }) {
           setIngredientes(prev => prev.map(ing => {
             const linha = subPrato.ingredientes.find(l => l.ingredienteId === ing.id)
             if (!linha) return ing
-            const deduct = fromBase(linha.quantidade, ing.unidade) * item.quantidade * fator
+            const unidade = linha.unidadeDisplay || ing.unidade
+            const deduct = fromBase(linha.quantidade, unidade) * item.quantidade * fator
             const upd = { ...ing, quantidadeEstoque: ing.quantidadeEstoque - deduct }
             if (uid) sbWrite(supabase.from('ingredientes').update({ quantidade_estoque: upd.quantidadeEstoque }).eq('id', ing.id))
             return upd
@@ -2187,7 +2192,8 @@ export function AppProvider({ children }) {
           setIngredientes(prev => prev.map(ing => {
             const linha = prato.ingredientes.find(l => l.ingredienteId === ing.id)
             if (!linha) return ing
-            const deduct = fromBase(linha.quantidade, ing.unidade) * item.quantidade
+            const unidade = linha.unidadeDisplay || ing.unidade
+            const deduct = fromBase(linha.quantidade, unidade) * item.quantidade
             const upd = { ...ing, quantidadeEstoque: ing.quantidadeEstoque - deduct }
             if (uid) sbWrite(supabase.from('ingredientes').update({ quantidade_estoque: upd.quantidadeEstoque }).eq('id', ing.id))
             return upd
@@ -2198,7 +2204,8 @@ export function AppProvider({ children }) {
         setIngredientes(prev => prev.map(ing => {
           const linha = prato.ingredientes.find(l => l.ingredienteId === ing.id)
           if (!linha) return ing
-          const deduct = fromBase(linha.quantidade, ing.unidade) * item.quantidade
+          const unidade = linha.unidadeDisplay || ing.unidade
+          const deduct = fromBase(linha.quantidade, unidade) * item.quantidade
           const upd = { ...ing, quantidadeEstoque: ing.quantidadeEstoque - deduct }
           if (uid) sbWrite(supabase.from('ingredientes').update({ quantidade_estoque: upd.quantidadeEstoque }).eq('id', ing.id))
           return upd

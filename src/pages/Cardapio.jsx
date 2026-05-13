@@ -468,9 +468,9 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
     const qtdBase = toBase(Number(novoIngQtd), ing.unidade)
     const idx = ingredientesVariacao.findIndex(l => l.ingredienteId === novoIngId)
     if (idx >= 0) {
-      setIngredientesVariacao(prev => prev.map((l, i) => i === idx ? { ...l, quantidade: qtdBase } : l))
+      setIngredientesVariacao(prev => prev.map((l, i) => i === idx ? { ...l, quantidade: qtdBase, unidadeDisplay: ing.unidade } : l))
     } else {
-      setIngredientesVariacao(prev => [...prev, { ingredienteId: novoIngId, quantidade: qtdBase }])
+      setIngredientesVariacao(prev => [...prev, { ingredienteId: novoIngId, quantidade: qtdBase, unidadeDisplay: ing.unidade }])
     }
     setNovoIngId('')
     setNovoIngQtd('')

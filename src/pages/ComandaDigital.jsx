@@ -255,63 +255,6 @@ export default function ComandaDigital() {
           </div>
         )}
 
-        {/* ── Prontos para Entregar ── */}
-        {prontos.length > 0 && (
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
-              <Bell size={15} color="#16a34a" />
-              <span style={{ fontWeight: 800, fontSize: 14, color: '#16a34a' }}>
-                Pronto para Entregar ({prontos.length})
-              </span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {prontos.map(ped => {
-                const mesa = mesas.find(m => m.id === ped.mesaId)
-                return (
-                  <div key={ped.id} style={{
-                    background: 'rgba(22,163,74,0.08)',
-                    border: '2px solid #16a34a',
-                    borderRadius: 14,
-                    padding: '12px 14px',
-                    animation: 'pulsarPronto 2s ease-in-out infinite',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 13, fontWeight: 800, color: '#16a34a' }}>✅ Pronto!</span>
-                        {mesa && (
-                          <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 9px', borderRadius: 20, background: '#16a34a22', color: '#16a34a' }}>
-                            🪑 {mesa.nome}
-                          </span>
-                        )}
-                        <span style={{ fontSize: 11, color: textoSecundario }}>{ped.hora}</span>
-                      </div>
-                    </div>
-                    <div style={{ marginBottom: 10 }}>
-                      {ped.itens.map(item => {
-                        const p = pratos.find(x => x.id === item.pratoId)
-                        return p ? (
-                          <p key={item.uid || item.pratoId} style={{ fontSize: 13, color: textoPrimario, margin: '2px 0', fontWeight: 500 }}>
-                            • {p.nome} ×{item.quantidade}
-                          </p>
-                        ) : null
-                      })}
-                      {ped.obs && <p style={{ fontSize: 11, color: textoSecundario, fontStyle: 'italic', marginTop: 4 }}>"{ped.obs}"</p>}
-                    </div>
-                    <button
-                      onClick={() => atualizarStatusPedido(ped.id, 'completo')}
-                      style={{
-                        width: '100%', padding: '10px', borderRadius: 10, border: 'none',
-                        background: '#16a34a', color: '#fff', fontSize: 14, fontWeight: 800,
-                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                      }}>
-                      <Check size={15} /> Entreguei
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
 
         {/* ── Fechar Conta por Mesa ── */}
         {(kanbanConfig?.garconPodeFecharConta || kanbanConfig?.comissaoGarconAtivo) && (() => {
@@ -482,6 +425,12 @@ export default function ComandaDigital() {
           function nomeCliente(ped) {
             return ped.clienteNome || clientes?.find(c => c.id === ped.clienteId)?.nome || null
           }
+          function tituloIdentificacao(mesa, nome) {
+            if (mesa && nome) return `${mesa.nome} · ${nome}`
+            if (mesa) return mesa.nome
+            if (nome) return nome
+            return null
+          }
           function calcTotalPed(ped) {
             return (ped.itens || []).reduce((s, item) => {
               const prato = pratos.find(x => x.id === item.pratoId)
@@ -517,10 +466,19 @@ export default function ComandaDigital() {
                   const total = naoPageos.reduce((s, p) => s + calcTotalPed(p), 0)
                   const temPronto = pedsMesa.some(p => p.status === 'pronto' && !p.pago && !p.cancelado)
                   return (
-                    <div key={mId} style={{ background: bgCard, border: `1.5px solid ${temPronto ? '#22c55e88' : border}`, borderRadius: 14, padding: '12px 14px', animation: temPronto ? 'pulsarPronto 1.5s infinite' : 'none' }}>
+                    <div key={mId} style={{ background: temPronto ? 'rgba(34,197,94,0.08)' : bgCard, border: `1.5px solid ${temPronto ? '#22c55e' : border}`, borderRadius: 14, padding: '12px 14px', animation: temPronto ? 'pulsarPronto 1.5s infinite' : 'none' }}>
                       {/* Cabeçalho da mesa */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <span style={{ fontWeight: 800, fontSize: 14, color: destaque }}>{mesa?.nome || 'Mesa'}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          {temPronto && <span style={{ fontSize: 14 }}>🔔</span>}
+                          <span style={{ fontWeight: 800, fontSize: 14, color: temPronto ? '#16a34a' : destaque }}>{mesa?.nome || 'Mesa'}</span>
+                          {(() => {
+                            const nomes = [...new Set(pedsMesa.map(p => nomeCliente(p)).filter(Boolean))]
+                            return nomes.length > 0 && (
+                              <span style={{ fontSize: 12, fontWeight: 600, color: textoSecundario }}>· {nomes.join(', ')}</span>
+                            )
+                          })()}
+                        </div>
                         {config.mostrarPrecos && naoPageos.length > 0 && (
                           <span style={{ fontSize: 13, fontWeight: 700, color: textoPrimario }}>
                             {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -582,13 +540,13 @@ export default function ComandaDigital() {
                   const nome = nomeCliente(ped)
                   const isPronto = ped.status === 'pronto' && !ped.pago && !ped.cancelado
                   return (
-                    <div key={ped.id} style={{ background: bgCard, border: `1px solid ${s.pulsar ? '#22c55e55' : border}`, borderRadius: 12, padding: '10px 14px', animation: s.pulsar ? 'pulsarPronto 1.5s infinite' : 'none' }}>
+                    <div key={ped.id} style={{ background: s.pulsar ? 'rgba(34,197,94,0.08)' : bgCard, border: `1.5px solid ${s.pulsar ? '#22c55e' : border}`, borderRadius: 12, padding: '10px 14px', animation: s.pulsar ? 'pulsarPronto 1.5s infinite' : 'none' }}>
                       {/* Header */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Clock size={12} style={{ color: textoSecundario }} />
-                          <span style={{ fontSize: 12, color: textoSecundario }}>{ped.hora}</span>
-                          {nome && <span style={{ fontSize: 13, fontWeight: 700, color: textoPrimario }}>· {nome}</span>}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          {s.pulsar && <span style={{ fontSize: 13 }}>🔔</span>}
+                          {nome && <span style={{ fontSize: 13, fontWeight: 800, color: s.pulsar ? '#16a34a' : textoPrimario }}>{nome}</span>}
+                          <span style={{ fontSize: 11, color: textoSecundario }}>{ped.hora}</span>
                         </div>
                       </div>
                       {/* Itens */}

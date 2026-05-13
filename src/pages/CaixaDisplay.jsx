@@ -845,7 +845,16 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
           const historico = lista.filter(p => p.pago || p.cancelado)
           const grupos = {}
           for (const p of ativos) {
-            const chave = chaveGrupo(p)
+            let chave
+            if (p.mesaId) {
+              chave = `mesa:${p.mesaId}`
+            } else {
+              let cId = p.clienteId
+              if (!cId && p.clienteNome) cId = clientes?.find(c => c.nome === p.clienteNome)?.id || null
+              if (cId) chave = `clienteId:${cId}`
+              else if (p.clienteNome) chave = `clienteNome:${p.clienteNome}`
+              else chave = `pedido:${p.id}`
+            }
             if (!grupos[chave]) grupos[chave] = []
             grupos[chave].push(p)
           }

@@ -2366,15 +2366,17 @@ export function AppProvider({ children }) {
 
   function marcarPedidoPago(id, formaPagamento) {
     const uid = auth.userId || displayUserId
+    _lockPedido(id) // protege contra sobrescrita do servidor por 3.5s
     setPedidos(prev => prev.map(p => {
       if (p.id !== id) return p
       const updated = { ...p, pago: true, formaPagamento: formaPagamento || null }
       if (uid) sbWrite(supabase.from('pedidos').update({ pago: true, forma_pagamento: formaPagamento || null }).eq('id', id).eq('user_id', uid))
       return updated
     }))
-    const pedido = pedidos.find(p => p.id === id)
+    // Usa ref para evitar stale closure
+    const pedido = pedidosRef.current.find(p => p.id === id)
     if (pedido?.mesaId) {
-      const outrosSemPagar = pedidos.filter(p => p.mesaId === pedido.mesaId && p.id !== id && !p.pago && !p.cancelado)
+      const outrosSemPagar = pedidosRef.current.filter(p => p.mesaId === pedido.mesaId && p.id !== id && !p.pago && !p.cancelado)
       if (outrosSemPagar.length === 0) setStatusMesa(pedido.mesaId, 'livre')
     }
   }
@@ -2382,6 +2384,10 @@ export function AppProvider({ children }) {
   function pagarMesa(mesaId, formaPagamento) {
     const uid = auth.userId || displayUserId
     const h = hojeBrasilia()
+    // Bloqueia pedidos afetados ANTES do state update para evitar que polling sobrescreva
+    pedidosRef.current
+      .filter(p => p.mesaId === mesaId && p.data === h && !p.pago && !p.cancelado)
+      .forEach(p => _lockPedido(p.id))
     setPedidos(prev => prev.map(p => {
       if (p.mesaId !== mesaId || p.data !== h || p.pago || p.cancelado) return p
       const updated = { ...p, pago: true, formaPagamento: formaPagamento || null }

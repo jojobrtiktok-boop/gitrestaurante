@@ -1355,8 +1355,6 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
                     ].filter(Boolean).map(f => (
                       <button key={f.id} onClick={() => {
                         if (mesaId) {
-                          abrirPagamento(grupo[0].id, mesaId)
-                          // override: pay directly
                           pagarMesa(mesaId, f.id)
                           setStatusMesa(mesaId, 'livre')
                           setPagarMesaConfirm({ pedidoId: grupo[0].id, mesaId })

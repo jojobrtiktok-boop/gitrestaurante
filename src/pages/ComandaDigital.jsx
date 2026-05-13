@@ -762,6 +762,15 @@ export default function ComandaDigital() {
               <p style={{ fontSize: 11, fontWeight: 600, color: textoSecundario, marginBottom: 5 }}>Cliente</p>
               <SeletorCliente clienteId={clienteId} onChange={setClienteId} />
             </div>
+            {/* Aviso: pedido vai para conta da mesa (não é conta separada) */}
+            {mesaId && clienteId && (() => {
+              const mesaSel = mesas.find(m => m.id === mesaId)
+              return mesaSel ? (
+                <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 8, padding: '7px 10px', marginBottom: 10, fontSize: 12, color: '#92400e' }}>
+                  ⚠️ Este pedido entra na conta da <strong>{mesaSel.nome}</strong>. Para conta separada, selecione <strong>Sem mesa</strong>.
+                </div>
+              ) : null
+            })()}
             <input placeholder="Observação (ex: sem cebola)..." value={obs} onChange={e => setObs(e.target.value)}
               style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', background: bgHover, border: `1px solid ${border}`, borderRadius: 10, fontSize: 13, color: textoPrimario, outline: 'none', marginBottom: 14 }}
             />

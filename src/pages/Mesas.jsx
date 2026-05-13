@@ -611,9 +611,10 @@ export default function Mesas() {
               editarCliente(pagarInfo.clienteId, { telefone, aniversario })
             }
             pagarMesa(pagarInfo.mesaId, formaPagamento)
+            setStatusMesa(pagarInfo.mesaId, 'livre')
             setPagarInfo(null)
           }}
-          onFechar={() => { pagarMesa(pagarInfo.mesaId, null); setPagarInfo(null) }}
+          onFechar={() => setPagarInfo(null)}
         />
       )}
     </div>

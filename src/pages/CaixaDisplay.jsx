@@ -239,13 +239,14 @@ function valorPedidoCalc(pedido, pratos) {
   }, 0)
 }
 
-function MesasBoard({ mesas, pedidos, pratos, hj, cfg, adicionarMesa, setStatusMesa, pagarMesa, adicionarCliente, clientes }) {
+function MesasBoard({ mesas, pedidos, pratos, hj, cfg, adicionarMesa, setStatusMesa, pagarMesa, adicionarCliente, clientes, pagamentosConfig }) {
   const [adicionando, setAdicionando] = useState(false)
   const [novoNome, setNovoNome]       = useState('')
   const [novoCadeiras, setNovoCadeiras] = useState('4')
   const [acaoMesa, setAcaoMesa] = useState(null) // { id, acao:'ocupar'|'reservar', clienteId }
   const [criandoCliente, setCriandoCliente] = useState(false)
   const [novoNomeCliente, setNovoNomeCliente] = useState('')
+  const [confirmPago, setConfirmPago] = useState(null) // mesaId que acabou de ser paga
 
   function handleConfirmarAcao() {
     if (!acaoMesa) return
@@ -462,12 +463,27 @@ function MesasBoard({ mesas, pedidos, pratos, hj, cfg, adicionarMesa, setStatusM
                       </div>
                     )
                   )}
-                  {ocupada && (
-                    <button onClick={() => pagarMesa(mesa.id)}
+                  {ocupada && confirmPago === mesa.id ? (
+                    /* ── Diálogo pós-pagamento ── */
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', textAlign: 'center' }}>✓ Pago! Liberar mesa?</span>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button onClick={() => { setStatusMesa(mesa.id, 'livre'); setConfirmPago(null) }}
+                          style={{ flex: 1, padding: '5px 0', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 800, background: '#16a34a', color: '#fff' }}>
+                          Deixar Livre
+                        </button>
+                        <button onClick={() => setConfirmPago(null)}
+                          style={{ flex: 1, padding: '5px 0', borderRadius: 7, border: '1px solid var(--border)', cursor: 'pointer', fontSize: 10, fontWeight: 600, background: 'var(--bg-hover)', color: 'var(--text-muted)' }}>
+                          Manter
+                        </button>
+                      </div>
+                    </div>
+                  ) : ocupada ? (
+                    <button onClick={() => { pagarMesa(mesa.id); setConfirmPago(mesa.id) }}
                       style={{ width: '100%', padding: '6px 0', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 800, background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
                       <Check size={12} /> Pago
                     </button>
-                  )}
+                  ) : null}
                 </div>
               </div>
             )
@@ -792,7 +808,7 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
           <PDVPage />
         </div>
       ) : abaAtiva === 'mesas' ? (
-        <MesasBoard mesas={mesas} pedidos={pedidos} pratos={pratos} hj={h} cfg={cfg} adicionarMesa={adicionarMesa} setStatusMesa={setStatusMesa} pagarMesa={pagarMesa} adicionarCliente={adicionarCliente} clientes={clientes} />
+        <MesasBoard mesas={mesas} pedidos={pedidos} pratos={pratos} hj={h} cfg={cfg} adicionarMesa={adicionarMesa} setStatusMesa={setStatusMesa} pagarMesa={pagarMesa} adicionarCliente={adicionarCliente} clientes={clientes} pagamentosConfig={pagamentosConfig} />
       ) : abaAtiva === 'so-pedidos' ? (() => {
         const pedidosLocal    = pedidosHoje.filter(p => p.canal !== 'delivery')
         const pedidosDelivery = pedidosHoje.filter(p => p.canal === 'delivery')

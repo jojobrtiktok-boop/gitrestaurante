@@ -37,7 +37,7 @@ function dispararNotificacao(msg) {
 
 export default function ComandaDigital() {
   const { token } = useParams()
-  const { garcons, pratos, cardapioConfig, adicionarPedido, atualizarStatusPedido, pedidos, mesas, pagarMesa, setStatusMesa, pagamentosConfig, kanbanConfig, authLoading, displayReady } = useApp()
+  const { garcons, pratos, clientes, cardapioConfig, adicionarPedido, atualizarStatusPedido, pedidos, mesas, pagarMesa, setStatusMesa, pagamentosConfig, kanbanConfig, authLoading, displayReady } = useApp()
 
   const garcon = garcons.find(g => g.token === token)
 
@@ -468,20 +468,24 @@ export default function ComandaDigital() {
 
         {/* Pedidos do dia */}
         {pedidosHoje.length > 0 && (() => {
+          const statusEntregue = kanbanConfig?.etapas?.[kanbanConfig.etapas.length - 1]?.id || 'completo'
           const statusMap = {
             novo:       { label: '🆕 Novo',               bg: '#3b82f622', cor: '#3b82f6' },
             preparando: { label: '⏳ Preparando',          bg: '#f59e0b22', cor: '#d97706' },
-            pronto:     { label: '🔔 Pronto para buscar!', bg: '#16a34a22', cor: '#16a34a', pulsar: true },
-            completo:   { label: '✓ Entregue',             bg: '#16a34a22', cor: '#16a34a' },
+            pronto:     { label: '🔔 Pronto para buscar!', bg: '#22c55e22', cor: '#16a34a', pulsar: true },
+            [statusEntregue]: { label: '✓ Entregue',      bg: '#16a34a22', cor: '#16a34a' },
             cancelado:  { label: '✕ Cancelado',            bg: '#ef444422', cor: '#ef4444' },
           }
           function getStatus(ped) {
             return ped.cancelado ? statusMap.cancelado : (statusMap[ped.status] || { label: ped.status, bg: '#3b82f622', cor: '#3b82f6' })
           }
+          function nomeCliente(ped) {
+            return ped.clienteNome || clientes?.find(c => c.id === ped.clienteId)?.nome || null
+          }
           function calcTotalPed(ped) {
             return (ped.itens || []).reduce((s, item) => {
               const prato = pratos.find(x => x.id === item.pratoId)
-              const preco = item.precoUnit != null ? item.precoUnit : (prato?.precoVenda || 0)
+              const preco = (item.precoUnit != null && item.precoUnit > 0) ? item.precoUnit : (prato?.precoVenda || 0)
               return s + preco * item.quantidade
             }, 0)
           }
@@ -502,7 +506,7 @@ export default function ComandaDigital() {
 
           return (
             <div>
-              <style>{`@keyframes pulsarPronto { 0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,0.4)} 50%{box-shadow:0 0 0 8px rgba(22,163,74,0)} }`}</style>
+              <style>{`@keyframes pulsarPronto { 0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,0.4)} 50%{box-shadow:0 0 0 8px rgba(34,197,94,0)} }`}</style>
               <p style={{ fontWeight: 700, fontSize: 13, color: textoSecundario, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>Pedidos de hoje</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
 
@@ -513,7 +517,7 @@ export default function ComandaDigital() {
                   const total = naoPageos.reduce((s, p) => s + calcTotalPed(p), 0)
                   const temPronto = pedsMesa.some(p => p.status === 'pronto' && !p.pago && !p.cancelado)
                   return (
-                    <div key={mId} style={{ background: bgCard, border: `1.5px solid ${temPronto ? '#16a34a88' : border}`, borderRadius: 14, padding: '12px 14px', animation: temPronto ? 'pulsarPronto 1.5s infinite' : 'none' }}>
+                    <div key={mId} style={{ background: bgCard, border: `1.5px solid ${temPronto ? '#22c55e88' : border}`, borderRadius: 14, padding: '12px 14px', animation: temPronto ? 'pulsarPronto 1.5s infinite' : 'none' }}>
                       {/* Cabeçalho da mesa */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                         <span style={{ fontWeight: 800, fontSize: 14, color: destaque }}>{mesa?.nome || 'Mesa'}</span>
@@ -524,23 +528,38 @@ export default function ComandaDigital() {
                         )}
                       </div>
                       {/* Pedidos da mesa */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: podeFechar && naoPageos.length > 0 ? 10 : 0 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: podeFechar && naoPageos.length > 0 ? 10 : 0 }}>
                         {pedsMesa.map((ped, idx) => {
                           const s = getStatus(ped)
+                          const nome = nomeCliente(ped)
+                          const isPronto = ped.status === 'pronto' && !ped.pago && !ped.cancelado
                           return (
-                            <div key={ped.id} style={{ paddingBottom: idx < pedsMesa.length - 1 ? 6 : 0, borderBottom: idx < pedsMesa.length - 1 ? `1px solid ${border}` : 'none' }}>
+                            <div key={ped.id} style={{ paddingBottom: idx < pedsMesa.length - 1 ? 8 : 0, borderBottom: idx < pedsMesa.length - 1 ? `1px solid ${border}` : 'none' }}>
+                              {/* Header do pedido */}
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                                   <Clock size={11} style={{ color: textoSecundario }} />
                                   <span style={{ fontSize: 12, color: textoSecundario }}>{ped.hora}</span>
+                                  {nome && <span style={{ fontSize: 12, fontWeight: 700, color: textoPrimario }}>· {nome}</span>}
                                 </div>
-                                <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: s.bg, color: s.cor }}>{s.label}</span>
                               </div>
+                              {/* Itens */}
                               {ped.itens.map(item => {
                                 const p = pratos.find(x => x.id === item.pratoId)
                                 return p ? <p key={item.uid || item.pratoId} style={{ fontSize: 12, color: textoSecundario, margin: 0 }}>• {p.nome} ×{item.quantidade}</p> : null
                               })}
                               {ped.obs && <p style={{ fontSize: 11, color: textoSecundario, fontStyle: 'italic', margin: '2px 0 0' }}>"{ped.obs}"</p>}
+                              {/* Status + botão entregar */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5 }}>
+                                <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: s.bg, color: s.cor }}>{s.label}</span>
+                                {isPronto && (
+                                  <button
+                                    onClick={() => atualizarStatusPedido(ped.id, statusEntregue)}
+                                    style={{ fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 20, border: 'none', background: '#16a34a', color: '#fff', cursor: 'pointer' }}>
+                                    ✓ Marcar como entregue
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           )
                         })}
@@ -560,22 +579,37 @@ export default function ComandaDigital() {
                 {/* Pedidos sem mesa (individuais) */}
                 {semMesa.map(ped => {
                   const s = getStatus(ped)
+                  const nome = nomeCliente(ped)
+                  const isPronto = ped.status === 'pronto' && !ped.pago && !ped.cancelado
                   return (
-                    <div key={ped.id} style={{ background: bgCard, border: `1px solid ${s.pulsar ? '#16a34a55' : border}`, borderRadius: 12, padding: '10px 14px', animation: s.pulsar ? 'pulsarPronto 1.5s infinite' : 'none' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <div key={ped.id} style={{ background: bgCard, border: `1px solid ${s.pulsar ? '#22c55e55' : border}`, borderRadius: 12, padding: '10px 14px', animation: s.pulsar ? 'pulsarPronto 1.5s infinite' : 'none' }}>
+                      {/* Header */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <Clock size={12} style={{ color: textoSecundario }} />
-                          <span style={{ fontSize: 13, fontWeight: 700, color: destaque }}>{ped.hora}</span>
+                          <span style={{ fontSize: 12, color: textoSecundario }}>{ped.hora}</span>
+                          {nome && <span style={{ fontSize: 13, fontWeight: 700, color: textoPrimario }}>· {nome}</span>}
                         </div>
+                      </div>
+                      {/* Itens */}
+                      {ped.itens.map(item => {
+                        const p = pratos.find(x => x.id === item.pratoId)
+                        return p ? <p key={item.uid || item.pratoId} style={{ fontSize: 13, color: textoSecundario, margin: 0 }}>• {p.nome} ×{item.quantidade}</p> : null
+                      })}
+                      {ped.obs && <p style={{ fontSize: 12, color: textoSecundario, fontStyle: 'italic', margin: '4px 0 0' }}>"{ped.obs}"</p>}
+                      {/* Status + botão entregar */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
                         <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: s.bg, color: s.cor }}>
                           {s.label}
                         </span>
+                        {isPronto && (
+                          <button
+                            onClick={() => atualizarStatusPedido(ped.id, statusEntregue)}
+                            style={{ fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 20, border: 'none', background: '#16a34a', color: '#fff', cursor: 'pointer' }}>
+                            ✓ Marcar como entregue
+                          </button>
+                        )}
                       </div>
-                      {ped.itens.map(item => {
-                        const p = pratos.find(x => x.id === item.pratoId)
-                        return p ? <p key={item.uid || item.pratoId} style={{ fontSize: 13, color: textoSecundario }}>• {p.nome} ×{item.quantidade}</p> : null
-                      })}
-                      {ped.obs && <p style={{ fontSize: 12, color: textoSecundario, fontStyle: 'italic', marginTop: 4 }}>"{ped.obs}"</p>}
                     </div>
                   )
                 })}

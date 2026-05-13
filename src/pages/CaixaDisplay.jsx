@@ -588,32 +588,40 @@ export default function CaixaDisplay() {
     }, 0)
   }
 
-  function abrirPagamento(pedidoId, mesaId) {
+  function abrirPagamento(pedidoId, mesaId, grupoIds) {
+    // grupoIds = array de ids para grupos sem mesa (ex: vários pedidos do Bastião)
     let total = 0
     let comissaoInfo = null
+    let garconId = null
     if (mesaId) {
-      // Soma todos os pedidos não pagos da mesa
       const pedidosMesa = pedidos.filter(p => p.mesaId === mesaId && !p.pago && !p.cancelado)
       total = pedidosMesa.reduce((s, p) => s + calcTotal(p), 0)
-      if (cfg.comissaoGarconAtivo) {
-        const garconId = pedidosMesa[0]?.garconId
-        const garcom = garcons.find(g => g.id === garconId)
-        if (garcom && garcom.taxaComissao > 0)
-          comissaoInfo = { nome: garcom.nome, taxa: garcom.taxaComissao, valor: (total * garcom.taxaComissao) / 100 }
-      }
+      garconId = pedidosMesa[0]?.garconId
+    } else if (grupoIds?.length) {
+      const grupo = grupoIds.map(id => pedidos.find(p => p.id === id)).filter(Boolean)
+      total = grupo.reduce((s, p) => s + calcTotal(p), 0)
+      garconId = grupo[0]?.garconId
     } else {
       const pedido = pedidos.find(p => p.id === pedidoId)
       total = pedido ? calcTotal(pedido) : 0
+      garconId = pedido?.garconId
     }
-    setModalPagamento({ pedidoId, mesaId: mesaId || null, total, comissaoInfo })
+    if (cfg.comissaoGarconAtivo && garconId) {
+      const garcom = garcons.find(g => g.id === garconId)
+      if (garcom && garcom.taxaComissao > 0)
+        comissaoInfo = { nome: garcom.nome, taxa: garcom.taxaComissao, valor: (total * garcom.taxaComissao) / 100 }
+    }
+    setModalPagamento({ pedidoId, pedidoIds: grupoIds || null, mesaId: mesaId || null, total, comissaoInfo })
   }
 
   function confirmarPagamento(formaPagamento) {
     if (!modalPagamento) return
-    const { pedidoId, mesaId } = modalPagamento
+    const { pedidoId, pedidoIds, mesaId } = modalPagamento
     if (mesaId) {
       pagarMesa(mesaId, formaPagamento)
       setPagarMesaConfirm({ pedidoId, mesaId })
+    } else if (pedidoIds?.length) {
+      pedidoIds.forEach(id => marcarPedidoPago(id, formaPagamento))
     } else {
       marcarPedidoPago(pedidoId, formaPagamento)
     }
@@ -903,7 +911,7 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{totalQtd} item{totalQtd !== 1 ? 's' : ''}</span>
                   {cfg.caixaMostrarPrecos && <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)' }}>{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>}
-                  <button onClick={e => { e.stopPropagation(); abrirPagamento(grupo[0].id, mesaId || null) }}
+                  <button onClick={e => { e.stopPropagation(); abrirPagamento(grupo[0].id, mesaId || null, mesaId ? null : grupo.map(p => p.id)) }}
                     style={{ padding: '3px 10px', borderRadius: 7, border: 'none', background: '#16a34a', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                     <Check size={10} style={{ display: 'inline', marginRight: 3 }} />{mesaId ? `Pagar ${mesa?.nome || 'Mesa'}` : 'Pagar'}
                   </button>

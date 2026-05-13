@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link2, RefreshCw, Truck, Check } from 'lucide-react'
+import { Link2, RefreshCw, Check } from 'lucide-react'
 import { supabase } from '../lib/supabase.js'
 import { useApp } from '../context/AppContext.jsx'
 
@@ -69,8 +69,8 @@ function CardIfood() {
     <div className="card p-5" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div style={{ width: 48, height: 48, borderRadius: 12, background: cor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <Truck size={22} color="#fff" />
+        <div style={{ width: 48, height: 48, borderRadius: 12, background: cor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+          <img src="/logo-ifood.png" alt="iFood" style={{ width: 38, height: 38, objectFit: 'contain' }} />
         </div>
         <div style={{ flex: 1 }}>
           <p style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)', margin: 0 }}>iFood</p>
@@ -228,8 +228,8 @@ function Card99() {
     <div className="card p-5" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div style={{ width: 48, height: 48, borderRadius: 12, background: cor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <span style={{ fontWeight: 900, fontSize: 18, color: corTexto }}>99</span>
+        <div style={{ width: 48, height: 48, borderRadius: 12, background: cor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+          <img src="/logo-99food.png" alt="99food" style={{ width: 38, height: 38, objectFit: 'contain' }} />
         </div>
         <div style={{ flex: 1 }}>
           <p style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)', margin: 0 }}>99food</p>
@@ -304,8 +304,8 @@ function CardKetta() {
     <div className="card p-5" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div style={{ width: 48, height: 48, borderRadius: 12, background: cor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <span style={{ fontWeight: 900, fontSize: 15, color: '#fff', letterSpacing: -0.5 }}>KT</span>
+        <div style={{ width: 48, height: 48, borderRadius: 12, background: cor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+          <img src="/logo-ketta.png" alt="Ketta" style={{ width: 38, height: 38, objectFit: 'contain' }} />
         </div>
         <div style={{ flex: 1 }}>
           <p style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)', margin: 0 }}>Ketta</p>

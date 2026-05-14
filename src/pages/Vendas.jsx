@@ -381,10 +381,14 @@ export default function Vendas() {
     return ped && !ped.cancelado && !pedidoQuitado(ped)
   })
 
-  const comissoesPeriodo = (comissoesPagas || []).filter(c => c.data >= dataInicio && c.data <= dataFim)
+  const comissoesPeriodo = (comissoesPagas || [])
+    .filter(c => c.data >= dataInicio && c.data <= dataFim)
+    .sort((a, b) => new Date(b.criadoEm || b.data) - new Date(a.criadoEm || a.data))
   const totalComissoes = comissoesPeriodo.reduce((s, c) => s + c.comissaoValor, 0)
 
-  const coversPeriodo = (coversCobrados || []).filter(c => c.data >= dataInicio && c.data <= dataFim)
+  const coversPeriodo = (coversCobrados || [])
+    .filter(c => c.data >= dataInicio && c.data <= dataFim)
+    .sort((a, b) => new Date(b.criadoEm || b.data) - new Date(a.criadoEm || a.data))
   const totalCovers = coversPeriodo.reduce((s, c) => s + c.valor, 0)
 
   const totalReceita = entradasPagas.reduce((s, e) => {
@@ -771,16 +775,26 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
 
       <div className="grid gap-3 mb-6 vendas-summary" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>
         {[
-          { label: 'Faturamento', valor: formatarMoeda(totalReceita + totalComissoes + totalCovers), cor: '#3b82f6' },
-          { label: 'Lucro Bruto', valor: formatarMoeda(totalLucro - totalComissoes + totalCovers), cor: '#16a34a' },
-          { label: 'Ag. Pagamento', valor: entradasPendentes.length === 0 ? 'Nenhum' : `${entradasPendentes.length} pedido${entradasPendentes.length !== 1 ? 's' : ''}`, cor: entradasPendentes.length > 0 ? '#f97316' : '#6b7280' },
+          {
+            label: 'Faturamento', valor: formatarMoeda(totalReceita), cor: '#3b82f6',
+            sub: totalReceita > 0 ? `${totalLucro > 0 ? `Lucro: ${formatarMoeda(totalLucro)}` : 'Sem lucro'}` : null,
+          },
+          {
+            label: 'Lucro Bruto', valor: formatarMoeda(totalLucro), cor: totalLucro > 0 ? '#16a34a' : '#ef4444',
+            sub: totalReceita > 0 ? `${totalReceita > 0 ? `${((totalLucro / totalReceita) * 100).toFixed(1)}% do faturamento` : ''}` : null,
+          },
+          {
+            label: 'Ag. Pagamento', cor: entradasPendentes.length > 0 ? '#f97316' : '#6b7280',
+            valor: entradasPendentes.length === 0 ? 'Nenhum' : `${entradasPendentes.length} pedido${entradasPendentes.length !== 1 ? 's' : ''}`,
+          },
           { label: 'CMV', valor: formatarMoeda(totalCMV), cor: '#ef4444' },
-          ...(totalComissoes > 0 ? [{ label: 'Comissão Garçons', valor: formatarMoeda(totalComissoes), cor: '#f59e0b' }] : []),
-          ...(totalCovers > 0 ? [{ label: 'Cover/Entrada', valor: formatarMoeda(totalCovers), cor: '#3b82f6' }] : []),
-        ].map(({ label, valor, cor }) => (
+          ...(totalComissoes > 0 ? [{ label: '🤝 Comissões', valor: formatarMoeda(totalComissoes), cor: '#f59e0b', sub: `${comissoesPeriodo.length} fechamento${comissoesPeriodo.length !== 1 ? 's' : ''}` }] : []),
+          ...(totalCovers > 0 ? [{ label: '🎟️ Cover', valor: formatarMoeda(totalCovers), cor: '#6366f1', sub: `${coversPeriodo.length} cobrança${coversPeriodo.length !== 1 ? 's' : ''}` }] : []),
+        ].map(({ label, valor, cor, sub }) => (
           <div key={label} className="card p-4">
-            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{label}</p>
-            <p className="text-xl font-bold" style={{ color: cor }}>{valor}</p>
+            <p className="text-xs mb-1 font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{label}</p>
+            <p className="font-bold" style={{ color: cor, fontSize: 'clamp(1rem, 2.5vw, 1.25rem)', lineHeight: 1.2 }}>{valor}</p>
+            {sub && <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{sub}</p>}
           </div>
         ))}
       </div>

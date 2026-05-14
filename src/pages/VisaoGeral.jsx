@@ -874,11 +874,11 @@ export default function VisaoGeral() {
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Apenas vendas pagas</p>
                 </div>
               </div>
-              <p className="text-2xl font-bold mb-1" style={{ color: '#3b82f6' }}>{formatarMoeda(receitaPaga)}</p>
+              <p className="font-bold mb-1" style={{ color: '#3b82f6', fontSize: 'clamp(1.1rem, 3vw, 1.5rem)', lineHeight: 1.2 }}>{formatarMoeda(receitaPaga)}</p>
               {receitaPaga > 0 && (
                 <div className="text-xs flex flex-col gap-0.5 mt-1" style={{ color: 'var(--text-secondary)' }}>
-                  <span>— Custo dos pratos: <strong style={{ color: '#ef4444' }}>{formatarMoeda(custoTotal)}</strong></span>
-                  <span>— Lucro bruto: <strong style={{ color: '#16a34a' }}>{formatarMoeda(lucroPago)}</strong></span>
+                  <span>— Custo: <strong style={{ color: '#ef4444' }}>{formatarMoeda(custoTotal)}</strong></span>
+                  <span>— Lucro: <strong style={{ color: '#16a34a' }}>{formatarMoeda(lucroPago)}</strong></span>
                 </div>
               )}
             </div>
@@ -922,11 +922,11 @@ export default function VisaoGeral() {
             {/* Lucro */}
             <div className="card">
               <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Lucro Bruto</p>
-              <p className="text-xl font-bold" style={{ color: lucroPago > 0 ? '#16a34a' : '#ef4444' }}>
+              <p className="font-bold" style={{ color: lucroPago > 0 ? '#16a34a' : '#ef4444', fontSize: 'clamp(1rem, 2.5vw, 1.25rem)', lineHeight: 1.2 }}>
                 {formatarMoeda(lucroPago)}
               </p>
               <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                {semVendas ? 'Sem vendas' : `Sobre ${formatarMoeda(receitaPaga)} faturado`}
+                {semVendas ? 'Sem vendas' : receitaPaga > 0 ? `${((lucroPago / receitaPaga) * 100).toFixed(1)}% do faturamento` : '—'}
               </p>
             </div>
 

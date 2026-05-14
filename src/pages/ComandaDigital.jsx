@@ -58,6 +58,7 @@ export default function ComandaDigital() {
   const [fecharContaInfo, setFecharContaInfo] = useState(null) // { mesaId, mesa, pedidosMesa, total }
   const [comissaoFecharAtiva, setComissaoFecharAtiva] = useState(true)
   const [coverFecharAtivo, setCoverFecharAtivo] = useState(true)
+  const [coverFecharQtd, setCoverFecharQtd] = useState(1)
   const prontoIdsRef = useRef(new Set())
 
   const pedidosHoje = pedidos.filter(p => p.garconId === garcon?.id && p.data === hoje())
@@ -895,25 +896,34 @@ export default function ComandaDigital() {
               {coverHojeFechar && (
                 <div style={{ background: coverFecharAtivo ? '#eff6ff' : bgHover,
                   border: `1px solid ${coverFecharAtivo ? '#bfdbfe' : border}`,
-                  borderRadius: 10, padding: '10px 12px', marginBottom: 14,
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <div>
+                  borderRadius: 10, padding: '10px 12px', marginBottom: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                     <span style={{ fontSize: 12, color: coverFecharAtivo ? '#1d4ed8' : textoSecundario, fontWeight: 600 }}>
-                      🎟️ Cover ({(kanbanConfig?.coverValor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
+                      🎟️ Cover — {(kanbanConfig?.coverValor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} p/ pessoa
                     </span>
-                    {coverFecharAtivo && (
-                      <div style={{ fontSize: 11, color: '#1d4ed8', marginTop: 2 }}>
-                        Será adicionado ao faturamento
+                    <div onClick={() => setCoverFecharAtivo(v => !v)}
+                      style={{ width: 22, height: 22, borderRadius: 5,
+                        border: `2px solid ${coverFecharAtivo ? '#3b82f6' : '#9ca3af'}`,
+                        background: coverFecharAtivo ? '#3b82f6' : 'transparent', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {coverFecharAtivo && <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>✓</span>}
+                    </div>
+                  </div>
+                  {coverFecharAtivo && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+                      <span style={{ fontSize: 12, color: '#1d4ed8' }}>Pessoas:</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <button onClick={() => setCoverFecharQtd(v => Math.max(1, v - 1))}
+                          style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #bfdbfe', background: '#dbeafe', color: '#1d4ed8', fontSize: 16, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+                        <span style={{ fontSize: 16, fontWeight: 700, color: '#1d4ed8', minWidth: 24, textAlign: 'center' }}>{coverFecharQtd}</span>
+                        <button onClick={() => setCoverFecharQtd(v => v + 1)}
+                          style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #bfdbfe', background: '#dbeafe', color: '#1d4ed8', fontSize: 16, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
                       </div>
-                    )}
-                  </div>
-                  <div onClick={() => setCoverFecharAtivo(v => !v)}
-                    style={{ width: 22, height: 22, borderRadius: 5,
-                      border: `2px solid ${coverFecharAtivo ? '#3b82f6' : '#9ca3af'}`,
-                      background: coverFecharAtivo ? '#3b82f6' : 'transparent', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {coverFecharAtivo && <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>✓</span>}
-                  </div>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#1d4ed8', marginLeft: 4 }}>
+                        = {((kanbanConfig?.coverValor || 0) * coverFecharQtd).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -943,8 +953,8 @@ export default function ComandaDigital() {
                           formaPagamento: f.id,
                         })
                       }
-                      if (coverHojeFechar && coverFecharAtivo) {
-                        registrarCover({ valor: kanbanConfig.coverValor, formaPagamento: f.id })
+                      if (coverHojeFechar && coverFecharAtivo && coverFecharQtd > 0) {
+                        registrarCover({ valor: kanbanConfig.coverValor * coverFecharQtd, quantidade: coverFecharQtd, formaPagamento: f.id })
                       }
                       setFecharContaInfo(null)
                     }}
@@ -972,8 +982,8 @@ export default function ComandaDigital() {
                     formaPagamento: null,
                   })
                 }
-                if (coverHojeFechar && coverFecharAtivo) {
-                  registrarCover({ valor: kanbanConfig.coverValor, formaPagamento: null })
+                if (coverHojeFechar && coverFecharAtivo && coverFecharQtd > 0) {
+                  registrarCover({ valor: kanbanConfig.coverValor * coverFecharQtd, quantidade: coverFecharQtd, formaPagamento: null })
                 }
                 setFecharContaInfo(null)
                 mostrarFeedback('✓ Conta fechada!')

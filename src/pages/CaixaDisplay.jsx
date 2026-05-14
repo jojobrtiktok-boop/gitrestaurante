@@ -508,6 +508,7 @@ function ModalPagamento({ total, cfg, pagamentosConfig, comissaoInfo, itens, onC
   const diaSemana = hoje.getDay()
   const coverHoje = cfg?.coverAtivo && (cfg?.coverDias || []).includes(diaSemana) && (cfg?.coverValor || 0) > 0
   const [coverAtivo, setCoverAtivo] = useState(true)
+  const [coverQtd, setCoverQtd] = useState(1)
   const formas = [
     pagamentosConfig?.dinheiro !== false && 'dinheiro',
     pagamentosConfig?.pix !== false && 'pix',
@@ -579,30 +580,39 @@ function ModalPagamento({ total, cfg, pagamentosConfig, comissaoInfo, itens, onC
         {coverHoje && (
           <div style={{ background: coverAtivo ? '#eff6ff' : 'var(--bg-hover)',
             border: `1px solid ${coverAtivo ? '#bfdbfe' : 'var(--border)'}`,
-            borderRadius: 10, padding: '10px 12px',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <div>
+            borderRadius: 10, padding: '10px 12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
               <span style={{ fontSize: 12, color: coverAtivo ? '#1d4ed8' : 'var(--text-muted)', fontWeight: 600 }}>
-                🎟️ Cover ({(cfg?.coverValor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
+                🎟️ Cover — {(cfg?.coverValor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} p/ pessoa
               </span>
-              {coverAtivo && (
-                <div style={{ fontSize: 11, color: '#1d4ed8', marginTop: 2 }}>
-                  Será adicionado ao faturamento
+              <div onClick={() => setCoverAtivo(v => !v)}
+                style={{ width: 22, height: 22, borderRadius: 5,
+                  border: `2px solid ${coverAtivo ? '#3b82f6' : '#9ca3af'}`,
+                  background: coverAtivo ? '#3b82f6' : 'transparent', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {coverAtivo && <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>✓</span>}
+              </div>
+            </div>
+            {coverAtivo && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+                <span style={{ fontSize: 12, color: '#1d4ed8' }}>Pessoas:</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <button onClick={() => setCoverQtd(v => Math.max(1, v - 1))}
+                    style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #bfdbfe', background: '#dbeafe', color: '#1d4ed8', fontSize: 16, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: '#1d4ed8', minWidth: 24, textAlign: 'center' }}>{coverQtd}</span>
+                  <button onClick={() => setCoverQtd(v => v + 1)}
+                    style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #bfdbfe', background: '#dbeafe', color: '#1d4ed8', fontSize: 16, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
                 </div>
-              )}
-            </div>
-            <div onClick={() => setCoverAtivo(v => !v)}
-              style={{ width: 22, height: 22, borderRadius: 5,
-                border: `2px solid ${coverAtivo ? '#3b82f6' : '#9ca3af'}`,
-                background: coverAtivo ? '#3b82f6' : 'transparent', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              {coverAtivo && <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>✓</span>}
-            </div>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#1d4ed8', marginLeft: 4 }}>
+                  = {((cfg?.coverValor || 0) * coverQtd).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+              </div>
+            )}
           </div>
         )}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           {formas.map(f => (
-            <button key={f} onClick={() => onConfirmar(f, comissaoAtiva ? (comissaoInfo?.valor || 0) : 0, coverHoje && coverAtivo)}
+            <button key={f} onClick={() => onConfirmar(f, comissaoAtiva ? (comissaoInfo?.valor || 0) : 0, coverHoje && coverAtivo ? coverQtd : 0)}
               style={{ padding: '14px 8px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-hover)', color: 'var(--text-primary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, transition: 'all .1s' }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = '#16a34a'; e.currentTarget.style.background = 'rgba(22,163,74,0.1)' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg-hover)' }}>
@@ -611,7 +621,7 @@ function ModalPagamento({ total, cfg, pagamentosConfig, comissaoInfo, itens, onC
             </button>
           ))}
         </div>
-        <button onClick={() => onConfirmar(null, comissaoAtiva ? (comissaoInfo?.valor || 0) : 0, coverHoje && coverAtivo)}
+        <button onClick={() => onConfirmar(null, comissaoAtiva ? (comissaoInfo?.valor || 0) : 0, coverHoje && coverAtivo ? coverQtd : 0)}
           style={{ padding: '8px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }}>
           Registrar sem forma de pagamento
         </button>
@@ -689,7 +699,7 @@ export default function CaixaDisplay() {
     setModalPagamento({ pedidoId, pedidoIds: grupoIds || null, mesaId: mesaId || null, total, comissaoInfo, garconId, garconNome, mesaNome, itens })
   }
 
-  function confirmarPagamento(formaPagamento, comissaoEfetiva = 0, coverEfetivo = false) {
+  function confirmarPagamento(formaPagamento, comissaoEfetiva = 0, coverQtd = 0) {
     if (!modalPagamento) return
     const { pedidoId, pedidoIds, mesaId, garconId, garconNome, mesaNome } = modalPagamento
     if (mesaId) {
@@ -712,8 +722,8 @@ export default function CaixaDisplay() {
         formaPagamento,
       })
     }
-    if (coverEfetivo && cfg.coverValor > 0) {
-      registrarCover({ valor: cfg.coverValor, formaPagamento })
+    if (coverQtd > 0 && cfg.coverValor > 0) {
+      registrarCover({ valor: cfg.coverValor * coverQtd, quantidade: coverQtd, formaPagamento })
     }
     setModalPagamento(null)
   }

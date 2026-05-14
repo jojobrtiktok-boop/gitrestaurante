@@ -82,6 +82,7 @@ function ModalPagar({ cliente, comissaoInfo, totalNaoPago, onConfirmar, onFechar
   const diaSemana = hoje.getDay()
   const coverHoje = cfg?.coverAtivo && (cfg?.coverDias || []).includes(diaSemana) && (cfg?.coverValor || 0) > 0
   const [coverAtivo, setCoverAtivo] = useState(true)
+  const [coverQtd, setCoverQtd] = useState(1)
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
@@ -154,25 +155,34 @@ function ModalPagar({ cliente, comissaoInfo, totalNaoPago, onConfirmar, onFechar
         {coverHoje && (
           <div style={{ background: coverAtivo ? '#eff6ff' : 'var(--bg-hover)',
             border: `1px solid ${coverAtivo ? '#bfdbfe' : 'var(--border)'}`,
-            borderRadius: 10, padding: '10px 12px',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <div>
+            borderRadius: 10, padding: '10px 12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
               <span style={{ fontSize: 12, color: coverAtivo ? '#1d4ed8' : 'var(--text-muted)', fontWeight: 600 }}>
-                🎟️ Cover ({(cfg?.coverValor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
+                🎟️ Cover — {(cfg?.coverValor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} p/ pessoa
               </span>
-              {coverAtivo && (
-                <div style={{ fontSize: 11, color: '#1d4ed8', marginTop: 2 }}>
-                  Será adicionado ao faturamento
+              <div onClick={() => setCoverAtivo(v => !v)}
+                style={{ width: 22, height: 22, borderRadius: 5,
+                  border: `2px solid ${coverAtivo ? '#3b82f6' : '#9ca3af'}`,
+                  background: coverAtivo ? '#3b82f6' : 'transparent', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {coverAtivo && <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>✓</span>}
+              </div>
+            </div>
+            {coverAtivo && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+                <span style={{ fontSize: 12, color: '#1d4ed8' }}>Pessoas:</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <button onClick={() => setCoverQtd(v => Math.max(1, v - 1))} type="button"
+                    style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #bfdbfe', background: '#dbeafe', color: '#1d4ed8', fontSize: 16, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: '#1d4ed8', minWidth: 24, textAlign: 'center' }}>{coverQtd}</span>
+                  <button onClick={() => setCoverQtd(v => v + 1)} type="button"
+                    style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #bfdbfe', background: '#dbeafe', color: '#1d4ed8', fontSize: 16, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
                 </div>
-              )}
-            </div>
-            <div onClick={() => setCoverAtivo(v => !v)}
-              style={{ width: 22, height: 22, borderRadius: 5,
-                border: `2px solid ${coverAtivo ? '#3b82f6' : '#9ca3af'}`,
-                background: coverAtivo ? '#3b82f6' : 'transparent', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              {coverAtivo && <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>✓</span>}
-            </div>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#1d4ed8', marginLeft: 4 }}>
+                  = {((cfg?.coverValor || 0) * coverQtd).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -211,7 +221,7 @@ function ModalPagar({ cliente, comissaoInfo, totalNaoPago, onConfirmar, onFechar
           </div>
         )}
 
-        <button onClick={() => onConfirmar({ telefone: telefone.trim() || null, aniversario: aniversario || null, formaPagamento: formaPagamento || null, coverEfetivo: coverHoje && coverAtivo })}
+        <button onClick={() => onConfirmar({ telefone: telefone.trim() || null, aniversario: aniversario || null, formaPagamento: formaPagamento || null, coverQtd: coverHoje && coverAtivo ? coverQtd : 0 })}
           style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: 'none', background: '#16a34a', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
           <Check size={14} /> Confirmar Pago
         </button>
@@ -707,13 +717,13 @@ export default function Mesas() {
             cfg={kanbanConfig}
             pedidosMesa={pedidosMesa}
             pratos={pratos}
-            onConfirmar={({ telefone, aniversario, formaPagamento, coverEfetivo }) => {
+            onConfirmar={({ telefone, aniversario, formaPagamento, coverQtd }) => {
               if (pagarInfo.clienteId && (telefone || aniversario)) {
                 editarCliente(pagarInfo.clienteId, { telefone, aniversario })
               }
               pagarMesa(pagarInfo.mesaId, formaPagamento)
               setStatusMesa(pagarInfo.mesaId, 'livre')
-              if (coverEfetivo) registrarCover({ valor: kanbanConfig.coverValor, formaPagamento })
+              if (coverQtd > 0) registrarCover({ valor: kanbanConfig.coverValor * coverQtd, quantidade: coverQtd, formaPagamento })
               setPagarInfo(null)
             }}
             onFechar={() => setPagarInfo(null)}

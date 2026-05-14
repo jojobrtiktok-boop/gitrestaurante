@@ -303,10 +303,10 @@ function rowToComissao(row) {
 }
 
 function coverToRow(c, uid) {
-  return { id: c.id, user_id: uid, data: c.data, valor: c.valor, forma_pagamento: c.formaPagamento || '' }
+  return { id: c.id, user_id: uid, data: c.data, valor: c.valor, quantidade: c.quantidade || 1, forma_pagamento: c.formaPagamento || '' }
 }
 function rowToCover(row) {
-  return { id: row.id, data: row.data, valor: Number(row.valor || 0), formaPagamento: row.forma_pagamento || '', criadoEm: row.criado_em }
+  return { id: row.id, data: row.data, valor: Number(row.valor || 0), quantidade: Number(row.quantidade || 1), formaPagamento: row.forma_pagamento || '', criadoEm: row.criado_em }
 }
 
 function clienteToRow(c, uid) {
@@ -2492,13 +2492,14 @@ export function AppProvider({ children }) {
   }
 
   // ── Covers Cobrados ───────────────────────────────────────────────────
-  function registrarCover({ valor, formaPagamento }) {
+  function registrarCover({ valor, quantidade = 1, formaPagamento }) {
     const uid = auth.userId || displayUserId
     if (!uid || !valor || valor <= 0) return
     const novo = {
       id: crypto.randomUUID(),
       data: hojeBrasilia(),
       valor: Number(valor),
+      quantidade: Number(quantidade) || 1,
       formaPagamento: formaPagamento || '',
       criadoEm: agoraBrasiliaISO(),
     }

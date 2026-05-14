@@ -385,12 +385,12 @@ export default function Vendas() {
     const prato = pratos.find(p => p.id === e.pratoId) // null se apagado — usa snapshot
     const r = receitaDaEntrada(e, prato)
     return r === 0 && !prato ? s : s + r
-  }, 0)
+  }, 0) + totalCovers
   const totalLucro = entradasPagas.reduce((s, e) => {
     const prato = pratos.find(p => p.id === e.pratoId) // null se apagado — usa snapshot
     const r = receitaDaEntrada(e, prato)
     return r === 0 && !prato ? s : s + lucroDaEntrada(e, prato)
-  }, 0)
+  }, 0) + totalCovers  // covers são lucro puro (sem custo)
   const totalCMV = totalReceita - totalLucro
   const margemBruta = totalReceita > 0 ? (totalLucro / totalReceita * 100) : 0
 
@@ -410,16 +410,19 @@ export default function Vendas() {
     })
     .sort((a, b) => b.data !== a.data ? b.data.localeCompare(a.data) : b.hora.localeCompare(a.hora))
 
+  const coversExtrato = (coversCobrados || []).filter(c => c.data >= extratoInicio && c.data <= extratoFim)
+  const totalCoversExtrato = coversExtrato.reduce((s, c) => s + c.valor, 0)
+
   const totalExtrato = entradasExtrato.reduce((s, e) => {
     const prato = pratos.find(p => p.id === e.pratoId)
     const r = receitaDaEntrada(e, prato)
     return r === 0 && !prato ? s : s + r
-  }, 0)
+  }, 0) + totalCoversExtrato
   const totalLucroExtrato = entradasExtrato.reduce((s, e) => {
     const prato = pratos.find(p => p.id === e.pratoId)
     const r = receitaDaEntrada(e, prato)
     return r === 0 && !prato ? s : s + lucroDaEntrada(e, prato)
-  }, 0)
+  }, 0) + totalCoversExtrato
   const qtdTotalExtrato = entradasExtrato.reduce((s, e) => s + e.quantidade, 0)
 
   function imprimirExtrato(formato) {
@@ -1193,6 +1196,37 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                       )
                     })}
                   </tbody>
+                    {coversExtrato.map(cov => (
+                      <tr key={`cover-${cov.id}`} style={{ background: 'rgba(99,102,241,0.04)' }}>
+                        <td data-label="Data" className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
+                          {cov.data.slice(5).replace('-', '/')}
+                        </td>
+                        <td data-label="Hora">
+                          <div className="flex items-center gap-1.5">
+                            <Clock size={12} style={{ color: 'var(--text-muted)' }} />
+                            <span className="font-mono text-sm font-semibold" style={{ color: '#6366f1' }}>
+                              {cov.criadoEm ? new Date(cov.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                            </span>
+                          </div>
+                        </td>
+                        <td data-label="Produto" className="font-medium text-sm" style={{ color: '#6366f1' }}>
+                          🎟️ Cover/Entrada{cov.quantidade > 1 ? ` (${cov.quantidade} pessoas)` : ''}
+                        </td>
+                        <td data-label="Origem">
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                            style={{ background: 'var(--bg-hover)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                            Balcão
+                          </span>
+                        </td>
+                        <td data-label="Qtd">
+                          <span className="font-bold" style={{ color: 'var(--text-primary)' }}>×{cov.quantidade || 1}</span>
+                        </td>
+                        <td data-label="Unit." style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
+                          {cov.quantidade > 1 ? formatarMoeda(cov.valor / cov.quantidade) : '—'}
+                        </td>
+                        <td data-label="Total" style={{ color: '#6366f1', fontWeight: 600 }}>{formatarMoeda(cov.valor)}</td>
+                      </tr>
+                    ))}
                   <tfoot>
                     <tr style={{ background: 'var(--bg-hover)', fontWeight: 700 }}>
                       <td colSpan={4} style={{ padding: '10px', color: 'var(--text-primary)', fontSize: 13 }}>TOTAL GERAL</td>
@@ -1232,6 +1266,41 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                 </tr>
               </thead>
               <tbody>
+                {coversPeriodo.map(cov => (
+                  <tr key={`cover-lanc-${cov.id}`} style={{ background: 'rgba(99,102,241,0.04)' }}>
+                    {dataInicio !== dataFim && (
+                      <td data-label="Data" className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {cov.data.slice(5).replace('-', '/')}
+                      </td>
+                    )}
+                    <td data-label="Hora">
+                      <div className="flex items-center gap-1.5">
+                        <Clock size={12} style={{ color: 'var(--text-muted)' }} />
+                        <span className="font-mono text-sm font-semibold" style={{ color: '#6366f1' }}>
+                          {cov.criadoEm ? new Date(cov.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                        </span>
+                      </div>
+                    </td>
+                    <td data-label="Produto" className="font-medium text-sm" style={{ color: '#6366f1' }}>
+                      🎟️ Cover/Entrada{cov.quantidade > 1 ? ` (${cov.quantidade} pessoas)` : ''}
+                    </td>
+                    <td data-label="Origem">
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                        style={{ background: 'var(--bg-hover)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                        Balcão
+                      </span>
+                    </td>
+                    <td data-label="Qtd">
+                      <span className="font-bold" style={{ color: 'var(--text-primary)' }}>×{cov.quantidade || 1}</span>
+                    </td>
+                    <td data-label="Receita" style={{ color: '#6366f1', fontWeight: 600 }}>{formatarMoeda(cov.valor)}</td>
+                    <td data-label="Lucro" style={{ color: '#16a34a', fontWeight: 600 }}>{formatarMoeda(cov.valor)}</td>
+                    <td data-label="Status">
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(99,102,241,0.12)', color: '#6366f1' }}>Cover</span>
+                    </td>
+                    <td data-label="Ações"><div /></td>
+                  </tr>
+                ))}
                 {entradasPagas.map(entrada => {
                   const prato = pratos.find(p => p.id === entrada.pratoId) // null se apagado
                   const receita = receitaDaEntrada(entrada, prato)

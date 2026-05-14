@@ -262,7 +262,7 @@ function ModalOcupar({ mesaNome, onConfirmar, onFechar }) {
 }
 
 export default function Mesas() {
-  const { mesas, adicionarMesa, editarMesa, removerMesa, setStatusMesa, pagarMesa, pedidos, pratos, sessoesMesas, clientes, editarCliente, garcons, kanbanConfig, registrarCover } = useApp()
+  const { mesas, adicionarMesa, editarMesa, removerMesa, setStatusMesa, pagarMesa, pedidos, pratos, sessoesMesas, clientes, editarCliente, garcons, kanbanConfig, registrarCover, registrarComissao } = useApp()
   const [aba, setAba] = useState('mesas')
   const [modal, setModal] = useState(false)
   const [editando, setEditando] = useState(null)
@@ -721,9 +721,22 @@ export default function Mesas() {
               if (pagarInfo.clienteId && (telefone || aniversario)) {
                 editarCliente(pagarInfo.clienteId, { telefone, aniversario })
               }
+              const mesa = mesas.find(m => m.id === pagarInfo.mesaId)
               pagarMesa(pagarInfo.mesaId, formaPagamento)
               setStatusMesa(pagarInfo.mesaId, 'livre')
               if (coverQtd > 0) registrarCover({ valor: kanbanConfig.coverValor * coverQtd, quantidade: coverQtd, formaPagamento })
+              if (comissaoInfo) {
+                registrarComissao({
+                  garconId,
+                  garconNome: comissaoInfo.nome,
+                  totalBase: totalNaoPago,
+                  comissaoValor: comissaoInfo.valor,
+                  taxa: comissaoInfo.taxa,
+                  mesaId: pagarInfo.mesaId,
+                  mesaNome: mesa?.nome || '',
+                  formaPagamento,
+                })
+              }
               setPagarInfo(null)
             }}
             onFechar={() => setPagarInfo(null)}

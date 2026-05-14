@@ -381,6 +381,12 @@ export default function Vendas() {
     return ped && !ped.cancelado && !pedidoQuitado(ped)
   })
 
+  const comissoesPeriodo = (comissoesPagas || []).filter(c => c.data >= dataInicio && c.data <= dataFim)
+  const totalComissoes = comissoesPeriodo.reduce((s, c) => s + c.comissaoValor, 0)
+
+  const coversPeriodo = (coversCobrados || []).filter(c => c.data >= dataInicio && c.data <= dataFim)
+  const totalCovers = coversPeriodo.reduce((s, c) => s + c.valor, 0)
+
   const totalReceita = entradasPagas.reduce((s, e) => {
     const prato = pratos.find(p => p.id === e.pratoId) // null se apagado — usa snapshot
     const r = receitaDaEntrada(e, prato)
@@ -393,12 +399,6 @@ export default function Vendas() {
   }, 0) + totalCovers  // covers são lucro puro (sem custo)
   const totalCMV = totalReceita - totalLucro
   const margemBruta = totalReceita > 0 ? (totalLucro / totalReceita * 100) : 0
-
-  const comissoesPeriodo = (comissoesPagas || []).filter(c => c.data >= dataInicio && c.data <= dataFim)
-  const totalComissoes = comissoesPeriodo.reduce((s, c) => s + c.comissaoValor, 0)
-
-  const coversPeriodo = (coversCobrados || []).filter(c => c.data >= dataInicio && c.data <= dataFim)
-  const totalCovers = coversPeriodo.reduce((s, c) => s + c.valor, 0)
 
   // ── Extrato de Vendas Pagas ──
   const entradasExtrato = entradasVendas

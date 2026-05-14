@@ -1288,9 +1288,22 @@ export function AppProvider({ children }) {
   }
 
   // Força re-fetch do período ignorando guard e sessionStorage cache
+  // Não re-busca pedidos — eles são gerenciados pelo realtime/polling próprio
+  // e re-buscar aqui causaria "vai e volta" no kanban durante mudança de status
   async function refreshDados(dataInicio) {
-    periodoCarregadoRef.current = null
-    await carregarPeriodo(dataInicio, true)
+    if (!auth.userId) return
+    const uid = auth.userId
+    const [{ data: evsRaw }, { data: mvsRaw }, { data: comissRaw }, { data: coversRaw }] = await Promise.all([
+      supabase.from('entradas_vendas').select('*').eq('user_id', uid).gte('data', dataInicio),
+      supabase.from('movimentos_caixa').select('*').eq('user_id', uid).gte('data', dataInicio).then(r => r, () => ({ data: [] })),
+      supabase.from('comissoes_pagas').select('*').eq('user_id', uid).gte('data', dataInicio).then(r => r, () => ({ data: [] })),
+      supabase.from('covers_cobrados').select('*').eq('user_id', uid).gte('data', dataInicio).then(r => r, () => ({ data: [] })),
+    ])
+    if (evsRaw) setEntradasVendas(prev => { const m = new Map(prev.map(e => [e.id, e])); evsRaw.map(rowToEntradaVenda).forEach(e => m.set(e.id, e)); return Array.from(m.values()) })
+    if (mvsRaw) setMovimentosCaixa(prev => { const m = new Map(prev.map(mv => [mv.id, mv])); mvsRaw.map(rowToMovimentoCaixa).forEach(mv => m.set(mv.id, mv)); return Array.from(m.values()) })
+    if (comissRaw) setComissoesPagas(prev => { const m = new Map(prev.map(c => [c.id, c])); comissRaw.map(rowToComissao).forEach(c => m.set(c.id, c)); return Array.from(m.values()) })
+    if (coversRaw) setCoversCobrados(prev => { const m = new Map(prev.map(c => [c.id, c])); coversRaw.map(rowToCover).forEach(c => m.set(c.id, c)); return Array.from(m.values()) })
+    setUltimaAtualizacaoVendas(new Date())
   }
 
   // ── Motoboys: carregar inicial ────────────────────────────────────────

@@ -1663,9 +1663,21 @@ export function AppProvider({ children }) {
 
   // ── Kanban Config ─────────────────────────────────────────────────────
   function atualizarKanbanConfig(cfg) {
+    const uid = auth.userId
     setKanbanConfig(prev => {
       const novo = { ...prev, ...cfg }
-      if (auth.userId) sbWrite(supabase.from('kanban_config').upsert({ user_id: auth.userId, config: novo }, { onConflict: 'user_id' }))
+      if (uid) {
+        sbWrite(supabase.from('kanban_config').upsert({ user_id: uid, config: novo }, { onConflict: 'user_id' }))
+        // Atualiza cache imediatamente para que F5 reflita o novo valor
+        try {
+          const raw = localStorage.getItem(_cacheKey(uid))
+          if (raw) {
+            const parsed = JSON.parse(raw)
+            parsed.d.kbc = novo
+            localStorage.setItem(_cacheKey(uid), JSON.stringify(parsed))
+          }
+        } catch {}
+      }
       return novo
     })
   }

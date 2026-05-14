@@ -1124,79 +1124,41 @@ export function AppProvider({ children }) {
     }
   }
 
-  // ── Realtime: pedidos, mesas, entradas_vendas ────────────────────────
+  // ── Polling admin: pedidos, mesas, motoboys a cada 8s ───────────────────
+  // Realtime removido do admin — cada canal WAL custa ~15-20% CPU no Supabase.
+  // Telas de display (cozinha/caixa) mantêm realtime próprio via _iniciarRealtimeDsp.
   useEffect(() => {
     if (!auth.userId) return
     const uid = auth.userId
-    const dataLimiteRt = new Date(); dataLimiteRt.setDate(dataLimiteRt.getDate() - 60)
-    const dataLimiteRtStr = dataLimiteRt.toISOString().slice(0, 10)
-    const channel = supabase
-      .channel(`rt-${uid}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos', filter: `user_id=eq.${uid}` }, () => {
-        supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', dataLimiteRtStr).then(({ data }) => {
-          if (data) {
-            const pds = data.map(rowToPedido)
-            // Map-merge: preserva pedidos históricos e respeita lock local
-            setPedidos(prev => {
-              const m = new Map(prev.map(p => [p.id, p]))
-              pds.forEach(sp => { if (!pedidosLockRef.current.has(sp.id)) m.set(sp.id, sp) })
-              return Array.from(m.values())
-            })
-            // Atualiza cache com apenas pedidos de hoje
-            try {
-              const raw = localStorage.getItem(_cacheKey(uid))
-              if (raw) {
-                const { t, d } = JSON.parse(raw)
-                const hojeStr = new Date().toISOString().slice(0, 10)
-                const pdsHoje = pds.filter(p => p.data >= hojeStr)
-                localStorage.setItem(_cacheKey(uid), JSON.stringify({ t, d: { ...d, pds: pdsHoje } }))
-              }
-            } catch {}
-          }
-        })
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas', filter: `user_id=eq.${uid}` }, () => {
-        supabase.from('mesas').select('*').eq('user_id', uid).then(({ data }) => {
-          if (data) setMesas(data.map(rowToMesa))
-        })
-      })
-      // entradas_vendas removida do realtime — atualiza só via carregarPeriodo/refreshDados
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'motoboys', filter: `user_id=eq.${uid}` }, () => {
-        supabase.from('motoboys').select('*').eq('user_id', uid).then(({ data }) => {
-          if (data) setMotoboys(data.map(rowToMotoboy))
-        })
-      })
-      .subscribe(status => {
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          setTimeout(() => supabase.removeChannel(channel), 1000)
-        }
-      })
-
-    // Polling fallback: busca pedidos e mesas a cada 3s caso realtime falhe
-    // IMPORTANTE: usa hojeBrasilia() para evitar erro de fuso horário (UTC vs BRT)
     const getHojeStr = () => hojeBrasilia()
+
+    function _mergePedidos(data) {
+      const pds = data.map(rowToPedido)
+      setPedidos(prev => {
+        const m = new Map(prev.map(p => [p.id, p]))
+        pds.forEach(sp => { if (!pedidosLockRef.current.has(sp.id)) m.set(sp.id, sp) })
+        const next = Array.from(m.values())
+        const key = p => `${p.id}${p.status}${p.pago}${p.cancelado}`
+        if (prev.length === next.length && prev.map(key).join() === next.map(key).join()) return prev
+        return next
+      })
+    }
+
+    // Busca inicial imediata
+    supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', getHojeStr())
+      .then(({ data }) => { if (data) _mergePedidos(data) })
+
     const pollId = setInterval(() => {
       const hojeStr = getHojeStr()
       supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', hojeStr)
-        .then(({ data }) => {
-          if (data) {
-            const pds = data.map(rowToPedido)
-            // Map-merge: o poll só traz hoje, mas preserva histórico via Map
-            setPedidos(prev => {
-              const m = new Map(prev.map(p => [p.id, p]))
-              pds.forEach(sp => { if (!pedidosLockRef.current.has(sp.id)) m.set(sp.id, sp) })
-              const next = Array.from(m.values())
-              const key = p => `${p.id}${p.status}${p.pago}${p.cancelado}`
-              if (prev.length === next.length && prev.map(key).join() === next.map(key).join()) return prev
-              return next
-            })
-          }
-        })
+        .then(({ data }) => { if (data) _mergePedidos(data) })
       supabase.from('mesas').select('*').eq('user_id', uid)
         .then(({ data }) => { if (data) setMesas(data.map(rowToMesa)) })
-    }, 15000)
+      supabase.from('motoboys').select('*').eq('user_id', uid)
+        .then(({ data }) => { if (data) setMotoboys(data.map(rowToMotoboy)) })
+    }, 8000)
 
-    return () => { supabase.removeChannel(channel); clearInterval(pollId) }
+    return () => clearInterval(pollId)
   }, [auth.userId])
 
   // ── Cache sessionStorage para dados de período (sobrevive F5, TTL 3 min) ─

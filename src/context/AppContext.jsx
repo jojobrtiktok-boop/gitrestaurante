@@ -1124,7 +1124,7 @@ export function AppProvider({ children }) {
     }
   }
 
-  // ── Polling admin: pedidos, mesas, motoboys a cada 8s ───────────────────
+  // ── Polling admin: pedidos+mesas a cada 15s, motoboys a cada 8s ─────────
   // Realtime removido do admin — cada canal WAL custa ~15-20% CPU no Supabase.
   // Telas de display (cozinha/caixa) mantêm realtime próprio via _iniciarRealtimeDsp.
   useEffect(() => {
@@ -1148,18 +1148,46 @@ export function AppProvider({ children }) {
     supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', getHojeStr())
       .then(({ data }) => { if (data) _mergePedidos(data) })
 
+    // Pedidos + mesas: 15s
     const pollId = setInterval(() => {
       const hojeStr = getHojeStr()
       supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', hojeStr)
         .then(({ data }) => { if (data) _mergePedidos(data) })
       supabase.from('mesas').select('*').eq('user_id', uid)
         .then(({ data }) => { if (data) setMesas(data.map(rowToMesa)) })
+    }, 15000)
+
+    // Motoboys: 8s (posição GPS muda com mais frequência)
+    const motoPollId = setInterval(() => {
       supabase.from('motoboys').select('*').eq('user_id', uid)
         .then(({ data }) => { if (data) setMotoboys(data.map(rowToMotoboy)) })
     }, 8000)
 
-    return () => clearInterval(pollId)
+    return () => { clearInterval(pollId); clearInterval(motoPollId) }
   }, [auth.userId])
+
+  // Atualização manual de pedidos+mesas (chamada pelo botão refresh no Kanban)
+  async function refreshPedidosMesas() {
+    if (!auth.userId) return
+    const uid = auth.userId
+    const hojeStr = hojeBrasilia()
+    const [{ data: pdsRaw }, { data: msRaw }] = await Promise.all([
+      supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', hojeStr),
+      supabase.from('mesas').select('*').eq('user_id', uid),
+    ])
+    if (pdsRaw) {
+      const pds = pdsRaw.map(rowToPedido)
+      setPedidos(prev => {
+        const m = new Map(prev.map(p => [p.id, p]))
+        pds.forEach(sp => { if (!pedidosLockRef.current.has(sp.id)) m.set(sp.id, sp) })
+        const next = Array.from(m.values())
+        const key = p => `${p.id}${p.status}${p.pago}${p.cancelado}`
+        if (prev.length === next.length && prev.map(key).join() === next.map(key).join()) return prev
+        return next
+      })
+    }
+    if (msRaw) setMesas(msRaw.map(rowToMesa))
+  }
 
   // ── Cache sessionStorage para dados de período (sobrevive F5, TTL 3 min) ─
   const _SS_TTL = 3 * 60 * 1000
@@ -2616,7 +2644,7 @@ export function AppProvider({ children }) {
     comissoesPagas, registrarComissao,
     coversCobrados, registrarCover,
     notifConfigRef, cardapioConfigRef, ingredientesRef, pedidosRef, configuracaoGeralRef,
-    periodoCarregado, carregarPeriodo, refreshDados, ultimaAtualizacaoVendas,
+    periodoCarregado, carregarPeriodo, refreshDados, ultimaAtualizacaoVendas, refreshPedidosMesas,
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

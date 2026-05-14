@@ -316,10 +316,16 @@ const PERIODOS = [
 
 export default function Kanban() {
   const { pedidos, pratos, garcons, mesas, atualizarStatusPedido, kanbanConfig,
-          atualizarKanbanConfig, gerarTokenCozinha, gerarTokenCaixa } = useApp()
+          atualizarKanbanConfig, gerarTokenCozinha, gerarTokenCaixa, refreshPedidosMesas } = useApp()
   const cfg = kanbanConfig
 
   const [aba, setAba] = useState('fluxo')
+  const [spinKey, setSpinKey] = useState(0)
+
+  async function handleRefresh() {
+    setSpinKey(k => k + 1)
+    await refreshPedidosMesas()
+  }
 
   const etapas = cfg.etapas && cfg.etapas.length >= 2 ? cfg.etapas : DEFAULT_ETAPAS
 
@@ -415,6 +421,17 @@ export default function Kanban() {
                 </button>
               ))}
             </div>
+            <button
+              onClick={handleRefresh}
+              title="Atualizar pedidos agora"
+              style={{
+                width: 34, height: 34, borderRadius: 10, border: '1.5px solid var(--border)',
+                background: 'var(--bg-card)', cursor: 'pointer', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', color: 'var(--accent)',
+              }}
+            >
+              <RefreshCw key={spinKey} size={16} style={{ animation: spinKey > 0 ? 'spin 0.6s ease-out 1' : 'none' }} />
+            </button>
             {periodo === 'custom' && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <input type="date" className="input text-xs" value={dataInicio}

@@ -244,7 +244,7 @@ function ultimoDiaMesAnterior() {
 }
 
 function ResultadoGeral() {
-  const { pratos, ingredientes, entradasVendas, despesas, pedidos, carregarPeriodo } = useApp()
+  const { pratos, ingredientes, entradasVendas, despesas, pedidos, carregarPeriodo, comissoesPagas, garcons } = useApp()
   const h = hoje()
   const [resInicio, setResInicio] = useState(primeiroDiaMes)
   const [resFim, setResFim] = useState(h)
@@ -288,7 +288,15 @@ function ResultadoGeral() {
     despPeriodo.filter(d => d.categoria === 'outros').reduce((s, d) => s + d.valor, 0),
     [despPeriodo]
   )
-  const lucroLiquido = totalVendas - totalInsumos - totalFuncionarios - totalInvestimentos - totalOutros
+  const comissoesPeriodo = useMemo(() =>
+    comissoesPagas.filter(c => c.data >= resInicio && c.data <= resFim),
+    [comissoesPagas, resInicio, resFim]
+  )
+  const totalComissoes = useMemo(() =>
+    comissoesPeriodo.reduce((s, c) => s + c.comissaoValor, 0),
+    [comissoesPeriodo]
+  )
+  const lucroLiquido = totalVendas - totalInsumos - totalFuncionarios - totalInvestimentos - totalOutros - totalComissoes
 
   const insumosPorIngrediente = useMemo(() => {
     const map = {}
@@ -365,11 +373,12 @@ function ResultadoGeral() {
   function toggle(key) { setExpandido(prev => prev === key ? null : key) }
 
   const rows = [
-    { key: 'vendas',        label: 'Vendas (Faturamento)', valor: totalVendas,        red: false, sub: `${entradas.length} lançamento${entradas.length !== 1 ? 's' : ''} no período` },
-    { key: 'insumos',       label: 'Insumos (CMV)',        valor: totalInsumos,       red: true,  sub: totalVendas > 0 ? `${((totalInsumos / totalVendas) * 100).toFixed(1)}% do faturamento` : '—' },
-    { key: 'funcionarios',  label: 'Funcionários',         valor: totalFuncionarios,  red: true,  sub: `${despPeriodo.filter(d => d.categoria === 'funcionarios').length} registros` },
-    { key: 'investimentos', label: 'Investimentos',        valor: totalInvestimentos, red: true,  sub: `${despPeriodo.filter(d => d.categoria === 'investimentos').length} registros` },
-    { key: 'outros',        label: 'Outros',               valor: totalOutros,        red: true,  sub: `${despPeriodo.filter(d => d.categoria === 'outros').length} registros` },
+    { key: 'vendas',       label: 'Vendas (Faturamento)',    valor: totalVendas,        red: false, sub: `${entradas.length} lançamento${entradas.length !== 1 ? 's' : ''} no período` },
+    { key: 'insumos',      label: 'Insumos (CMV)',           valor: totalInsumos,       red: true,  sub: totalVendas > 0 ? `${((totalInsumos / totalVendas) * 100).toFixed(1)}% do faturamento` : '—' },
+    { key: 'funcionarios', label: 'Funcionários',            valor: totalFuncionarios,  red: true,  sub: `${despPeriodo.filter(d => d.categoria === 'funcionarios').length} registros` },
+    { key: 'investimentos',label: 'Investimentos',           valor: totalInvestimentos, red: true,  sub: `${despPeriodo.filter(d => d.categoria === 'investimentos').length} registros` },
+    { key: 'outros',       label: 'Outros',                  valor: totalOutros,        red: true,  sub: `${despPeriodo.filter(d => d.categoria === 'outros').length} registros` },
+    ...(totalComissoes > 0 ? [{ key: 'comissoes', label: 'Comissões de Garçons', valor: totalComissoes, red: true, sub: `${comissoesPeriodo.length} lançamento${comissoesPeriodo.length !== 1 ? 's' : ''}` }] : []),
   ]
 
   return (
@@ -498,6 +507,32 @@ function ResultadoGeral() {
                         </tr></tfoot>
                       </table></div>
                 })()}
+                {row.key === 'comissoes' && (() => {
+                  const lista = [...comissoesPeriodo].sort((a, b) => b.data.localeCompare(a.data))
+                  return lista.length === 0
+                    ? <p className="p-4 text-sm text-center" style={{ color: 'var(--text-muted)' }}>Nenhuma comissão no período</p>
+                    : <div className="table-wrapper"><table>
+                        <thead><tr><th>Data</th><th>Descrição</th><th>Base</th><th>Taxa</th><th>Comissão</th></tr></thead>
+                        <tbody>
+                          {lista.map(c => (
+                            <tr key={c.id}>
+                              <td style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{formatarData(c.data)}</td>
+                              <td style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
+                                Comissão ({c.garconNome || garcons.find(g => g.id === c.garconId)?.nome || 'Garçom'})
+                                {c.mesaNome ? <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 6 }}>{c.mesaNome}</span> : null}
+                              </td>
+                              <td style={{ color: 'var(--text-secondary)' }}>{formatarMoeda(c.totalBase)}</td>
+                              <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>{c.taxa}%</td>
+                              <td style={{ color: '#ef4444', fontWeight: 600 }}>{formatarMoeda(c.comissaoValor)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot><tr style={{ borderTop: '2px solid var(--border)' }}>
+                          <td colSpan={4} style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Total</td>
+                          <td style={{ color: '#ef4444', fontWeight: 700 }}>{formatarMoeda(totalComissoes)}</td>
+                        </tr></tfoot>
+                      </table></div>
+                })()}
               </div>
             )}
           </div>
@@ -511,7 +546,7 @@ function ResultadoGeral() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Lucro Líquido</p>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Vendas − Insumos − Funcionários − Investimentos − Outros</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Vendas − Insumos − Funcionários − Investimentos − Outros{totalComissoes > 0 ? ' − Comissões' : ''}</p>
           </div>
           <p className="text-2xl font-bold" style={{ color: lucroLiquido >= 0 ? '#22c55e' : '#ef4444' }}>
             {lucroLiquido < 0 ? '− ' : ''}{formatarMoeda(Math.abs(lucroLiquido))}

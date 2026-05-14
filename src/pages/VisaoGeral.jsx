@@ -244,7 +244,7 @@ function ultimoDiaMesAnterior() {
 }
 
 function ResultadoGeral() {
-  const { pratos, ingredientes, entradasVendas, despesas, pedidos, carregarPeriodo, comissoesPagas, garcons } = useApp()
+  const { pratos, ingredientes, entradasVendas, despesas, pedidos, carregarPeriodo, comissoesPagas, garcons, coversCobrados } = useApp()
   const h = hoje()
   const [resInicio, setResInicio] = useState(primeiroDiaMes)
   const [resFim, setResFim] = useState(h)
@@ -262,13 +262,35 @@ function ResultadoGeral() {
     despesas.filter(d => d.data >= resInicio && d.data <= resFim),
     [despesas, resInicio, resFim]
   )
-  const totalVendas = useMemo(() =>
+
+  // Comissões e Covers precisam ser calculados antes de totalVendas
+  const comissoesPeriodo = useMemo(() =>
+    (comissoesPagas || []).filter(c => c.data >= resInicio && c.data <= resFim),
+    [comissoesPagas, resInicio, resFim]
+  )
+  const totalComissoes = useMemo(() =>
+    comissoesPeriodo.reduce((s, c) => s + c.comissaoValor, 0),
+    [comissoesPeriodo]
+  )
+  const coversPeriodo = useMemo(() =>
+    (coversCobrados || []).filter(c => c.data >= resInicio && c.data <= resFim),
+    [coversCobrados, resInicio, resFim]
+  )
+  const totalCovers = useMemo(() =>
+    coversPeriodo.reduce((s, c) => s + c.valor, 0),
+    [coversPeriodo]
+  )
+
+  // totalVendas inclui: vendas de pratos + covers (100% lucro) + comissões (entra e sai, lucro zero)
+  const totalVendasPratos = useMemo(() =>
     entradas.reduce((s, e) => {
-      const p = pratos.find(x => x.id === e.pratoId) // null se apagado — receitaEntrada usa snapshot
+      const p = pratos.find(x => x.id === e.pratoId)
       return s + receitaEntrada(e, p)
     }, 0),
     [entradas, pratos]
   )
+  const totalVendas = totalVendasPratos + totalCovers + totalComissoes
+
   const totalInsumos = useMemo(() =>
     entradas.reduce((s, e) => {
       const p = pratos.find(x => x.id === e.pratoId) // null se apagado — custoEntrada usa snapshot
@@ -288,14 +310,7 @@ function ResultadoGeral() {
     despPeriodo.filter(d => d.categoria === 'outros').reduce((s, d) => s + d.valor, 0),
     [despPeriodo]
   )
-  const comissoesPeriodo = useMemo(() =>
-    comissoesPagas.filter(c => c.data >= resInicio && c.data <= resFim),
-    [comissoesPagas, resInicio, resFim]
-  )
-  const totalComissoes = useMemo(() =>
-    comissoesPeriodo.reduce((s, c) => s + c.comissaoValor, 0),
-    [comissoesPeriodo]
-  )
+  // lucroLiquido: comissão entra (+) e sai (−) = zero; cover entra (+) sem saída = 100% lucro
   const lucroLiquido = totalVendas - totalInsumos - totalFuncionarios - totalInvestimentos - totalOutros - totalComissoes
 
   const insumosPorIngrediente = useMemo(() => {
@@ -373,12 +388,14 @@ function ResultadoGeral() {
   function toggle(key) { setExpandido(prev => prev === key ? null : key) }
 
   const rows = [
-    { key: 'vendas',       label: 'Vendas (Faturamento)',    valor: totalVendas,        red: false, sub: `${entradas.length} lançamento${entradas.length !== 1 ? 's' : ''} no período` },
+    { key: 'vendas',       label: 'Vendas de Pratos',        valor: totalVendasPratos,  red: false, sub: `${entradas.length} lançamento${entradas.length !== 1 ? 's' : ''} no período` },
+    ...(totalCovers > 0    ? [{ key: 'covers',    label: '🎟️ Cover/Entrada',       valor: totalCovers,       red: false, sub: `${coversPeriodo.length} cobrança${coversPeriodo.length !== 1 ? 's' : ''} · lucro 100%` }] : []),
+    ...(totalComissoes > 0 ? [{ key: 'comissoes_entrada', label: '🤝 Comissão Garçons (entrada)', valor: totalComissoes, red: false, sub: `${comissoesPeriodo.length} lançamento${comissoesPeriodo.length !== 1 ? 's' : ''}` }] : []),
     { key: 'insumos',      label: 'Insumos (CMV)',           valor: totalInsumos,       red: true,  sub: totalVendas > 0 ? `${((totalInsumos / totalVendas) * 100).toFixed(1)}% do faturamento` : '—' },
     { key: 'funcionarios', label: 'Funcionários',            valor: totalFuncionarios,  red: true,  sub: `${despPeriodo.filter(d => d.categoria === 'funcionarios').length} registros` },
     { key: 'investimentos',label: 'Investimentos',           valor: totalInvestimentos, red: true,  sub: `${despPeriodo.filter(d => d.categoria === 'investimentos').length} registros` },
     { key: 'outros',       label: 'Outros',                  valor: totalOutros,        red: true,  sub: `${despPeriodo.filter(d => d.categoria === 'outros').length} registros` },
-    ...(totalComissoes > 0 ? [{ key: 'comissoes', label: 'Comissões de Garçons', valor: totalComissoes, red: true, sub: `${comissoesPeriodo.length} lançamento${comissoesPeriodo.length !== 1 ? 's' : ''}` }] : []),
+    ...(totalComissoes > 0 ? [{ key: 'comissoes', label: '🤝 Comissão Garçons (saída)', valor: totalComissoes, red: true, sub: `pago aos garçons · líquido = R$ 0` }] : []),
   ]
 
   return (

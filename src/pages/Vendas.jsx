@@ -391,12 +391,12 @@ export default function Vendas() {
     const prato = pratos.find(p => p.id === e.pratoId) // null se apagado — usa snapshot
     const r = receitaDaEntrada(e, prato)
     return r === 0 && !prato ? s : s + r
-  }, 0) + totalCovers
+  }, 0) + totalCovers + totalComissoes
   const totalLucro = entradasPagas.reduce((s, e) => {
     const prato = pratos.find(p => p.id === e.pratoId) // null se apagado — usa snapshot
     const r = receitaDaEntrada(e, prato)
     return r === 0 && !prato ? s : s + lucroDaEntrada(e, prato)
-  }, 0) + totalCovers  // covers são lucro puro (sem custo)
+  }, 0) + totalCovers  // covers = lucro puro; comissões entram na receita mas saem como despesa (net zero)
   const totalCMV = totalReceita - totalLucro
   const margemBruta = totalReceita > 0 ? (totalLucro / totalReceita * 100) : 0
 
@@ -1266,6 +1266,39 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                 </tr>
               </thead>
               <tbody>
+                {comissoesPeriodo.map(com => (
+                  <tr key={`com-lanc-${com.id}`} style={{ background: 'rgba(22,163,74,0.04)' }}>
+                    {dataInicio !== dataFim && (
+                      <td data-label="Data" className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {com.data.slice(5).replace('-', '/')}
+                      </td>
+                    )}
+                    <td data-label="Hora">
+                      <div className="flex items-center gap-1.5">
+                        <Clock size={12} style={{ color: 'var(--text-muted)' }} />
+                        <span className="font-mono text-sm font-semibold" style={{ color: '#16a34a' }}>
+                          {com.criadoEm ? new Date(com.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                        </span>
+                      </div>
+                    </td>
+                    <td data-label="Produto" className="font-medium text-sm" style={{ color: '#16a34a' }}>
+                      🤝 Comissão {com.garconNome || 'Garçom'}{com.mesaNome ? ` · ${com.mesaNome}` : ''}
+                    </td>
+                    <td data-label="Origem">
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                        style={{ background: 'rgba(22,163,74,0.1)', color: '#16a34a', border: '1px solid rgba(22,163,74,0.3)' }}>
+                        {com.taxa}%
+                      </span>
+                    </td>
+                    <td data-label="Qtd"><span className="font-bold" style={{ color: 'var(--text-muted)' }}>—</span></td>
+                    <td data-label="Receita" style={{ color: '#16a34a', fontWeight: 600 }}>{formatarMoeda(com.comissaoValor)}</td>
+                    <td data-label="Lucro" style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: 12 }}>R$ 0,00</td>
+                    <td data-label="Status">
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(22,163,74,0.12)', color: '#16a34a' }}>Comissão</span>
+                    </td>
+                    <td data-label="Ações"><div /></td>
+                  </tr>
+                ))}
                 {coversPeriodo.map(cov => (
                   <tr key={`cover-lanc-${cov.id}`} style={{ background: 'rgba(99,102,241,0.04)' }}>
                     {dataInicio !== dataFim && (

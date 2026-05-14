@@ -732,12 +732,8 @@ export function AppProvider({ children }) {
   // Inicia realtime + polling para dados ao vivo (pedidos e mesas)
   function _iniciarRealtimeDsp(token, uid, fetchFn) {
     const ch = supabase.channel(`dsp-${token}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, p => {
-        if (p.new?.user_id === uid || p.old?.user_id === uid) fetchFn()
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas' }, p => {
-        if (p.new?.user_id === uid || p.old?.user_id === uid) fetchFn()
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos', filter: `user_id=eq.${uid}` }, fetchFn)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas', filter: `user_id=eq.${uid}` }, fetchFn)
       .subscribe(s => { if (s === 'CHANNEL_ERROR') setTimeout(() => ch.subscribe(), 3000) })
     const pollId = setInterval(fetchFn, 3000)
     window._displayCleanup = () => { supabase.removeChannel(ch); clearInterval(pollId) }
@@ -1162,18 +1158,15 @@ export function AppProvider({ children }) {
           if (data) setMesas(data.map(rowToMesa))
         })
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'entradas_vendas' }, payload => {
-        // Verifica user_id manualmente pois filter pode falhar com inserções anon (display page)
-        if (payload.new?.user_id === uid || payload.old?.user_id === uid) {
-          supabase.from('entradas_vendas').select('*').eq('user_id', uid).then(({ data }) => {
-            if (data) setEntradasVendas(prev => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'entradas_vendas', filter: `user_id=eq.${uid}` }, () => {
+        supabase.from('entradas_vendas').select('*').eq('user_id', uid).then(({ data }) => {
+          if (data) setEntradasVendas(prev => {
             const novas = data.map(rowToEntradaVenda)
             const m = new Map(prev.map(e => [e.id, e]))
             novas.forEach(e => m.set(e.id, e))
             return Array.from(m.values())
           })
-          })
-        }
+        })
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'motoboys', filter: `user_id=eq.${uid}` }, () => {
         supabase.from('motoboys').select('*').eq('user_id', uid).then(({ data }) => {

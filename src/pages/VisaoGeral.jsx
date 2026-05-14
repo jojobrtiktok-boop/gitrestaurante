@@ -574,39 +574,34 @@ export default function VisaoGeral() {
   // ── Ranking de garçons por receita no período ──
   const rankingGarcons = useMemo(() => {
     const pedidosPeriodo = pedidos.filter(p =>
-      p.data >= dataInicio && p.data <= dataFim && !p.cancelado
+      p.data >= dataInicio && p.data <= dataFim && !p.cancelado && p.garconId
     )
     const mapa = {}
+
+    // Conta pedidos por garçom
     pedidosPeriodo.forEach(ped => {
-      const chave = ped.garconId || '__balcao__'
+      const chave = ped.garconId
       if (!mapa[chave]) {
         const g = garcons.find(g => g.id === ped.garconId)
-        mapa[chave] = { nome: g ? g.nome : 'Balcão', pedidos: 0, receita: 0, isGarcon: !!ped.garconId }
+        mapa[chave] = { nome: g ? g.nome : 'Garçom', pedidos: 0, receita: 0, isGarcon: true }
       }
       mapa[chave].pedidos += 1
-      // Soma receita das entradas vinculadas a este pedido
-      entradasFiltradas.forEach(e => {
-        if (e.pedidoId === ped.id) {
-          const prato = pratos.find(p => p.id === e.pratoId)
-          if (prato) mapa[chave].receita += receitaEntrada(e, prato)
-        }
-      })
     })
-    // Fallback: se não há pedidos, usa entradasFiltradas agrupadas por garçon
-    if (pedidosPeriodo.length === 0) {
-      entradasFiltradas.forEach(e => {
-        const chave = e.garconId || '__balcao__'
-        if (!mapa[chave]) {
-          const g = garcons.find(g => g.id === e.garconId)
-          mapa[chave] = { nome: g ? g.nome : 'Balcão', pedidos: 0, receita: 0, isGarcon: !!e.garconId }
-        }
-        mapa[chave].pedidos += 1
-        const prato = pratos.find(p => p.id === e.pratoId)
-        mapa[chave].receita += receitaEntrada(e, prato)
-      })
-    }
+
+    // Soma receita direto das entradas agrupadas por garconId (sem join com pedidos para evitar duplicação)
+    entradasFiltradas.forEach(e => {
+      if (!e.garconId) return
+      const chave = e.garconId
+      if (!mapa[chave]) {
+        const g = garcons.find(g => g.id === e.garconId)
+        mapa[chave] = { nome: g ? g.nome : 'Garçom', pedidos: 0, receita: 0, isGarcon: true }
+      }
+      const prato = pratos.find(p => p.id === e.pratoId)
+      if (prato) mapa[chave].receita += receitaEntrada(e, prato)
+    })
+
     return Object.values(mapa)
-      .filter(g => g.isGarcon) // só garçons, não balcão
+      .filter(g => g.isGarcon)
       .sort((a, b) => b.receita - a.receita)
       .slice(0, 5)
   }, [pedidos, garcons, entradasFiltradas, pratos, dataInicio, dataFim])

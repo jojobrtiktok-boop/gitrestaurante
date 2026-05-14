@@ -1417,6 +1417,57 @@ function GarconsConfig() {
         </div>
       </div>
 
+      {/* Cover / Entrada */}
+      <div className="card p-5">
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)', margin: 0 }}>Cover / Entrada</p>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '2px 0 0' }}>Cobrança por pessoa na entrada</p>
+            </div>
+            <div onClick={() => atualizarKanbanConfig({ coverAtivo: !kanbanConfig.coverAtivo })}
+              style={{ width: 22, height: 22, borderRadius: 5, border: `2px solid ${kanbanConfig.coverAtivo ? '#16a34a' : '#9ca3af'}`,
+                background: kanbanConfig.coverAtivo ? '#16a34a' : 'transparent', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {kanbanConfig.coverAtivo && <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>✓</span>}
+            </div>
+          </div>
+        </div>
+        {kanbanConfig.coverAtivo && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Valor do cover (R$)</label>
+              <input type="number" min="0" step="0.01"
+                value={kanbanConfig.coverValor || 0}
+                onChange={e => atualizarKanbanConfig({ coverValor: Number(e.target.value) || 0 })}
+                style={{ width: 120, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-page)', color: 'var(--text-primary)', fontSize: 13 }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Dias com cover</label>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {[{d:0,l:'Dom'},{d:1,l:'Seg'},{d:2,l:'Ter'},{d:3,l:'Qua'},{d:4,l:'Qui'},{d:5,l:'Sex'},{d:6,l:'Sáb'}].map(({ d, l }) => {
+                  const ativo = (kanbanConfig.coverDias || []).includes(d)
+                  return (
+                    <div key={d}
+                      onClick={() => {
+                        const dias = kanbanConfig.coverDias || []
+                        atualizarKanbanConfig({ coverDias: ativo ? dias.filter(x => x !== d) : [...dias, d] })
+                      }}
+                      style={{ width: 36, height: 36, borderRadius: 8, border: `2px solid ${ativo ? '#16a34a' : '#9ca3af'}`,
+                        background: ativo ? '#16a34a' : 'transparent', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 11, fontWeight: 700, color: ativo ? '#fff' : 'var(--text-muted)' }}>
+                      {l}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Lista de garçons */}
       <div className="card p-5">
         <div className="flex items-center gap-2 mb-4">

@@ -265,7 +265,7 @@ function RelatorioTempo({ pedidos, pratos, dataInicio, dataFim }) {
 }
 
 export default function Vendas() {
-  const { entradasVendas, removerEntradaVenda, pratos, ingredientes, garcons, pedidos, mesas, clientes, sessoesMesas, kanbanConfig, marcarPedidoPago, cardapioConfig, marcarEntregue, carregarPeriodo, comissoesPagas } = useApp()
+  const { entradasVendas, removerEntradaVenda, pratos, ingredientes, garcons, pedidos, mesas, clientes, sessoesMesas, kanbanConfig, marcarPedidoPago, cardapioConfig, marcarEntregue, carregarPeriodo, comissoesPagas, coversCobrados } = useApp()
   const h = hoje()
   const [periodo, setPeriodo] = useState(() => {
     try {
@@ -396,6 +396,9 @@ export default function Vendas() {
 
   const comissoesPeriodo = (comissoesPagas || []).filter(c => c.data >= dataInicio && c.data <= dataFim)
   const totalComissoes = comissoesPeriodo.reduce((s, c) => s + c.comissaoValor, 0)
+
+  const coversPeriodo = (coversCobrados || []).filter(c => c.data >= dataInicio && c.data <= dataFim)
+  const totalCovers = coversPeriodo.reduce((s, c) => s + c.valor, 0)
 
   // ── Extrato de Vendas Pagas ──
   const entradasExtrato = entradasVendas
@@ -568,7 +571,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
   // Vendas por funcionário — individual entries per section (Balcão + garçons com pedidos)
   const porFuncionario = (() => {
     const mapa = {}
-    entradasDia.forEach(entrada => {
+    entradasPagas.forEach(entrada => {
       const ped = pedidoDeEntrada(entrada)
       const garcon = ped ? garcons.find(g => g.id === ped.garconId) : null
       const chave = garcon ? garcon.id : '__balcao__'
@@ -765,11 +768,12 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
 
       <div className="grid gap-3 mb-6 vendas-summary" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>
         {[
-          { label: 'Faturamento', valor: formatarMoeda(totalReceita + totalComissoes), cor: '#3b82f6' },
-          { label: 'Lucro Bruto', valor: formatarMoeda(totalLucro - totalComissoes), cor: '#16a34a' },
+          { label: 'Faturamento', valor: formatarMoeda(totalReceita + totalComissoes + totalCovers), cor: '#3b82f6' },
+          { label: 'Lucro Bruto', valor: formatarMoeda(totalLucro - totalComissoes + totalCovers), cor: '#16a34a' },
           { label: 'Ag. Pagamento', valor: entradasPendentes.length === 0 ? 'Nenhum' : `${entradasPendentes.length} pedido${entradasPendentes.length !== 1 ? 's' : ''}`, cor: entradasPendentes.length > 0 ? '#f97316' : '#6b7280' },
           { label: 'CMV', valor: formatarMoeda(totalCMV), cor: '#ef4444' },
           ...(totalComissoes > 0 ? [{ label: 'Comissão Garçons', valor: formatarMoeda(totalComissoes), cor: '#f59e0b' }] : []),
+          ...(totalCovers > 0 ? [{ label: 'Cover/Entrada', valor: formatarMoeda(totalCovers), cor: '#3b82f6' }] : []),
         ].map(({ label, valor, cor }) => (
           <div key={label} className="card p-4">
             <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{label}</p>

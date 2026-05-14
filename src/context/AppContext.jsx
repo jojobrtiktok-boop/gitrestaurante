@@ -57,6 +57,9 @@ const KANBAN_CONFIG_PADRAO = {
   pedidosDisplayToken: null,
   comissaoGarconAtivo: false,
   garconPodeFecharConta: false,
+  coverAtivo: false,
+  coverValor: 0,
+  coverDias: [1, 2, 3, 4, 5, 6, 0],
   etapas: [
     { id: 'novo',       label: 'Aguardando', cor: '#3b82f6' },
     { id: 'preparando', label: 'Preparando', cor: '#f59e0b' },
@@ -297,6 +300,13 @@ function rowToComissao(row) {
     formaPagamento: row.forma_pagamento || '',
     criadoEm: row.criado_em,
   }
+}
+
+function coverToRow(c, uid) {
+  return { id: c.id, user_id: uid, data: c.data, valor: c.valor, forma_pagamento: c.formaPagamento || '' }
+}
+function rowToCover(row) {
+  return { id: row.id, data: row.data, valor: Number(row.valor || 0), formaPagamento: row.forma_pagamento || '', criadoEm: row.criado_em }
 }
 
 function clienteToRow(c, uid) {
@@ -659,6 +669,7 @@ export function AppProvider({ children }) {
   const [motoboys, setMotoboys] = useState([])
   const [movimentosCaixa, setMovimentosCaixa] = useState([])
   const [comissoesPagas, setComissoesPagas] = useState([])
+  const [coversCobrados, setCoversCobrados] = useState([])
   const [periodoCarregado, setPeriodoCarregado] = useState(null) // dataInicio mais antiga carregada
   const periodoCarregadoRef = useRef(null) // ref síncrono — evita stale closure no guard
 
@@ -1105,6 +1116,9 @@ export function AppProvider({ children }) {
       const { data: comissRaw } = await supabase.from('comissoes_pagas').select('*').eq('user_id', uid).gte('data', dataLimite)
       if (comissRaw) setComissoesPagas(comissRaw.map(rowToComissao))
 
+      const { data: coversRaw } = await supabase.from('covers_cobrados').select('*').eq('user_id', uid).gte('data', dataLimite)
+      if (coversRaw) setCoversCobrados(coversRaw.map(rowToCover))
+
     } catch (e) {
       console.error('[loadAllData]', e)
     } finally {
@@ -1237,11 +1251,12 @@ export function AppProvider({ children }) {
     // Marca imediatamente (síncrono) para bloquear chamadas concorrentes
     periodoCarregadoRef.current = dataInicio
     const uid = auth.userId
-    const [{ data: pdsRaw }, { data: evsRaw }, { data: mvsRaw }, { data: comissRaw }] = await Promise.all([
+    const [{ data: pdsRaw }, { data: evsRaw }, { data: mvsRaw }, { data: comissRaw }, { data: coversRaw }] = await Promise.all([
       supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', dataInicio),
       supabase.from('entradas_vendas').select('*').eq('user_id', uid).gte('data', dataInicio),
       supabase.from('movimentos_caixa').select('*').eq('user_id', uid).gte('data', dataInicio).then(r => r, () => ({ data: [] })),
       supabase.from('comissoes_pagas').select('*').eq('user_id', uid).gte('data', dataInicio).then(r => r, () => ({ data: [] })),
+      supabase.from('covers_cobrados').select('*').eq('user_id', uid).gte('data', dataInicio).then(r => r, () => ({ data: [] })),
     ])
     if (pdsRaw) setPedidos(prev => {
       const m = new Map(prev.map(p => [p.id, p]))
@@ -1261,6 +1276,11 @@ export function AppProvider({ children }) {
     if (comissRaw) setComissoesPagas(prev => {
       const m = new Map(prev.map(c => [c.id, c]))
       comissRaw.map(rowToComissao).forEach(c => m.set(c.id, c))
+      return Array.from(m.values())
+    })
+    if (coversRaw) setCoversCobrados(prev => {
+      const m = new Map(prev.map(c => [c.id, c]))
+      coversRaw.map(rowToCover).forEach(c => m.set(c.id, c))
       return Array.from(m.values())
     })
     periodoCarregadoRef.current = dataInicio
@@ -2458,6 +2478,20 @@ export function AppProvider({ children }) {
     sbWrite(supabase.from('comissoes_pagas').insert(comissaoToRow(nova, auth.userId)))
   }
 
+  // ── Covers Cobrados ───────────────────────────────────────────────────
+  function registrarCover({ valor, formaPagamento }) {
+    if (!auth.userId || !valor || valor <= 0) return
+    const novo = {
+      id: crypto.randomUUID(),
+      data: hojeBrasilia(),
+      valor: Number(valor),
+      formaPagamento: formaPagamento || '',
+      criadoEm: agoraBrasiliaISO(),
+    }
+    setCoversCobrados(prev => [...prev, novo])
+    sbWrite(supabase.from('covers_cobrados').insert(coverToRow(novo, auth.userId)))
+  }
+
   // ── Despesas ──────────────────────────────────────────────────────────
   function adicionarDespesa({ descricao, categoria, valor, data }) {
     const novo = { id: crypto.randomUUID(), descricao: descricao.trim(), categoria, valor: Number(valor), data, criadoEm: agoraBrasiliaISO() }
@@ -2584,6 +2618,7 @@ export function AppProvider({ children }) {
     alterarSenha,
     motoboys, adicionarMotoboy, editarMotoboy, removerMotoboy,
     comissoesPagas, registrarComissao,
+    coversCobrados, registrarCover,
     notifConfigRef, cardapioConfigRef, ingredientesRef, pedidosRef, configuracaoGeralRef,
     periodoCarregado, carregarPeriodo,
   }

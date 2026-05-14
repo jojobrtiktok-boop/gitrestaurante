@@ -504,6 +504,10 @@ const FORMAS_LABEL = {
 }
 function ModalPagamento({ total, cfg, pagamentosConfig, comissaoInfo, itens, onConfirmar, onFechar }) {
   const [comissaoAtiva, setComissaoAtiva] = useState(true)
+  const hoje = new Date()
+  const diaSemana = hoje.getDay()
+  const coverHoje = cfg?.coverAtivo && (cfg?.coverDias || []).includes(diaSemana) && (cfg?.coverValor || 0) > 0
+  const [coverAtivo, setCoverAtivo] = useState(true)
   const formas = [
     pagamentosConfig?.dinheiro !== false && 'dinheiro',
     pagamentosConfig?.pix !== false && 'pix',
@@ -555,17 +559,50 @@ function ModalPagamento({ total, cfg, pagamentosConfig, comissaoInfo, itens, onC
                   </div>
                 )}
               </div>
-              <button
-                onClick={() => setComissaoAtiva(v => !v)}
-                style={{ flexShrink: 0, padding: '4px 12px', borderRadius: 20, border: 'none', background: comissaoAtiva ? '#16a34a' : '#e5e7eb', color: comissaoAtiva ? '#fff' : '#6b7280', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                {comissaoAtiva ? '✓ Sim' : '✕ Não'}
-              </button>
+              {comissaoAtiva ? (
+                <div onClick={() => setComissaoAtiva(v => !v)}
+                  style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 5,
+                    border: '2px solid #16a34a', background: '#16a34a', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ color: '#fff', fontSize: 13, lineHeight: 1, fontWeight: 700 }}>✓</span>
+                </div>
+              ) : (
+                <div onClick={() => setComissaoAtiva(v => !v)}
+                  style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 5,
+                    border: '2px solid #9ca3af', background: 'transparent', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        {coverHoje && (
+          <div style={{ background: coverAtivo ? '#eff6ff' : 'var(--bg-hover)',
+            border: `1px solid ${coverAtivo ? '#bfdbfe' : 'var(--border)'}`,
+            borderRadius: 10, padding: '10px 12px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <div>
+              <span style={{ fontSize: 12, color: coverAtivo ? '#1d4ed8' : 'var(--text-muted)', fontWeight: 600 }}>
+                🎟️ Cover ({(cfg?.coverValor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
+              </span>
+              {coverAtivo && (
+                <div style={{ fontSize: 11, color: '#1d4ed8', marginTop: 2 }}>
+                  Será adicionado ao faturamento
+                </div>
+              )}
+            </div>
+            <div onClick={() => setCoverAtivo(v => !v)}
+              style={{ width: 22, height: 22, borderRadius: 5,
+                border: `2px solid ${coverAtivo ? '#3b82f6' : '#9ca3af'}`,
+                background: coverAtivo ? '#3b82f6' : 'transparent', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {coverAtivo && <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>✓</span>}
             </div>
           </div>
         )}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           {formas.map(f => (
-            <button key={f} onClick={() => onConfirmar(f, comissaoAtiva ? (comissaoInfo?.valor || 0) : 0)}
+            <button key={f} onClick={() => onConfirmar(f, comissaoAtiva ? (comissaoInfo?.valor || 0) : 0, coverHoje && coverAtivo)}
               style={{ padding: '14px 8px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-hover)', color: 'var(--text-primary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, transition: 'all .1s' }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = '#16a34a'; e.currentTarget.style.background = 'rgba(22,163,74,0.1)' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg-hover)' }}>
@@ -574,7 +611,7 @@ function ModalPagamento({ total, cfg, pagamentosConfig, comissaoInfo, itens, onC
             </button>
           ))}
         </div>
-        <button onClick={() => onConfirmar(null, comissaoAtiva ? (comissaoInfo?.valor || 0) : 0)}
+        <button onClick={() => onConfirmar(null, comissaoAtiva ? (comissaoInfo?.valor || 0) : 0, coverHoje && coverAtivo)}
           style={{ padding: '8px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }}>
           Registrar sem forma de pagamento
         </button>
@@ -585,7 +622,7 @@ function ModalPagamento({ total, cfg, pagamentosConfig, comissaoInfo, itens, onC
 
 export default function CaixaDisplay() {
   const { token } = useParams()
-  const { pedidos, pratos, garcons, mesas, clientes, kanbanConfig, pagamentosConfig, atualizarStatusPedido, aceitarPedidoDelivery, atribuirMotoboy, marcarPedidoPago, pagarMesa, cancelarPedido, adicionarMesa, setStatusMesa, adicionarCliente, authLoading, displayReady, motoboys, registrarComissao, comissoesPagas } = useApp()
+  const { pedidos, pratos, garcons, mesas, clientes, kanbanConfig, pagamentosConfig, atualizarStatusPedido, aceitarPedidoDelivery, atribuirMotoboy, marcarPedidoPago, pagarMesa, cancelarPedido, adicionarMesa, setStatusMesa, adicionarCliente, authLoading, displayReady, motoboys, registrarComissao, comissoesPagas, registrarCover } = useApp()
   const cfg = kanbanConfig
 
   const [abaAtiva, setAbaAtiva] = useState('pedidos') // 'pedidos' | 'novo-pedido'
@@ -652,7 +689,7 @@ export default function CaixaDisplay() {
     setModalPagamento({ pedidoId, pedidoIds: grupoIds || null, mesaId: mesaId || null, total, comissaoInfo, garconId, garconNome, mesaNome, itens })
   }
 
-  function confirmarPagamento(formaPagamento, comissaoEfetiva = 0) {
+  function confirmarPagamento(formaPagamento, comissaoEfetiva = 0, coverEfetivo = false) {
     if (!modalPagamento) return
     const { pedidoId, pedidoIds, mesaId, garconId, garconNome, mesaNome } = modalPagamento
     if (mesaId) {
@@ -674,6 +711,9 @@ export default function CaixaDisplay() {
         mesaNome: mesaNome || '',
         formaPagamento,
       })
+    }
+    if (coverEfetivo && cfg.coverValor > 0) {
+      registrarCover({ valor: cfg.coverValor, formaPagamento })
     }
     setModalPagamento(null)
   }

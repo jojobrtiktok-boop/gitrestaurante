@@ -73,11 +73,15 @@ const FORMAS_PGTO = [
   { id: 'cartaoDebito',  label: 'Débito',      emoji: '💳' },
 ]
 
-function ModalPagar({ cliente, comissaoInfo, totalNaoPago, onConfirmar, onFechar }) {
+function ModalPagar({ cliente, comissaoInfo, totalNaoPago, onConfirmar, onFechar, cfg, pedidosMesa, pratos: pratosList }) {
   const [telefone,       setTelefone]       = useState(cliente?.telefone    || '')
   const [aniversario,    setAniversario]    = useState(cliente?.aniversario || '')
   const [formaPagamento, setFormaPagamento] = useState('')
   const [comissaoAtiva,  setComissaoAtiva]  = useState(true)
+  const hoje = new Date()
+  const diaSemana = hoje.getDay()
+  const coverHoje = cfg?.coverAtivo && (cfg?.coverDias || []).includes(diaSemana) && (cfg?.coverValor || 0) > 0
+  const [coverAtivo, setCoverAtivo] = useState(true)
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
@@ -109,11 +113,65 @@ function ModalPagar({ cliente, comissaoInfo, totalNaoPago, onConfirmar, onFechar
                   </div>
                 )}
               </div>
-              <button
-                onClick={() => setComissaoAtiva(v => !v)}
-                style={{ flexShrink: 0, padding: '4px 12px', borderRadius: 20, border: 'none', background: comissaoAtiva ? '#16a34a' : '#e5e7eb', color: comissaoAtiva ? '#fff' : '#6b7280', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                {comissaoAtiva ? '✓ Sim' : '✕ Não'}
-              </button>
+              {comissaoAtiva ? (
+                <div onClick={() => setComissaoAtiva(v => !v)}
+                  style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 5,
+                    border: '2px solid #16a34a', background: '#16a34a', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ color: '#fff', fontSize: 13, lineHeight: 1, fontWeight: 700 }}>✓</span>
+                </div>
+              ) : (
+                <div onClick={() => setComissaoAtiva(v => !v)}
+                  style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 5,
+                    border: '2px solid #9ca3af', background: 'transparent', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Items list */}
+        {pedidosMesa?.length > 0 && (
+          <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+            <div style={{ maxHeight: 140, overflowY: 'auto', padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {pedidosMesa.flatMap(p => (p.itens || []).map((item, i) => ({ ...item, _pid: p.id + i }))).map((item, idx) => (
+                <div key={idx} style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{item.quantidade}× {(pratosList?.find(p => p.id === item.pratoId))?.nome || item.nomePrato || 'Item'}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ borderTop: '1px solid var(--border)', padding: '6px 12px', display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Total</span>
+              <span style={{ fontSize: 14, fontWeight: 800, color: '#16a34a' }}>
+                {totalNaoPago.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Cover */}
+        {coverHoje && (
+          <div style={{ background: coverAtivo ? '#eff6ff' : 'var(--bg-hover)',
+            border: `1px solid ${coverAtivo ? '#bfdbfe' : 'var(--border)'}`,
+            borderRadius: 10, padding: '10px 12px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <div>
+              <span style={{ fontSize: 12, color: coverAtivo ? '#1d4ed8' : 'var(--text-muted)', fontWeight: 600 }}>
+                🎟️ Cover ({(cfg?.coverValor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
+              </span>
+              {coverAtivo && (
+                <div style={{ fontSize: 11, color: '#1d4ed8', marginTop: 2 }}>
+                  Será adicionado ao faturamento
+                </div>
+              )}
+            </div>
+            <div onClick={() => setCoverAtivo(v => !v)}
+              style={{ width: 22, height: 22, borderRadius: 5,
+                border: `2px solid ${coverAtivo ? '#3b82f6' : '#9ca3af'}`,
+                background: coverAtivo ? '#3b82f6' : 'transparent', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {coverAtivo && <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>✓</span>}
             </div>
           </div>
         )}
@@ -153,7 +211,7 @@ function ModalPagar({ cliente, comissaoInfo, totalNaoPago, onConfirmar, onFechar
           </div>
         )}
 
-        <button onClick={() => onConfirmar({ telefone: telefone.trim() || null, aniversario: aniversario || null, formaPagamento: formaPagamento || null })}
+        <button onClick={() => onConfirmar({ telefone: telefone.trim() || null, aniversario: aniversario || null, formaPagamento: formaPagamento || null, coverEfetivo: coverHoje && coverAtivo })}
           style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: 'none', background: '#16a34a', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
           <Check size={14} /> Confirmar Pago
         </button>
@@ -194,7 +252,7 @@ function ModalOcupar({ mesaNome, onConfirmar, onFechar }) {
 }
 
 export default function Mesas() {
-  const { mesas, adicionarMesa, editarMesa, removerMesa, setStatusMesa, pagarMesa, pedidos, pratos, sessoesMesas, clientes, editarCliente, garcons, kanbanConfig } = useApp()
+  const { mesas, adicionarMesa, editarMesa, removerMesa, setStatusMesa, pagarMesa, pedidos, pratos, sessoesMesas, clientes, editarCliente, garcons, kanbanConfig, registrarCover } = useApp()
   const [aba, setAba] = useState('mesas')
   const [modal, setModal] = useState(false)
   const [editando, setEditando] = useState(null)
@@ -646,12 +704,16 @@ export default function Mesas() {
             cliente={clientes.find(c => c.id === pagarInfo.clienteId) || null}
             comissaoInfo={comissaoInfo}
             totalNaoPago={totalNaoPago}
-            onConfirmar={({ telefone, aniversario, formaPagamento }) => {
+            cfg={kanbanConfig}
+            pedidosMesa={pedidosMesa}
+            pratos={pratos}
+            onConfirmar={({ telefone, aniversario, formaPagamento, coverEfetivo }) => {
               if (pagarInfo.clienteId && (telefone || aniversario)) {
                 editarCliente(pagarInfo.clienteId, { telefone, aniversario })
               }
               pagarMesa(pagarInfo.mesaId, formaPagamento)
               setStatusMesa(pagarInfo.mesaId, 'livre')
+              if (coverEfetivo) registrarCover({ valor: kanbanConfig.coverValor, formaPagamento })
               setPagarInfo(null)
             }}
             onFechar={() => setPagarInfo(null)}

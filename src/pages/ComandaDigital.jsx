@@ -37,7 +37,7 @@ function dispararNotificacao(msg) {
 
 export default function ComandaDigital() {
   const { token } = useParams()
-  const { garcons, pratos, clientes, cardapioConfig, adicionarPedido, atualizarStatusPedido, pedidos, mesas, pagarMesa, setStatusMesa, marcarPedidoPago, pagamentosConfig, kanbanConfig, authLoading, displayReady, registrarComissao } = useApp()
+  const { garcons, pratos, clientes, cardapioConfig, adicionarPedido, atualizarStatusPedido, pedidos, mesas, pagarMesa, setStatusMesa, marcarPedidoPago, pagamentosConfig, kanbanConfig, authLoading, displayReady, registrarComissao, registrarCover } = useApp()
 
   const garcon = garcons.find(g => g.token === token)
 
@@ -57,6 +57,7 @@ export default function ComandaDigital() {
   const [clienteId, setClienteId] = useState(null)
   const [fecharContaInfo, setFecharContaInfo] = useState(null) // { mesaId, mesa, pedidosMesa, total }
   const [comissaoFecharAtiva, setComissaoFecharAtiva] = useState(true)
+  const [coverFecharAtivo, setCoverFecharAtivo] = useState(true)
   const prontoIdsRef = useRef(new Set())
 
   const pedidosHoje = pedidos.filter(p => p.garconId === garcon?.id && p.data === hoje())
@@ -798,6 +799,8 @@ export default function ComandaDigital() {
         const todosItens = pedidosMesa.flatMap(p => (p.itens || []).map(item => ({ ...item, _pedidoId: p.id })))
         const comissaoAtiva = kanbanConfig?.comissaoGarconAtivo
         const comissaoValor = comissaoAtiva && garcon.taxaComissao > 0 ? (total * garcon.taxaComissao) / 100 : 0
+        const diaSemanaFechar = new Date().getDay()
+        const coverHojeFechar = kanbanConfig?.coverAtivo && (kanbanConfig?.coverDias || []).includes(diaSemanaFechar) && (kanbanConfig?.coverValor || 0) > 0
         const formasPag = [
           pagamentosConfig?.dinheiro !== false && { id: 'dinheiro', label: '💵 Dinheiro' },
           pagamentosConfig?.pix !== false && { id: 'pix', label: '📱 Pix' },
@@ -870,11 +873,46 @@ export default function ComandaDigital() {
                         </div>
                       )}
                     </div>
-                    <button
-                      onClick={() => setComissaoFecharAtiva(v => !v)}
-                      style={{ flexShrink: 0, padding: '4px 12px', borderRadius: 20, border: 'none', background: comissaoFecharAtiva ? '#16a34a' : '#e5e7eb', color: comissaoFecharAtiva ? '#fff' : '#6b7280', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                      {comissaoFecharAtiva ? '✓ Sim' : '✕ Não'}
-                    </button>
+                    {comissaoFecharAtiva ? (
+                      <div onClick={() => setComissaoFecharAtiva(v => !v)}
+                        style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 5,
+                          border: '2px solid #16a34a', background: '#16a34a', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ color: '#fff', fontSize: 13, lineHeight: 1, fontWeight: 700 }}>✓</span>
+                      </div>
+                    ) : (
+                      <div onClick={() => setComissaoFecharAtiva(v => !v)}
+                        style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 5,
+                          border: '2px solid #9ca3af', background: 'transparent', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Cover */}
+              {coverHojeFechar && (
+                <div style={{ background: coverFecharAtivo ? '#eff6ff' : bgHover,
+                  border: `1px solid ${coverFecharAtivo ? '#bfdbfe' : border}`,
+                  borderRadius: 10, padding: '10px 12px', marginBottom: 14,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <div>
+                    <span style={{ fontSize: 12, color: coverFecharAtivo ? '#1d4ed8' : textoSecundario, fontWeight: 600 }}>
+                      🎟️ Cover ({(kanbanConfig?.coverValor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
+                    </span>
+                    {coverFecharAtivo && (
+                      <div style={{ fontSize: 11, color: '#1d4ed8', marginTop: 2 }}>
+                        Será adicionado ao faturamento
+                      </div>
+                    )}
+                  </div>
+                  <div onClick={() => setCoverFecharAtivo(v => !v)}
+                    style={{ width: 22, height: 22, borderRadius: 5,
+                      border: `2px solid ${coverFecharAtivo ? '#3b82f6' : '#9ca3af'}`,
+                      background: coverFecharAtivo ? '#3b82f6' : 'transparent', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {coverFecharAtivo && <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>✓</span>}
                   </div>
                 </div>
               )}
@@ -905,6 +943,9 @@ export default function ComandaDigital() {
                           formaPagamento: f.id,
                         })
                       }
+                      if (coverHojeFechar && coverFecharAtivo) {
+                        registrarCover({ valor: kanbanConfig.coverValor, formaPagamento: f.id })
+                      }
                       setFecharContaInfo(null)
                     }}
                     style={{ padding: '13px 8px', borderRadius: 12, border: `1.5px solid ${border}`, background: bgHover, color: textoPrimario, fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
@@ -930,6 +971,9 @@ export default function ComandaDigital() {
                     mesaNome: fecharContaInfo.mesa?.nome || '',
                     formaPagamento: null,
                   })
+                }
+                if (coverHojeFechar && coverFecharAtivo) {
+                  registrarCover({ valor: kanbanConfig.coverValor, formaPagamento: null })
                 }
                 setFecharContaInfo(null)
                 mostrarFeedback('✓ Conta fechada!')

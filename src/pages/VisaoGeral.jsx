@@ -586,9 +586,9 @@ export default function VisaoGeral() {
       mapa[chave].pedidos += 1
       // Soma receita das entradas vinculadas a este pedido
       entradasFiltradas.forEach(e => {
-        if (e.pedidoId === ped.id || (e.garconId === ped.garconId && e.data === ped.data)) {
+        if (e.pedidoId === ped.id) {
           const prato = pratos.find(p => p.id === e.pratoId)
-          mapa[chave].receita += receitaEntrada(e, prato)
+          if (prato) mapa[chave].receita += receitaEntrada(e, prato)
         }
       })
     })

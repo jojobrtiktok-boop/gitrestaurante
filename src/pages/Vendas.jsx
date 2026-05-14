@@ -382,14 +382,14 @@ export default function Vendas() {
   })
 
   const totalReceita = entradasPagas.reduce((s, e) => {
-    const prato = pratos.find(p => p.id === e.pratoId)
-    if (!prato) return s
-    return s + receitaDaEntrada(e, prato)
+    const prato = pratos.find(p => p.id === e.pratoId) // null se apagado — usa snapshot
+    const r = receitaDaEntrada(e, prato)
+    return r === 0 && !prato ? s : s + r
   }, 0)
   const totalLucro = entradasPagas.reduce((s, e) => {
-    const prato = pratos.find(p => p.id === e.pratoId)
-    if (!prato) return s
-    return s + lucroDaEntrada(e, prato)
+    const prato = pratos.find(p => p.id === e.pratoId) // null se apagado — usa snapshot
+    const r = receitaDaEntrada(e, prato)
+    return r === 0 && !prato ? s : s + lucroDaEntrada(e, prato)
   }, 0)
   const totalCMV = totalReceita - totalLucro
   const margemBruta = totalReceita > 0 ? (totalLucro / totalReceita * 100) : 0
@@ -412,13 +412,13 @@ export default function Vendas() {
 
   const totalExtrato = entradasExtrato.reduce((s, e) => {
     const prato = pratos.find(p => p.id === e.pratoId)
-    if (!prato) return s
-    return s + receitaDaEntrada(e, prato)
+    const r = receitaDaEntrada(e, prato)
+    return r === 0 && !prato ? s : s + r
   }, 0)
   const totalLucroExtrato = entradasExtrato.reduce((s, e) => {
     const prato = pratos.find(p => p.id === e.pratoId)
-    if (!prato) return s
-    return s + lucroDaEntrada(e, prato)
+    const r = receitaDaEntrada(e, prato)
+    return r === 0 && !prato ? s : s + lucroDaEntrada(e, prato)
   }, 0)
   const qtdTotalExtrato = entradasExtrato.reduce((s, e) => s + e.quantidade, 0)
 
@@ -431,10 +431,10 @@ export default function Vendas() {
     const fmt = v => `R$ ${v.toFixed(2).replace('.', ',')}`
 
     const linhas = entradasExtrato.map(e => {
-      const prato = pratos.find(p => p.id === e.pratoId)
-      if (!prato) return null
-      const extrasUnit = e.extrasUnit || 0
+      const prato = pratos.find(p => p.id === e.pratoId) // null se apagado
       const total = receitaDaEntrada(e, prato)
+      if (total === 0 && !prato) return null
+      const extrasUnit = e.extrasUnit || 0
       const garcon = garconDeEntrada(e)
       const mesa = mesaDeEntrada(e)
       return {
@@ -532,16 +532,16 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
     const LABEL_PGTO = { dinheiro: 'Dinheiro', pix: 'PIX', pixWhatsapp: 'PIX', cartaoCredito: 'Cartão Crédito', cartaoDebito: 'Cartão Débito', cartao: 'Cartão' }
     const header = ['Data', 'Hora', 'Produto', 'Origem', 'Mesa', 'Qtd', 'Unit. (R$)', 'Total (R$)', 'Forma Pgto']
     const linhas = entradasExtrato.map(e => {
-      const prato = pratos.find(p => p.id === e.pratoId)
-      if (!prato) return null
+      const prato = pratos.find(p => p.id === e.pratoId) // null se apagado
+      const total = receitaDaEntrada(e, prato)
+      if (total === 0 && !prato) return null
       const ped = pedidoDeEntrada(e)
       const garcon = garconDeEntrada(e)
       const mesa = mesaDeEntrada(e)
       const extrasUnit = e.extrasUnit || 0
-      const unitario = (e.precoVendaUnit !== null && e.precoVendaUnit !== undefined ? Number(e.precoVendaUnit) : prato.precoVenda) + extrasUnit
-      const total = receitaDaEntrada(e, prato)
+      const unitario = (e.precoVendaUnit !== null && e.precoVendaUnit !== undefined ? Number(e.precoVendaUnit) : (prato?.precoVenda || 0)) + extrasUnit
       const pgto = ped?.formaPagamento ? (LABEL_PGTO[ped.formaPagamento] || ped.formaPagamento) : ''
-      return [fmtData(e.data), e.hora, prato.nome, garcon ? garcon.nome : 'Balcão', mesa?.nome || '', e.quantidade, fmtVal(unitario), fmtVal(total), pgto]
+      return [fmtData(e.data), e.hora, prato?.nome || 'Receita removida', garcon ? garcon.nome : 'Balcão', mesa?.nome || '', e.quantidade, fmtVal(unitario), fmtVal(total), pgto]
     }).filter(Boolean)
     const csv = [header, ...linhas].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\r\n')
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
@@ -556,12 +556,12 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
     const LABEL = { dinheiro: 'Dinheiro', pix: 'PIX', pixWhatsapp: 'PIX', cartaoCredito: 'Cartão Crédito', cartaoDebito: 'Cartão Débito', cartao: 'Cartão' }
     const mapa = {}
     entradasExtrato.forEach(e => {
-      const prato = pratos.find(p => p.id === e.pratoId)
-      if (!prato) return
+      const prato = pratos.find(p => p.id === e.pratoId) // null se apagado
+      const total = receitaDaEntrada(e, prato)
+      if (total === 0 && !prato) return
       const ped = pedidoDeEntrada(e)
       const key = ped?.formaPagamento || 'nao_informado'
       const label = LABEL[key] || (key === 'nao_informado' ? 'Não informado' : key)
-      const total = receitaDaEntrada(e, prato)
       if (!mapa[key]) mapa[key] = { label, total: 0 }
       mapa[key].total += total
     })
@@ -576,9 +576,9 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
       const garcon = ped ? garcons.find(g => g.id === ped.garconId) : null
       const chave = garcon ? garcon.id : '__balcao__'
       const nome = garcon ? garcon.nome : 'Balcão'
-      const prato = pratos.find(p => p.id === entrada.pratoId)
-      if (!prato) return
+      const prato = pratos.find(p => p.id === entrada.pratoId) // null se apagado
       const receita = receitaDaEntrada(entrada, prato)
+      if (receita === 0 && !prato) return
       if (!mapa[chave]) mapa[chave] = { id: chave, nome, isGarcon: !!garcon, totalReceita: 0, totalUnidades: 0, entradas: [] }
       mapa[chave].totalReceita += receita
       mapa[chave].totalUnidades += entrada.quantidade
@@ -628,7 +628,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
       if (!localMap[ped.clienteId]) localMap[ped.clienteId] = { totalGasto: 0, pedidos: new Set(), pratosCount: {} }
       const l = localMap[ped.clienteId]
       const prato = pratos.find(p => p.id === entrada.pratoId)
-      if (prato) l.totalGasto += receitaDaEntrada(entrada, prato)
+      l.totalGasto += receitaDaEntrada(entrada, prato) // usa snapshot se prato apagado
       if (ped?.id) l.pedidos.add(ped.id)
       l.pratosCount[entrada.pratoId] = (l.pratosCount[entrada.pratoId] || 0) + entrada.quantidade
     })
@@ -1137,10 +1137,10 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                   </thead>
                   <tbody>
                     {entradasExtrato.map(entrada => {
-                      const prato = pratos.find(p => p.id === entrada.pratoId)
-                      if (!prato) return null
-                      const extrasUnit = entrada.extrasUnit || 0
+                      const prato = pratos.find(p => p.id === entrada.pratoId) // null se apagado
                       const receita = receitaDaEntrada(entrada, prato)
+                      if (receita === 0 && !prato) return null
+                      const extrasUnit = entrada.extrasUnit || 0
                       const garcon = garconDeEntrada(entrada)
                       const mesa = mesaDeEntrada(entrada)
                       return (
@@ -1156,7 +1156,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                               </span>
                             </div>
                           </td>
-                          <td data-label="Produto" className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{prato.nome}</td>
+                          <td data-label="Produto" className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{prato?.nome || 'Receita removida'}</td>
                           <td data-label="Origem">
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                               {entrada.canal === 'delivery' ? (
@@ -1233,10 +1233,10 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
               </thead>
               <tbody>
                 {entradasPagas.map(entrada => {
-                  const prato = pratos.find(p => p.id === entrada.pratoId)
-                  if (!prato) return null
-                  const lucro = lucroDaEntrada(entrada, prato)
+                  const prato = pratos.find(p => p.id === entrada.pratoId) // null se apagado
                   const receita = receitaDaEntrada(entrada, prato)
+                  if (receita === 0 && !prato) return null
+                  const lucro = lucroDaEntrada(entrada, prato)
                   const garcon = garconDeEntrada(entrada)
                   const mesa = mesaDeEntrada(entrada)
                   const pedido = pedidoDeEntrada(entrada)
@@ -1261,7 +1261,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                           style={{ color: 'var(--text-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                           onClick={() => setEntradaDetalhe({ entrada, prato, garcon, pedido })}
                         >
-                          {prato.nome}
+                          {prato?.nome || 'Receita removida'}
                         </button>
                       </td>
                       <td data-label="Origem">
@@ -1353,9 +1353,9 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
               </thead>
               <tbody>
                 {entradasPendentes.map(entrada => {
-                  const prato = pratos.find(p => p.id === entrada.pratoId)
-                  if (!prato) return null
+                  const prato = pratos.find(p => p.id === entrada.pratoId) // null se apagado
                   const receita = receitaDaEntrada(entrada, prato)
+                  if (receita === 0 && !prato) return null
                   const garcon = garconDeEntrada(entrada)
                   const mesa = mesaDeEntrada(entrada)
                   const pedido = pedidoDeEntrada(entrada)
@@ -1375,7 +1375,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                         </div>
                       </td>
                       <td data-label="Produto">
-                        <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{prato.nome}</span>
+                        <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{prato?.nome || 'Receita removida'}</span>
                       </td>
                       <td data-label="Origem">
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
@@ -1734,7 +1734,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
 
         const totalNF = entradasNF.reduce((s, e) => {
           const prato = pratos.find(p => p.id === e.pratoId)
-          return s + (prato ? receitaDaEntrada(e, prato) : 0)
+          return s + receitaDaEntrada(e, prato) // usa snapshot se prato apagado
         }, 0)
 
         // Breakdown por forma de pagamento

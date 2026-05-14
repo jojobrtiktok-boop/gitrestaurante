@@ -264,15 +264,15 @@ function ResultadoGeral() {
   )
   const totalVendas = useMemo(() =>
     entradas.reduce((s, e) => {
-      const p = pratos.find(x => x.id === e.pratoId)
-      return p ? s + receitaEntrada(e, p) : s
+      const p = pratos.find(x => x.id === e.pratoId) // null se apagado — receitaEntrada usa snapshot
+      return s + receitaEntrada(e, p)
     }, 0),
     [entradas, pratos]
   )
   const totalInsumos = useMemo(() =>
     entradas.reduce((s, e) => {
-      const p = pratos.find(x => x.id === e.pratoId)
-      return p ? s + custoEntrada(e, p, ingredientes, pedidos) : s
+      const p = pratos.find(x => x.id === e.pratoId) // null se apagado — custoEntrada usa snapshot
+      return s + custoEntrada(e, p, ingredientes, pedidos)
     }, 0),
     [entradas, pratos, ingredientes, pedidos]
   )
@@ -357,7 +357,7 @@ function ResultadoGeral() {
       .sort((a, b) => b.data.localeCompare(a.data) || (b.hora || '').localeCompare(a.hora || ''))
       .map(e => {
         const p = pratos.find(x => x.id === e.pratoId)
-        return { ...e, nomePrato: p?.nome || 'Receita removida', receita: p ? receitaEntrada(e, p) : 0 }
+        return { ...e, nomePrato: p?.nome || 'Receita removida', receita: receitaEntrada(e, p) }
       }),
     [entradas, pratos]
   )
@@ -634,9 +634,9 @@ export default function VisaoGeral() {
   let receitaTotal = 0, lucroTotal = 0, receitaPendente = 0, lucroPendente = 0
   if (!semDados) {
     for (const entrada of entradasFiltradas) {
-      const prato = pratos.find(p => p.id === entrada.pratoId)
-      if (!prato) continue
+      const prato = pratos.find(p => p.id === entrada.pratoId) // null se apagado — funções usam snapshot
       const r = receitaEntrada(entrada, prato)
+      if (r === 0 && !prato) continue // sem snapshot e sem prato: ignora
       const l = lucroEntrada(entrada, prato, ingredientes, pedidos)
       receitaTotal += r
       lucroTotal += l
@@ -666,12 +666,23 @@ export default function VisaoGeral() {
   const cmvDia = receitaPaga > 0 ? (custoTotal / receitaPaga) * 100 : 0
   const totalEmCaixa = receitaPaga + (caixaInicialValor || 0)
 
-  const top5 = semDados ? [] : canalFiltro === 'todos'
-    ? topV(pratos, registrosVendas, dataInicio, dataFim, 5)
-    : pratos.map(p => ({
-        prato: p,
-        quantidade: entradasFiltradas.filter(e => e.pratoId === p.id).reduce((s, e) => s + e.quantidade, 0),
-      })).filter(t => t.quantidade > 0).sort((a, b) => b.quantidade - a.quantidade).slice(0, 5)
+  // Top 5 — inclui receitas apagadas (usa entradasFiltradas como fonte principal)
+  const top5 = semDados ? [] : (() => {
+    // Agrega quantidade por pratoId via entradas (inclui receitas apagadas)
+    const qtdMap = {}
+    const fonte = canalFiltro === 'todos'
+      ? entradasVendas.filter(e => e.data >= dataInicio && e.data <= dataFim)
+      : entradasFiltradas
+    fonte.forEach(e => { qtdMap[e.pratoId] = (qtdMap[e.pratoId] || 0) + e.quantidade })
+    return Object.entries(qtdMap)
+      .map(([pratoId, quantidade]) => {
+        const prato = pratos.find(p => p.id === pratoId) || { id: pratoId, nome: 'Receita removida', precoVenda: 0 }
+        return { prato, quantidade }
+      })
+      .filter(t => t.quantidade > 0)
+      .sort((a, b) => b.quantidade - a.quantidade)
+      .slice(0, 5)
+  })()
   const semVendas = receitaTotal === 0
   const chartData = top5.filter(t => t.quantidade > 0).map(t => ({
     nome: t.prato.nome.length > 14 ? t.prato.nome.slice(0, 14) + '…' : t.prato.nome,

@@ -66,9 +66,10 @@ export function custoExtraUnitEntrada(entrada, pedidos = [], ingredientes = []) 
 }
 
 export function receitaEntrada(entrada, prato) {
+  // Usa snapshot salvo na entrada; cai no prato atual só como fallback
   const precoBase = (entrada.precoVendaUnit !== null && entrada.precoVendaUnit !== undefined)
     ? Number(entrada.precoVendaUnit)
-    : prato.precoVenda
+    : (prato ? prato.precoVenda : 0)
   return (precoBase + (entrada.extrasUnit || 0)) * entrada.quantidade
 }
 
@@ -77,7 +78,7 @@ export function custoEntrada(entrada, prato, ingredientes, pedidos = []) {
   if (entrada.custoPratoUnit !== null && entrada.custoPratoUnit !== undefined) {
     baseCost = Number(entrada.custoPratoUnit)
   } else {
-    baseCost = custoPrato(prato, ingredientes)
+    baseCost = prato ? custoPrato(prato, ingredientes) : 0
   }
   return (baseCost + custoExtraUnitEntrada(entrada, pedidos, ingredientes)) * entrada.quantidade
 }

@@ -735,7 +735,8 @@ export function AppProvider({ children }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos', filter: `user_id=eq.${uid}` }, fetchFn)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas', filter: `user_id=eq.${uid}` }, fetchFn)
       .subscribe(s => { if (s === 'CHANNEL_ERROR') setTimeout(() => ch.subscribe(), 3000) })
-    const pollId = setInterval(fetchFn, 3000)
+    // Polling de 30s como fallback caso Realtime caia (antes era 3s — redundante com Realtime)
+    const pollId = setInterval(fetchFn, 30000)
     window._displayCleanup = () => { supabase.removeChannel(ch); clearInterval(pollId) }
   }
 
@@ -1201,7 +1202,7 @@ export function AppProvider({ children }) {
         })
       supabase.from('mesas').select('*').eq('user_id', uid)
         .then(({ data }) => { if (data) setMesas(data.map(rowToMesa)) })
-    }, 3000)
+    }, 15000)
 
     // Polling de entradas_vendas a cada 30s (garante sync mesmo sem realtime)
     const entradsPollId = setInterval(() => {

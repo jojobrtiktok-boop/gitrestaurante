@@ -575,7 +575,7 @@ function ResultadoGeral() {
 }
 
 export default function VisaoGeral() {
-  const { pratos, ingredientes, registrosVendas, entradasVendas, pedidos, garcons, tema, registrarCaixaInicial, getCaixaInicial, getCaixaInicialPeriodo, movimentosCaixa, adicionarMovimentoCaixa, removerMovimentoCaixa, getMovimentosCaixaDia, carregarPeriodo } = useApp()
+  const { pratos, ingredientes, registrosVendas, entradasVendas, pedidos, garcons, tema, registrarCaixaInicial, getCaixaInicial, getCaixaInicialPeriodo, movimentosCaixa, adicionarMovimentoCaixa, removerMovimentoCaixa, getMovimentosCaixaDia, carregarPeriodo, coversCobrados, comissoesPagas } = useApp()
   const h = hoje()
   const [periodo, setPeriodo] = useState(() => {
     try {
@@ -711,8 +711,16 @@ export default function VisaoGeral() {
     }
   }
 
-  const receitaPaga = receitaTotal - receitaPendente
-  const lucroPago = lucroTotal - lucroPendente
+  // Covers e comissões do período — somam ao faturamento do Resumo
+  const totalCoversPeriodoResumo = (coversCobrados || [])
+    .filter(c => c.data >= dataInicio && c.data <= dataFim)
+    .reduce((s, c) => s + c.valor, 0)
+  const totalComissoesPeriodoResumo = (comissoesPagas || [])
+    .filter(c => c.data >= dataInicio && c.data <= dataFim)
+    .reduce((s, c) => s + c.comissaoValor, 0)
+
+  const receitaPaga = receitaTotal - receitaPendente + totalCoversPeriodoResumo + totalComissoesPeriodoResumo
+  const lucroPago = lucroTotal - lucroPendente + totalCoversPeriodoResumo // covers = lucro puro; comissão não afeta lucro bruto
   const custoTotal = receitaPaga - lucroPago
   const margemDia = receitaPaga > 0 ? (lucroPago / receitaPaga) * 100 : 0
   const cmvDia = receitaPaga > 0 ? (custoTotal / receitaPaga) * 100 : 0

@@ -672,6 +672,7 @@ export function AppProvider({ children }) {
   const [coversCobrados, setCoversCobrados] = useState([])
   const [periodoCarregado, setPeriodoCarregado] = useState(null) // dataInicio mais antiga carregada
   const periodoCarregadoRef = useRef(null) // ref síncrono — evita stale closure no guard
+  const [ultimaAtualizacaoVendas, setUltimaAtualizacaoVendas] = useState(null) // timestamp do último fetch
 
   const userIdRef = useRef(null)
   const notifConfigRef = useRef(notifConfig)
@@ -1159,16 +1160,7 @@ export function AppProvider({ children }) {
           if (data) setMesas(data.map(rowToMesa))
         })
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'entradas_vendas', filter: `user_id=eq.${uid}` }, () => {
-        supabase.from('entradas_vendas').select('*').eq('user_id', uid).then(({ data }) => {
-          if (data) setEntradasVendas(prev => {
-            const novas = data.map(rowToEntradaVenda)
-            const m = new Map(prev.map(e => [e.id, e]))
-            novas.forEach(e => m.set(e.id, e))
-            return Array.from(m.values())
-          })
-        })
-      })
+      // entradas_vendas removida do realtime — atualiza só via carregarPeriodo/refreshDados
       .on('postgres_changes', { event: '*', schema: 'public', table: 'motoboys', filter: `user_id=eq.${uid}` }, () => {
         supabase.from('motoboys').select('*').eq('user_id', uid).then(({ data }) => {
           if (data) setMotoboys(data.map(rowToMotoboy))
@@ -1204,47 +1196,58 @@ export function AppProvider({ children }) {
         .then(({ data }) => { if (data) setMesas(data.map(rowToMesa)) })
     }, 15000)
 
-    // Polling de entradas_vendas a cada 30s (garante sync mesmo sem realtime)
-    const entradsPollId = setInterval(() => {
-      const hojeStr = getHojeStr()
-      supabase.from('entradas_vendas').select('*').eq('user_id', uid).gte('data', hojeStr)
-        .then(({ data }) => {
-          if (!data) return
-          // Map-merge: o poll só traz hoje, mas preserva histórico via Map
-          setEntradasVendas(prev => {
-            const novas = data.map(rowToEntradaVenda)
-            const m = new Map(prev.map(e => [e.id, e]))
-            novas.forEach(e => m.set(e.id, e))
-            const next = Array.from(m.values())
-            if (prev.length === next.length) {
-              const ids = d => d.map(x => x.id).sort().join()
-              return ids(prev) === ids(next) ? prev : next
-            }
-            return next
-          })
-        })
-    }, 30000)
-
-    return () => { supabase.removeChannel(channel); clearInterval(pollId); clearInterval(entradsPollId) }
+    return () => { supabase.removeChannel(channel); clearInterval(pollId) }
   }, [auth.userId])
 
+  // ── Cache sessionStorage para dados de período (sobrevive F5, TTL 3 min) ─
+  const _SS_TTL = 3 * 60 * 1000
+  function _ssCacheKey(uid, dataInicio) { return `rd_per_${uid}_${dataInicio}` }
+  function _loadSsCache(uid, dataInicio) {
+    try {
+      const raw = sessionStorage.getItem(_ssCacheKey(uid, dataInicio))
+      if (!raw) return null
+      const { t, d } = JSON.parse(raw)
+      if (Date.now() - t > _SS_TTL) return null
+      return { ...d, ts: t }
+    } catch { return null }
+  }
+  function _saveSsCache(uid, dataInicio, d) {
+    try { sessionStorage.setItem(_ssCacheKey(uid, dataInicio), JSON.stringify({ t: Date.now(), d })) } catch {}
+  }
+
   // ── Carregar período histórico sob demanda ────────────────────────────
-  async function carregarPeriodo(dataInicio) {
+  async function carregarPeriodo(dataInicio, forcar = false) {
     if (!auth.userId) return
-    // Usa ref (não state) para evitar stale closure — lê valor sempre atualizado
-    const jaCarregado = periodoCarregadoRef.current
-    if (jaCarregado && dataInicio >= jaCarregado) {
-      // Guard diz "já carregado" — mas verifica se dados históricos ainda existem
-      // Se sumiram (ex: re-auth limpou o estado), força novo carregamento
-      const hoje = hojeBrasilia()
-      const temHistorico = entradasVendas.some(e => e.data < hoje) || pedidos.some(p => p.data < hoje)
-      if (temHistorico) return // dados OK, não precisa buscar
-      // Dados históricos ausentes — reseta guard e busca novamente
-      periodoCarregadoRef.current = null
+    const uid = auth.userId
+
+    if (!forcar) {
+      // Usa ref (não state) para evitar stale closure — lê valor sempre atualizado
+      const jaCarregado = periodoCarregadoRef.current
+      if (jaCarregado && dataInicio >= jaCarregado) {
+        // Guard diz "já carregado" — mas verifica se dados históricos ainda existem
+        const hoje = hojeBrasilia()
+        const temHistorico = entradasVendas.some(e => e.data < hoje) || pedidos.some(p => p.data < hoje)
+        if (temHistorico) return // dados OK, não precisa buscar
+        periodoCarregadoRef.current = null
+      }
+
+      // Tenta servir do sessionStorage (rápido, sem hit no banco)
+      const ss = _loadSsCache(uid, dataInicio)
+      if (ss) {
+        if (ss.pds) setPedidos(prev => { const m = new Map(prev.map(p => [p.id, p])); ss.pds.map(rowToPedido).forEach(p => { if (!pedidosLockRef.current.has(p.id)) m.set(p.id, p) }); return Array.from(m.values()) })
+        if (ss.evs) setEntradasVendas(prev => { const m = new Map(prev.map(e => [e.id, e])); ss.evs.map(rowToEntradaVenda).forEach(e => m.set(e.id, e)); return Array.from(m.values()) })
+        if (ss.mvs) setMovimentosCaixa(prev => { const m = new Map(prev.map(mv => [mv.id, mv])); ss.mvs.map(rowToMovimentoCaixa).forEach(mv => m.set(mv.id, mv)); return Array.from(m.values()) })
+        if (ss.comiss) setComissoesPagas(prev => { const m = new Map(prev.map(c => [c.id, c])); ss.comiss.map(rowToComissao).forEach(c => m.set(c.id, c)); return Array.from(m.values()) })
+        if (ss.covers) setCoversCobrados(prev => { const m = new Map(prev.map(c => [c.id, c])); ss.covers.map(rowToCover).forEach(c => m.set(c.id, c)); return Array.from(m.values()) })
+        periodoCarregadoRef.current = dataInicio
+        setPeriodoCarregado(dataInicio)
+        setUltimaAtualizacaoVendas(new Date(ss.ts))
+        return
+      }
     }
+
     // Marca imediatamente (síncrono) para bloquear chamadas concorrentes
     periodoCarregadoRef.current = dataInicio
-    const uid = auth.userId
     const [{ data: pdsRaw }, { data: evsRaw }, { data: mvsRaw }, { data: comissRaw }, { data: coversRaw }] = await Promise.all([
       supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', dataInicio),
       supabase.from('entradas_vendas').select('*').eq('user_id', uid).gte('data', dataInicio),
@@ -1277,8 +1280,17 @@ export function AppProvider({ children }) {
       coversRaw.map(rowToCover).forEach(c => m.set(c.id, c))
       return Array.from(m.values())
     })
+    // Salva no sessionStorage para servir F5 e mudanças rápidas de data
+    _saveSsCache(uid, dataInicio, { pds: pdsRaw, evs: evsRaw, mvs: mvsRaw, comiss: comissRaw, covers: coversRaw })
+    setUltimaAtualizacaoVendas(new Date())
     periodoCarregadoRef.current = dataInicio
     setPeriodoCarregado(dataInicio)
+  }
+
+  // Força re-fetch do período ignorando guard e sessionStorage cache
+  async function refreshDados(dataInicio) {
+    periodoCarregadoRef.current = null
+    await carregarPeriodo(dataInicio, true)
   }
 
   // ── Motoboys: carregar inicial ────────────────────────────────────────
@@ -2629,7 +2641,7 @@ export function AppProvider({ children }) {
     comissoesPagas, registrarComissao,
     coversCobrados, registrarCover,
     notifConfigRef, cardapioConfigRef, ingredientesRef, pedidosRef, configuracaoGeralRef,
-    periodoCarregado, carregarPeriodo,
+    periodoCarregado, carregarPeriodo, refreshDados, ultimaAtualizacaoVendas,
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

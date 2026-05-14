@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ShoppingCart, Trash2, Clock, X, Check, Printer, FileText, Truck, MapPin, User, Timer, ChevronDown, ChevronUp, AlertTriangle, Phone, Cake } from 'lucide-react'
+import { ShoppingCart, Trash2, Clock, X, Check, Printer, FileText, Truck, MapPin, User, Timer, ChevronDown, ChevronUp, AlertTriangle, Phone, Cake, RefreshCw } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import TabelaVazia from '../components/ui/TabelaVazia.jsx'
 import FiltroPeriodo from '../components/ui/FiltroPeriodo.jsx'
@@ -265,7 +265,7 @@ function RelatorioTempo({ pedidos, pratos, dataInicio, dataFim }) {
 }
 
 export default function Vendas() {
-  const { entradasVendas, removerEntradaVenda, pratos, ingredientes, garcons, pedidos, mesas, clientes, sessoesMesas, kanbanConfig, marcarPedidoPago, cardapioConfig, marcarEntregue, carregarPeriodo, comissoesPagas, coversCobrados } = useApp()
+  const { entradasVendas, removerEntradaVenda, pratos, ingredientes, garcons, pedidos, mesas, clientes, sessoesMesas, kanbanConfig, marcarPedidoPago, cardapioConfig, marcarEntregue, carregarPeriodo, refreshDados, ultimaAtualizacaoVendas, comissoesPagas, coversCobrados } = useApp()
   const h = hoje()
   const [periodo, setPeriodo] = useState(() => {
     try {
@@ -274,6 +274,7 @@ export default function Vendas() {
     } catch {}
     return { dataInicio: h, dataFim: h }
   })
+  const [atualizando, setAtualizando] = useState(false)
 
   function handlePeriodo(p) {
     setPeriodo(p)
@@ -292,6 +293,12 @@ export default function Vendas() {
       carregarPeriodo(dataInicio)
     }
   }, [entradasVendas])
+
+  async function handleRefresh() {
+    setAtualizando(true)
+    await refreshDados(periodo.dataInicio)
+    setAtualizando(false)
+  }
 
   const [entradaDetalhe, setEntradaDetalhe] = useState(null)
   const [aba, setAba] = useState('lancamentos')
@@ -770,7 +777,25 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
           <h1 className="page-title">Vendas</h1>
           <p className="page-subtitle">Histórico de lançamentos com horário</p>
         </div>
-        <FiltroPeriodo onChange={handlePeriodo} initialIni={periodo.dataInicio} initialFim={periodo.dataFim} />
+        <div className="flex items-center gap-2">
+          <FiltroPeriodo onChange={handlePeriodo} initialIni={periodo.dataInicio} initialFim={periodo.dataFim} />
+          <div className="flex flex-col items-end gap-0.5">
+            <button
+              onClick={handleRefresh}
+              disabled={atualizando}
+              className="btn btn-ghost p-1.5 rounded-lg"
+              title="Atualizar dados"
+              style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+            >
+              <RefreshCw size={15} style={{ animation: atualizando ? 'spin 1s linear infinite' : 'none' }} />
+            </button>
+            {ultimaAtualizacaoVendas && (
+              <span className="text-xs" style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                {ultimaAtualizacaoVendas.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-3 mb-6 vendas-summary" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>

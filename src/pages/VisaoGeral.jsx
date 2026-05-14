@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react'
-import { DollarSign, TrendingUp, Award, ShoppingBag, TrendingDown, BarChart2, Wallet, Info, X, ChevronDown, ChevronUp, Clock, Trophy, Layers, UtensilsCrossed, Truck, ArrowDownCircle, ArrowUpCircle, LockKeyhole, Printer, Users } from 'lucide-react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import { DollarSign, TrendingUp, Award, ShoppingBag, TrendingDown, BarChart2, Wallet, Info, X, ChevronDown, ChevronUp, Clock, Trophy, Layers, UtensilsCrossed, Truck, ArrowDownCircle, ArrowUpCircle, LockKeyhole, Printer, Users, RefreshCw } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { useApp } from '../context/AppContext.jsx'
 import MetricCard from '../components/ui/MetricCard.jsx'
@@ -575,7 +575,7 @@ function ResultadoGeral() {
 }
 
 export default function VisaoGeral() {
-  const { pratos, ingredientes, registrosVendas, entradasVendas, pedidos, garcons, tema, registrarCaixaInicial, getCaixaInicial, getCaixaInicialPeriodo, movimentosCaixa, adicionarMovimentoCaixa, removerMovimentoCaixa, getMovimentosCaixaDia, carregarPeriodo, coversCobrados, comissoesPagas } = useApp()
+  const { pratos, ingredientes, registrosVendas, entradasVendas, pedidos, garcons, tema, registrarCaixaInicial, getCaixaInicial, getCaixaInicialPeriodo, movimentosCaixa, adicionarMovimentoCaixa, removerMovimentoCaixa, getMovimentosCaixaDia, carregarPeriodo, refreshDados, ultimaAtualizacaoVendas, coversCobrados, comissoesPagas } = useApp()
   const h = hoje()
   const [periodo, setPeriodo] = useState(() => {
     try {
@@ -584,15 +584,28 @@ export default function VisaoGeral() {
     } catch {}
     return { dataInicio: h, dataFim: h }
   })
+  const [atualizando, setAtualizando] = useState(false)
 
   function handlePeriodo(p) {
     setPeriodo(p)
     localStorage.setItem('rd_visaogeral_periodo', JSON.stringify(p))
   }
 
+  const doRefresh = useCallback(async (dataInicio, silencioso = false) => {
+    if (!silencioso) setAtualizando(true)
+    await refreshDados(dataInicio)
+    if (!silencioso) setAtualizando(false)
+  }, [refreshDados])
+
   useEffect(() => {
     carregarPeriodo(periodo.dataInicio)
   }, [periodo.dataInicio])
+
+  // Polling leve a cada 10s — atualiza sem precisar de realtime
+  useEffect(() => {
+    const id = setInterval(() => doRefresh(periodo.dataInicio, true), 10000)
+    return () => clearInterval(id)
+  }, [periodo.dataInicio, doRefresh])
 
   // Recuperação automática: se dados sumiram para o período ativo, recarrega
   useEffect(() => {
@@ -825,7 +838,25 @@ export default function VisaoGeral() {
                 ))}
               </div>
 
-              <FiltroPeriodo onChange={handlePeriodo} initialIni={periodo.dataInicio} initialFim={periodo.dataFim} />
+              <div className="flex items-center gap-2">
+                <FiltroPeriodo onChange={handlePeriodo} initialIni={periodo.dataInicio} initialFim={periodo.dataFim} />
+                <div className="flex flex-col items-end gap-0.5">
+                  <button
+                    onClick={() => doRefresh(periodo.dataInicio)}
+                    disabled={atualizando}
+                    className="btn btn-ghost p-1.5 rounded-lg"
+                    title="Atualizar dados agora"
+                    style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                  >
+                    <RefreshCw size={15} style={{ animation: atualizando ? 'spin 1s linear infinite' : 'none' }} />
+                  </button>
+                  {ultimaAtualizacaoVendas && (
+                    <span className="text-xs" style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      {ultimaAtualizacaoVendas.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 

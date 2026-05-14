@@ -289,7 +289,7 @@ function ResultadoGeral() {
     }, 0),
     [entradas, pratos]
   )
-  const totalVendas = totalVendasPratos + totalCovers + totalComissoes
+  const totalVendas = totalVendasPratos + totalCovers  // comissão é informativa — não entra no faturamento
 
   const totalInsumos = useMemo(() =>
     entradas.reduce((s, e) => {
@@ -310,8 +310,7 @@ function ResultadoGeral() {
     despPeriodo.filter(d => d.categoria === 'outros').reduce((s, d) => s + d.valor, 0),
     [despPeriodo]
   )
-  // lucroLiquido: comissão entra (+) e sai (−) = zero; cover entra (+) sem saída = 100% lucro
-  const lucroLiquido = totalVendas - totalInsumos - totalFuncionarios - totalInvestimentos - totalOutros - totalComissoes
+  const lucroLiquido = totalVendas - totalInsumos - totalFuncionarios - totalInvestimentos - totalOutros
 
   const insumosPorIngrediente = useMemo(() => {
     const map = {}
@@ -390,12 +389,10 @@ function ResultadoGeral() {
   const rows = [
     { key: 'vendas',       label: 'Vendas de Pratos',        valor: totalVendasPratos,  red: false, sub: `${entradas.length} lançamento${entradas.length !== 1 ? 's' : ''} no período` },
     ...(totalCovers > 0    ? [{ key: 'covers',    label: '🎟️ Cover/Entrada',       valor: totalCovers,       red: false, sub: `${coversPeriodo.length} cobrança${coversPeriodo.length !== 1 ? 's' : ''} · lucro 100%` }] : []),
-    ...(totalComissoes > 0 ? [{ key: 'comissoes_entrada', label: '🤝 Comissão Garçons (entrada)', valor: totalComissoes, red: false, sub: `${comissoesPeriodo.length} lançamento${comissoesPeriodo.length !== 1 ? 's' : ''}` }] : []),
     { key: 'insumos',      label: 'Insumos (CMV)',           valor: totalInsumos,       red: true,  sub: totalVendas > 0 ? `${((totalInsumos / totalVendas) * 100).toFixed(1)}% do faturamento` : '—' },
     { key: 'funcionarios', label: 'Funcionários',            valor: totalFuncionarios,  red: true,  sub: `${despPeriodo.filter(d => d.categoria === 'funcionarios').length} registros` },
     { key: 'investimentos',label: 'Investimentos',           valor: totalInvestimentos, red: true,  sub: `${despPeriodo.filter(d => d.categoria === 'investimentos').length} registros` },
     { key: 'outros',       label: 'Outros',                  valor: totalOutros,        red: true,  sub: `${despPeriodo.filter(d => d.categoria === 'outros').length} registros` },
-    ...(totalComissoes > 0 ? [{ key: 'comissoes', label: '🤝 Comissão Garçons (saída)', valor: totalComissoes, red: true, sub: `pago aos garçons · líquido = R$ 0` }] : []),
   ]
 
   return (
@@ -563,7 +560,7 @@ function ResultadoGeral() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Lucro Líquido</p>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Vendas − Insumos − Funcionários − Investimentos − Outros{totalComissoes > 0 ? ' − Comissões' : ''}</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Vendas − Insumos − Funcionários − Investimentos − Outros</p>
           </div>
           <p className="text-2xl font-bold" style={{ color: lucroLiquido >= 0 ? '#22c55e' : '#ef4444' }}>
             {lucroLiquido < 0 ? '− ' : ''}{formatarMoeda(Math.abs(lucroLiquido))}
@@ -584,7 +581,7 @@ export default function VisaoGeral() {
     } catch {}
     return { dataInicio: h, dataFim: h }
   })
-  const [atualizando, setAtualizando] = useState(false)
+  const [spinKey, setSpinKey] = useState(0)
 
   function handlePeriodo(p) {
     setPeriodo(p)
@@ -592,9 +589,8 @@ export default function VisaoGeral() {
   }
 
   const doRefresh = useCallback(async (dataInicio, silencioso = false) => {
-    if (!silencioso) setAtualizando(true)
+    if (!silencioso) setSpinKey(k => k + 1)
     await refreshDados(dataInicio)
-    if (!silencioso) setAtualizando(false)
   }, [refreshDados])
 
   useEffect(() => {
@@ -732,7 +728,7 @@ export default function VisaoGeral() {
     .filter(c => c.data >= dataInicio && c.data <= dataFim)
     .reduce((s, c) => s + c.comissaoValor, 0)
 
-  const receitaPaga = receitaTotal - receitaPendente + totalCoversPeriodoResumo + totalComissoesPeriodoResumo
+  const receitaPaga = receitaTotal - receitaPendente + totalCoversPeriodoResumo  // comissão é informativa — não entra no faturamento
   const lucroPago = lucroTotal - lucroPendente + totalCoversPeriodoResumo // covers = lucro puro; comissão não afeta lucro bruto
   const custoTotal = receitaPaga - lucroPago
   const margemDia = receitaPaga > 0 ? (lucroPago / receitaPaga) * 100 : 0
@@ -840,15 +836,22 @@ export default function VisaoGeral() {
 
               <div className="flex items-center gap-2">
                 <FiltroPeriodo onChange={handlePeriodo} initialIni={periodo.dataInicio} initialFim={periodo.dataFim} />
-                <div className="flex flex-col items-end gap-0.5">
+                <div className="flex flex-col items-center gap-1">
                   <button
                     onClick={() => doRefresh(periodo.dataInicio)}
-                    disabled={atualizando}
-                    className="btn btn-ghost p-1.5 rounded-lg"
                     title="Atualizar dados agora"
-                    style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                    style={{
+                      width: 34, height: 34, borderRadius: 10, border: '1.5px solid var(--border)',
+                      background: 'var(--bg-card)', cursor: 'pointer', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center', color: 'var(--accent)',
+                      transition: 'background .15s',
+                    }}
                   >
-                    <RefreshCw size={15} style={{ animation: atualizando ? 'spin 1s linear infinite' : 'none' }} />
+                    <RefreshCw
+                      key={spinKey}
+                      size={16}
+                      style={{ animation: spinKey > 0 ? 'spin 0.6s ease-out 1' : 'none' }}
+                    />
                   </button>
                   {ultimaAtualizacaoVendas && (
                     <span className="text-xs" style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>

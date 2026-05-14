@@ -274,7 +274,7 @@ export default function Vendas() {
     } catch {}
     return { dataInicio: h, dataFim: h }
   })
-  const [atualizando, setAtualizando] = useState(false)
+  const [spinKey, setSpinKey] = useState(0)   // incrementa a cada clique → reinicia animação CSS
 
   function handlePeriodo(p) {
     setPeriodo(p)
@@ -295,9 +295,8 @@ export default function Vendas() {
   }, [entradasVendas])
 
   async function handleRefresh() {
-    setAtualizando(true)
+    setSpinKey(k => k + 1)
     await refreshDados(periodo.dataInicio)
-    setAtualizando(false)
   }
 
   const [entradaDetalhe, setEntradaDetalhe] = useState(null)
@@ -402,7 +401,7 @@ export default function Vendas() {
     const prato = pratos.find(p => p.id === e.pratoId) // null se apagado — usa snapshot
     const r = receitaDaEntrada(e, prato)
     return r === 0 && !prato ? s : s + r
-  }, 0) + totalCovers + totalComissoes
+  }, 0) + totalCovers  // comissão é informativa — não entra no faturamento
   const totalLucro = entradasPagas.reduce((s, e) => {
     const prato = pratos.find(p => p.id === e.pratoId) // null se apagado — usa snapshot
     const r = receitaDaEntrada(e, prato)
@@ -779,15 +778,22 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
         </div>
         <div className="flex items-center gap-2">
           <FiltroPeriodo onChange={handlePeriodo} initialIni={periodo.dataInicio} initialFim={periodo.dataFim} />
-          <div className="flex flex-col items-end gap-0.5">
+          <div className="flex flex-col items-center gap-1">
             <button
               onClick={handleRefresh}
-              disabled={atualizando}
-              className="btn btn-ghost p-1.5 rounded-lg"
               title="Atualizar dados"
-              style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+              style={{
+                width: 34, height: 34, borderRadius: 10, border: '1.5px solid var(--border)',
+                background: 'var(--bg-card)', cursor: 'pointer', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', color: 'var(--accent)',
+                transition: 'background .15s',
+              }}
             >
-              <RefreshCw size={15} style={{ animation: atualizando ? 'spin 1s linear infinite' : 'none' }} />
+              <RefreshCw
+                key={spinKey}
+                size={16}
+                style={{ animation: spinKey > 0 ? 'spin 0.6s ease-out 1' : 'none' }}
+              />
             </button>
             {ultimaAtualizacaoVendas && (
               <span className="text-xs" style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>

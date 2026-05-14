@@ -2472,7 +2472,8 @@ export function AppProvider({ children }) {
 
   // ── Comissões Pagas ───────────────────────────────────────────────────
   function registrarComissao({ garconId, garconNome, totalBase, comissaoValor, taxa, mesaId, mesaNome, formaPagamento }) {
-    if (!auth.userId || !comissaoValor || comissaoValor <= 0) return
+    const uid = auth.userId || displayUserId
+    if (!uid || !comissaoValor || comissaoValor <= 0) return
     const nova = {
       id: crypto.randomUUID(),
       garconId: garconId || null,
@@ -2487,12 +2488,13 @@ export function AppProvider({ children }) {
       criadoEm: agoraBrasiliaISO(),
     }
     setComissoesPagas(prev => [...prev, nova])
-    sbWrite(supabase.from('comissoes_pagas').insert(comissaoToRow(nova, auth.userId)))
+    sbWrite(supabase.from('comissoes_pagas').insert(comissaoToRow(nova, uid)))
   }
 
   // ── Covers Cobrados ───────────────────────────────────────────────────
   function registrarCover({ valor, formaPagamento }) {
-    if (!auth.userId || !valor || valor <= 0) return
+    const uid = auth.userId || displayUserId
+    if (!uid || !valor || valor <= 0) return
     const novo = {
       id: crypto.randomUUID(),
       data: hojeBrasilia(),
@@ -2501,7 +2503,7 @@ export function AppProvider({ children }) {
       criadoEm: agoraBrasiliaISO(),
     }
     setCoversCobrados(prev => [...prev, novo])
-    sbWrite(supabase.from('covers_cobrados').insert(coverToRow(novo, auth.userId)))
+    sbWrite(supabase.from('covers_cobrados').insert(coverToRow(novo, uid)))
   }
 
   // ── Despesas ──────────────────────────────────────────────────────────

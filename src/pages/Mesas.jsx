@@ -743,7 +743,6 @@ export default function Mesas() {
           />
         )
       })()}
-      )}
     </div>
   )
 }

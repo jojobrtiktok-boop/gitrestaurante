@@ -419,7 +419,12 @@ export default function MenuPublico() {
                                     padding: '9px 14px',
                                     borderTop: vi > 0 ? ('1px solid ' + (modoClaro ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)')) : 'none',
                                   }}>
-                                    <span style={{ fontSize: 14, color: corTextoBase }}>{v.nome}</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                      {p.mostrarFotosVariacoes && v.foto && (
+                                        <img src={v.foto} alt={v.nome} style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+                                      )}
+                                      <span style={{ fontSize: 14, color: corTextoBase }}>{v.nome}</span>
+                                    </div>
                                     {config.mostrarPrecos && (v.preco || 0) > 0 && (
                                       <span style={{ fontSize: 13, fontWeight: 700, color: corPreco }}>
                                         {v.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -445,7 +450,12 @@ export default function MenuPublico() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {p.variacoes.map(v => (
                         <div key={v.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 10, background: modoClaro ? '#f8f8f8' : 'rgba(255,255,255,0.06)', border: '1px solid ' + bordaCard }}>
-                          <span style={{ fontSize: 14, color: corTextoBase }}>{v.nome}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {p.mostrarFotosVariacoes && v.foto && (
+                              <img src={v.foto} alt={v.nome} style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+                            )}
+                            <span style={{ fontSize: 14, color: corTextoBase }}>{v.nome}</span>
+                          </div>
                           {config.mostrarPrecos && v.preco > 0 && (
                             <span style={{ fontSize: 13, fontWeight: 700, color: corPreco }}>
                               {v.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}

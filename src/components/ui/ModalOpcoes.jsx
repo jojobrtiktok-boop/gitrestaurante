@@ -330,6 +330,9 @@ export default function ModalOpcoes({ prato, onConfirmar, onFechar, corDestaque 
                       }}>
                         {sel && <Check size={11} color="#fff" />}
                       </div>
+                      {prato.mostrarFotosVariacoes && v.foto && (
+                        <img src={v.foto} alt={v.nome} style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+                      )}
                       <span style={{ flex: 1, fontSize: 14, color: 'var(--text-primary)', fontWeight: sel ? 600 : 400 }}>
                         {v.nome}
                       </span>

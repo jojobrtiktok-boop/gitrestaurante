@@ -151,6 +151,7 @@ function pratoToRow(p, uid) {
     label_bordas: p.labelBordas || null,
     visivel_individual: p.visivelIndividual !== false,
     aparece_cozinha: p.apareceCozinha !== false,
+    mostrar_fotos_variacoes: p.mostrarFotosVariacoes || false,
   }
 }
 function rowToPrato(row) {
@@ -177,6 +178,7 @@ function rowToPrato(row) {
     labelBordas: row.label_bordas || null,
     visivelIndividual: row.visivel_individual !== false,
     apareceCozinha: row.aparece_cozinha !== false,
+    mostrarFotosVariacoes: row.mostrar_fotos_variacoes || false,
   }
 }
 

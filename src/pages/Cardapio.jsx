@@ -398,6 +398,7 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
   const [novoIngId, setNovoIngId] = useState('')
   const [novoIngQtd, setNovoIngQtd] = useState('')
   const [apareceCozinha, setApareceCozinha] = useState(pratoEdit?.apareceCozinha !== false)
+  const [mostrarFotosVariacoes, setMostrarFotosVariacoes] = useState(pratoEdit?.mostrarFotosVariacoes || false)
 
   // Seleção de receita (compartilhada, contexto-ciente)
   const [pratoSelecionadoId, setPratoSelecionadoId] = useState('')
@@ -521,6 +522,7 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
       precoVenda,
       ingredientes: ingredientesVariacao,
       apareceCozinha,
+      mostrarFotosVariacoes,
     })
   }
 
@@ -677,6 +679,32 @@ function ModalVariacao({ pratoEdit, onFechar, onSalvar }) {
                 {apareceCozinha
                   ? 'Marcado — este item aparece no painel da cozinha ao ser pedido'
                   : 'Desmarcado — só aparece no balcão/caixa (ex: bebida, sobremesa pronta)'}
+              </p>
+            </div>
+          </label>
+
+          {/* Mostrar fotos das opções */}
+          <label style={{
+            display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+            padding: '10px 14px', borderRadius: 10,
+            background: mostrarFotosVariacoes ? 'rgba(99,102,241,0.08)' : 'var(--bg-hover)',
+            border: `1.5px solid ${mostrarFotosVariacoes ? '#6366f1' : 'var(--border)'}`,
+            transition: 'all 0.15s',
+          }}>
+            <input
+              type="checkbox"
+              checked={mostrarFotosVariacoes}
+              onChange={e => setMostrarFotosVariacoes(e.target.checked)}
+              style={{ width: 16, height: 16, accentColor: '#6366f1', flexShrink: 0 }}
+            />
+            <div>
+              <span className="text-sm font-semibold" style={{ color: mostrarFotosVariacoes ? '#4338ca' : 'var(--text-secondary)' }}>
+                Mostrar fotos das opções
+              </span>
+              <p className="text-xs" style={{ color: 'var(--text-muted)', marginTop: 1 }}>
+                {mostrarFotosVariacoes
+                  ? 'Ativo — fotos dos sabores/opções aparecem na seleção do cliente'
+                  : 'Inativo — só o nome dos sabores aparece na seleção'}
               </p>
             </div>
           </label>

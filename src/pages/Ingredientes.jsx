@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus, Pencil, Trash2, FlaskConical, Search, AlertTriangle, AlertCircle, Info, PackagePlus, TrendingUp, Printer } from 'lucide-react'
+import { Plus, Pencil, Trash2, FlaskConical, Search, AlertTriangle, AlertCircle, Info, PackagePlus, TrendingUp, Printer, Upload, CheckCircle } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import Modal from '../components/ui/Modal.jsx'
 import ConfirmDialog from '../components/ui/ConfirmDialog.jsx'
@@ -39,6 +39,38 @@ function AbaInsumos({ onRegisterOpen }) {
   const [erro, setErro] = useState('')
   const [confirmar, setConfirmar] = useState(null)
   const [erroExclusao, setErroExclusao] = useState('')
+
+  // ── Importação em lote ──
+  const [importOpen, setImportOpen]     = useState(false)
+  const [importTexto, setImportTexto]   = useState('')
+  const [importando, setImportando]     = useState(false)
+  const [importResult, setImportResult] = useState(null)
+
+  const UNIDS = ['kg', 'g', 'l', 'ml', 'un', 'cx', 'pct', 'lt', 'dz']
+
+  function parseLinhaInsumo(linha) {
+    const raw = linha.trim()
+    if (!raw || raw.startsWith('#')) return null
+    const p = raw.split('|').map(s => s.trim())
+    const nome = p[0]
+    if (!nome) return null
+    const unidade = p[1] && UNIDS.includes(p[1].toLowerCase()) ? p[1].toLowerCase() : 'un'
+    return { nome, preco: 0, unidade, quantidadeEstoque: 0, estoqueMinimo: 0, fatorCorrecao: 1, perecivel: false, percentualPerda: 0 }
+  }
+
+  function importarInsumos() {
+    const linhas = importTexto.split('\n')
+    setImportando(true)
+    let ok = 0; const erros = []
+    for (const linha of linhas) {
+      const dados = parseLinhaInsumo(linha)
+      if (!dados) { if (linha.trim()) erros.push(linha.trim().slice(0, 50)); continue }
+      adicionarIngrediente(dados); ok++
+    }
+    setImportResult({ ok, erros })
+    setImportando(false)
+    if (ok > 0) setImportTexto('')
+  }
 
   const porBusca = ingredientes.filter(i => i.nome.toLowerCase().includes(busca.toLowerCase()))
   const filtrados = subAba === 'estoque-baixo'
@@ -111,12 +143,15 @@ function AbaInsumos({ onRegisterOpen }) {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: importOpen ? 0 : 12, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: 8, padding: '0 12px', flex: 1, minWidth: 180 }}>
           <Search size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
           <input style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', padding: '8px 0', fontSize: 14, color: 'var(--text-primary)' }}
             placeholder="Buscar insumo..." value={busca} onChange={e => setBusca(e.target.value)} />
         </div>
+        <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => { setImportOpen(p => !p); setImportResult(null) }}>
+          <Upload size={14} /> Importar em lote
+        </button>
         <div style={{ display: 'flex', gap: 4, background: 'var(--bg-hover)', borderRadius: 10, padding: 3 }}>
           {[{ id: 'geral', label: 'Geral' }, { id: 'estoque-baixo', label: 'Estoque Baixo' }].map(s => (
             <button key={s.id} onClick={() => setSubAba(s.id)}
@@ -129,6 +164,34 @@ function AbaInsumos({ onRegisterOpen }) {
           ))}
         </div>
       </div>
+
+      {importOpen && (
+        <div className="card mb-3 mt-3" style={{ padding: '16px 20px', borderColor: 'var(--accent)', background: 'var(--accent-bg)' }}>
+          <p className="text-sm font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Importar insumos em lote</p>
+          <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
+            Um insumo por linha. Formatos aceitos:<br />
+            <code style={{ background: 'var(--bg-hover)', padding: '1px 5px', borderRadius: 4, fontSize: 11 }}>Nome</code>
+            {' · '}
+            <code style={{ background: 'var(--bg-hover)', padding: '1px 5px', borderRadius: 4, fontSize: 11 }}>Nome | unidade</code>
+            {' '}— unidades: kg, g, l, ml, un, cx, pct, lt, dz
+          </p>
+          <textarea value={importTexto} onChange={e => setImportTexto(e.target.value)}
+            placeholder={"Farinha de trigo | kg\nQueijo mussarela | kg\nTomate | kg\nCoca-Cola 2L | un\nCaixa de palito | cx"}
+            rows={6}
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: 13, outline: 'none', resize: 'vertical', fontFamily: 'monospace', lineHeight: 1.6, boxSizing: 'border-box' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
+            <button className="btn btn-primary" onClick={importarInsumos} disabled={importando || !importTexto.trim()}>
+              {importando ? 'Importando...' : <><Upload size={14} /> Importar {importTexto.trim().split('\n').filter(l => l.trim()).length} linha(s)</>}
+            </button>
+            <button className="btn btn-secondary" onClick={() => { setImportOpen(false); setImportResult(null); setImportTexto('') }}>Cancelar</button>
+            {importResult && (
+              <span style={{ fontSize: 13, color: importResult.ok > 0 ? '#16a34a' : '#ef4444', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <CheckCircle size={14} /> {importResult.ok} criado(s){importResult.erros.length > 0 ? ` · ${importResult.erros.length} ignorado(s)` : ''}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="card p-0 overflow-hidden">
         {filtrados.length === 0 ? (

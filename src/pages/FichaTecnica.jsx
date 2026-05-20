@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from 'react'
-import { Plus, Pencil, Trash2, BookOpen, X, Calculator, ListChecks, ChevronDown, GripVertical, Copy } from 'lucide-react'
+import { Plus, Pencil, Trash2, BookOpen, X, Calculator, ListChecks, ChevronDown, GripVertical, Copy, Upload, CheckCircle } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import Modal from '../components/ui/Modal.jsx'
 import ConfirmDialog from '../components/ui/ConfirmDialog.jsx'
@@ -31,6 +31,44 @@ export default function Receitas() {
   const [adicionandoCategoria, setAdicionandoCategoria] = useState(false)
   const [novaCategoriaNome, setNovaCategoriaNome] = useState('')
   const dragRef = useRef({ gi: null, ii: null })
+
+  // ── Importação em lote ──
+  const [importOpen, setImportOpen]           = useState(false)
+  const [importTexto, setImportTexto]         = useState('')
+  const [importCategoria, setImportCategoria] = useState('')
+  const [importando, setImportando]           = useState(false)
+  const [importResult, setImportResult]       = useState(null)
+
+  function parseLinhaReceita(linha) {
+    const raw = linha.trim()
+    if (!raw || raw.startsWith('#')) return null
+    const sep = raw.includes('|') ? '|' : ','
+    const p = raw.split(sep).map(s => s.trim())
+    const ultimo = p[p.length - 1]
+    const precoStr = ultimo.replace(/R\$\s*/i, '').replace(',', '.').trim()
+    const preco = parseFloat(precoStr)
+    const temPreco = !isNaN(preco) && preco >= 0 && /^\d/.test(precoStr)
+    let nome = p[0], descricao = '', precoVenda = 0
+    if (p.length >= 2) {
+      if (temPreco) { precoVenda = preco; descricao = p.slice(1, -1).join(' | ') }
+      else descricao = p.slice(1).join(' | ')
+    }
+    return nome ? { nome, descricao, precoVenda, categoria: importCategoria.trim() || '', ingredientes: [], grupos: [], apareceCozinha: true } : null
+  }
+
+  function importarReceitas() {
+    const linhas = importTexto.split('\n')
+    setImportando(true)
+    let ok = 0; const erros = []
+    for (const linha of linhas) {
+      const dados = parseLinhaReceita(linha)
+      if (!dados) { if (linha.trim()) erros.push(linha.trim().slice(0, 50)); continue }
+      adicionarPrato(dados); ok++
+    }
+    setImportResult({ ok, erros })
+    setImportando(false)
+    if (ok > 0) setImportTexto('')
+  }
 
   const todasCategorias = [...new Set(pratos.map(p => p.categoria).filter(Boolean))]
 
@@ -146,10 +184,48 @@ export default function Receitas() {
           <h1 className="page-title">Receitas</h1>
           <p className="page-subtitle">{pratos.length} receita{pratos.length !== 1 ? 's' : ''} cadastrada{pratos.length !== 1 ? 's' : ''}</p>
         </div>
-        <button className="btn btn-primary" onClick={abrirNovo} disabled={!ingredientes.length}>
-          <Plus size={15} /> Nova Receita
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-secondary" onClick={() => { setImportOpen(p => !p); setImportResult(null) }}>
+            <Upload size={15} /> Importar em lote
+          </button>
+          <button className="btn btn-primary" onClick={abrirNovo} disabled={!ingredientes.length}>
+            <Plus size={15} /> Nova Receita
+          </button>
+        </div>
       </div>
+
+      {importOpen && (
+        <div className="card mb-4" style={{ padding: '16px 20px', borderColor: 'var(--accent)', background: 'var(--accent-bg)' }}>
+          <p className="text-sm font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Importar receitas em lote</p>
+          <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
+            Uma receita por linha. Formatos aceitos:<br />
+            <code style={{ background: 'var(--bg-hover)', padding: '1px 5px', borderRadius: 4, fontSize: 11 }}>Nome | Descrição | Preço</code>
+            {' · '}
+            <code style={{ background: 'var(--bg-hover)', padding: '1px 5px', borderRadius: 4, fontSize: 11 }}>Nome | Preço</code>
+            {' · '}
+            <code style={{ background: 'var(--bg-hover)', padding: '1px 5px', borderRadius: 4, fontSize: 11 }}>Nome</code>
+          </p>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <input value={importCategoria} onChange={e => setImportCategoria(e.target.value)}
+              placeholder="Categoria (opcional para todas)" className="input" style={{ maxWidth: 220, fontSize: 13 }} />
+          </div>
+          <textarea value={importTexto} onChange={e => setImportTexto(e.target.value)}
+            placeholder={"Pizza Margherita | Molho de tomate e queijo | 35.90\nHambúrguer Clássico | Pão brioche e carne 180g | 28.50\nSuco de Laranja | 8.00\nÁgua Mineral"}
+            rows={6}
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: 13, outline: 'none', resize: 'vertical', fontFamily: 'monospace', lineHeight: 1.6, boxSizing: 'border-box' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
+            <button className="btn btn-primary" onClick={importarReceitas} disabled={importando || !importTexto.trim()}>
+              {importando ? 'Importando...' : <><Upload size={14} /> Importar {importTexto.trim().split('\n').filter(l => l.trim()).length} linha(s)</>}
+            </button>
+            <button className="btn btn-secondary" onClick={() => { setImportOpen(false); setImportResult(null); setImportTexto('') }}>Cancelar</button>
+            {importResult && (
+              <span style={{ fontSize: 13, color: importResult.ok > 0 ? '#16a34a' : '#ef4444', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <CheckCircle size={14} /> {importResult.ok} criada(s){importResult.erros.length > 0 ? ` · ${importResult.erros.length} ignorada(s)` : ''}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {!ingredientes.length && (
         <div className="rounded-xl p-3 mb-4 flex items-center gap-2"

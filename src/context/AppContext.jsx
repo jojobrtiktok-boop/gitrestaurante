@@ -788,7 +788,14 @@ export function AppProvider({ children }) {
 
         const fetchFn = () => {
           supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', desde())
-            .then(({ data }) => data && setPedidos(data.map(rowToPedido)))
+            .then(({ data }) => {
+              if (!data) return
+              setPedidos(prev => {
+                const locked = prev.filter(p => pedidosLockRef.current.has(p.id))
+                const fromServer = data.map(rowToPedido).filter(sp => !pedidosLockRef.current.has(sp.id))
+                return [...locked, ...fromServer]
+              })
+            })
           supabase.from('mesas').select('*').eq('user_id', uid)
             .then(({ data }) => data && setMesas(data.map(rowToMesa)))
         }
@@ -841,7 +848,14 @@ export function AppProvider({ children }) {
 
       const fetchFn = () => {
         supabase.from('pedidos').select('*').eq('user_id', uid).gte('data', desde())
-          .then(({ data }) => data && setPedidos(data.map(rowToPedido)))
+          .then(({ data }) => {
+            if (!data) return
+            setPedidos(prev => {
+              const locked = prev.filter(p => pedidosLockRef.current.has(p.id))
+              const fromServer = data.map(rowToPedido).filter(sp => !pedidosLockRef.current.has(sp.id))
+              return [...locked, ...fromServer]
+            })
+          })
         supabase.from('mesas').select('*').eq('user_id', uid)
           .then(({ data }) => data && setMesas(data.map(rowToMesa)))
         supabase.from('sessoes_mesas').select('*').eq('user_id', uid).gte('inicio', desde())

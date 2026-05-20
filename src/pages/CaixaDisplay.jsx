@@ -968,6 +968,18 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
         // Calcula chave de agrupamento de um pedido
         function chaveGrupo(p) {
           if (p.mesaId) return `mesa:${p.mesaId}`
+          // Fallback: tenta casar com uma sessão fechada pelo timestamp do pedido
+          const tsStr = p.timestamps?.novo || (p.data + 'T' + (p.hora || '00:00') + ':00-03:00')
+          const tsMs = Date.parse(tsStr) || 0
+          if (tsMs > 0) {
+            const sessao = sessoesMesas.find(s => {
+              if (!s.mesaId || !s.fim) return false
+              const ini = Date.parse(s.inicio) || 0
+              const fim = Date.parse(s.fim) || 0
+              return tsMs >= ini && tsMs <= fim
+            })
+            if (sessao) return `mesa:${sessao.mesaId}`
+          }
           let cId = p.clienteId
           if (!cId && p.clienteNome) cId = clientes?.find(c => c.nome === p.clienteNome)?.id || null
           if (cId) return `clienteId:${cId}`

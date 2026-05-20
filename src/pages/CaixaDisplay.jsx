@@ -965,26 +965,31 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
           return pedido.clienteNome || clientes?.find(c => c.id === pedido.clienteId)?.nome || null
         }
 
-        // Agrupa pedidos não pagos/cancelados por mesa ou cliente, histórico fica individual
+        // Calcula chave de agrupamento de um pedido
+        function chaveGrupo(p) {
+          if (p.mesaId) {
+            // Para histórico, agrupa por sessão se possível
+            const ts = p.timestamps?.novo || (p.data + 'T' + (p.hora || '00:00') + ':00-03:00')
+            const sessao = sessoesMesas.find(s => s.mesaId === p.mesaId && s.inicio <= ts && (!s.fim || ts <= s.fim))
+            if (sessao) return `sessao:${sessao.id}`
+            return `mesa:${p.mesaId}`
+          }
+          let cId = p.clienteId
+          if (!cId && p.clienteNome) cId = clientes?.find(c => c.nome === p.clienteNome)?.id || null
+          if (cId) return `clienteId:${cId}`
+          if (p.clienteNome) return `clienteNome:${p.clienteNome}`
+          return `pedido:${p.id}`
+        }
+
+        // Agrupa todos os pedidos por mesa/sessão/cliente — ativos e histórico juntos
         function agruparLista(lista) {
-          const ativos = lista.filter(p => !p.pago && !p.cancelado)
-          const historico = lista.filter(p => p.pago || p.cancelado)
           const grupos = {}
-          for (const p of ativos) {
-            let chave
-            if (p.mesaId) {
-              chave = `mesa:${p.mesaId}`
-            } else {
-              let cId = p.clienteId
-              if (!cId && p.clienteNome) cId = clientes?.find(c => c.nome === p.clienteNome)?.id || null
-              if (cId) chave = `clienteId:${cId}`
-              else if (p.clienteNome) chave = `clienteNome:${p.clienteNome}`
-              else chave = `pedido:${p.id}`
-            }
+          for (const p of lista) {
+            const chave = chaveGrupo(p)
             if (!grupos[chave]) grupos[chave] = []
             grupos[chave].push(p)
           }
-          return { grupos: Object.values(grupos), historico }
+          return { grupos: Object.values(grupos) }
         }
 
         function CardGrupoPedidos({ grupo }) {
@@ -998,24 +1003,29 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
           const todosItens = grupo.flatMap(p => p.itens || [])
           const totalQtd = todosItens.reduce((s, i) => s + i.quantidade, 0)
           const total = grupo.reduce((s, p) => s + valorPedidoCalc(p, pratos), 0)
-          const cor = 'var(--accent)'
+          const temPendente = grupo.some(p => !p.pago && !p.cancelado)
+          const todosPagos = grupo.every(p => p.pago || p.cancelado)
+          const cor = todosPagos ? '#16a34a' : 'var(--accent)'
           return (
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: `3px solid ${cor}`, borderRadius: 10, overflow: 'hidden' }}>
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: `3px solid ${cor}`, borderRadius: 10, overflow: 'hidden', opacity: todosPagos ? 0.75 : 1 }}>
               <div onClick={() => setExpandido(v => !v)}
                 style={{ padding: '9px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', cursor: 'pointer' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--accent)' }}>{titulo}</span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: cor }}>{titulo}</span>
                   {subtitulo && <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>· {subtitulo}</span>}
-                  {grupo.length > 1 && <span style={{ fontSize: 10, fontWeight: 700, background: 'var(--accent)', color: '#fff', borderRadius: 20, padding: '1px 7px' }}>{grupo.length} pedidos</span>}
+                  {grupo.length > 1 && <span style={{ fontSize: 10, fontWeight: 700, background: cor, color: '#fff', borderRadius: 20, padding: '1px 7px' }}>{grupo.length} pedidos</span>}
+                  {todosPagos && <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: 'rgba(22,163,74,0.12)', borderRadius: 20, padding: '1px 7px' }}>Pago</span>}
                   {garcon && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{garcon.nome}</span>}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{totalQtd} item{totalQtd !== 1 ? 's' : ''}</span>
                   {cfg.caixaMostrarPrecos && <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)' }}>{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>}
-                  <button onClick={e => { e.stopPropagation(); abrirPagamento(grupo[0].id, mesaId || null, mesaId ? null : grupo.map(p => p.id)) }}
-                    style={{ padding: '3px 10px', borderRadius: 7, border: 'none', background: '#16a34a', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-                    <Check size={10} style={{ display: 'inline', marginRight: 3 }} />{mesaId ? `Pagar ${mesa?.nome || 'Mesa'}` : 'Pagar'}
-                  </button>
+                  {temPendente && (
+                    <button onClick={e => { e.stopPropagation(); abrirPagamento(grupo[0].id, mesaId || null, mesaId ? null : grupo.map(p => p.id)) }}
+                      style={{ padding: '3px 10px', borderRadius: 7, border: 'none', background: '#16a34a', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                      <Check size={10} style={{ display: 'inline', marginRight: 3 }} />{mesaId ? `Pagar ${mesa?.nome || 'Mesa'}` : 'Pagar'}
+                    </button>
+                  )}
                   <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{expandido ? '▲' : '▼'}</span>
                 </div>
               </div>
@@ -1046,120 +1056,23 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
         }
 
         function ListaPedidos({ lista }) {
-          const { grupos, historico } = agruparLista(lista)
+          const { grupos } = agruparLista(lista)
+          // Ordena: grupos com pedido pendente primeiro, depois os pagos (por hora do mais recente)
+          const gruposOrdenados = [...grupos].sort((a, b) => {
+            const aTemPendente = a.some(p => !p.pago && !p.cancelado)
+            const bTemPendente = b.some(p => !p.pago && !p.cancelado)
+            if (aTemPendente !== bTemPendente) return aTemPendente ? -1 : 1
+            const aHora = a.map(p => p.hora).sort().pop() || ''
+            const bHora = b.map(p => p.hora).sort().pop() || ''
+            return bHora.localeCompare(aHora)
+          })
           return lista.length === 0
             ? <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-muted)', fontSize: 13 }}>Nenhum pedido</div>
             : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {/* Grupos ativos agrupados */}
-                {grupos.map((grupo, idx) => (
+                {gruposOrdenados.map((grupo, idx) => (
                   <CardGrupoPedidos key={`grupo-${idx}`} grupo={grupo} />
                 ))}
-                {/* Histórico (pagos/cancelados) individual */}
-                {historico.sort((a, b) => b.hora.localeCompare(a.hora)).map(pedido => {
-                  const mesa   = mesas.find(m => m.id === pedido.mesaId)
-                  const garcon = garcons.find(g => g.id === pedido.garconId)
-                  const nomeCliente = nomeClientePedido(pedido)
-                  const total  = valorPedidoCalc(pedido, pratos)
-                  const etapaSolida = etapas.find(e => e.id === pedido.status)
-                  const sCor = pedido.cancelado ? '#ef4444' : '#16a34a'
-                  const sLabel = pedido.cancelado ? 'Cancelado' : 'Pago'
-                  const totalQtd = (pedido.itens || []).reduce((s, i) => s + i.quantidade, 0)
-                  const expandido = !!expandidosPedido[pedido.id]
-                  return (
-                    <div key={pedido.id} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: `3px solid ${sCor}`, borderRadius: 10, overflow: 'hidden', opacity: 0.7 }}>
-                      <div
-                        onClick={() => setExpandidosPedido(prev => ({ ...prev, [pedido.id]: !prev[pedido.id] }))}
-                        style={{ padding: '9px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', cursor: 'pointer' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>{pedido.hora}</span>
-                          <span style={{ fontSize: 11, fontWeight: 700, padding: '1px 8px', borderRadius: 20, background: `${sCor}22`, color: sCor }}>{sLabel}</span>
-                          {mesa      && <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>{mesa.nome}</span>}
-                          {nomeCliente && <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600 }}>{nomeCliente}</span>}
-                          {garcon    && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{garcon.nome}</span>}
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{totalQtd} item{totalQtd !== 1 ? 's' : ''}</span>
-                          {cfg.caixaMostrarPrecos && <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)' }}>{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>}
-                          {!pedido.pago && !pedido.cancelado && (
-                            <button onClick={e => {
-                              e.stopPropagation()
-                              abrirPagamento(pedido.id, pedido.mesaId || null)
-                            }} style={{ padding: '3px 10px', borderRadius: 7, border: 'none', background: '#16a34a', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}>
-                              <Check size={10} /> {pedido.mesaId ? 'Pagar Mesa' : 'Pago'}
-                            </button>
-                          )}
-                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{expandido ? '▲' : '▼'}</span>
-                        </div>
-                      </div>
-                      {expandido && (
-                        <div style={{ borderTop: '1px solid var(--border)', padding: '8px 14px', display: 'flex', flexDirection: 'column', gap: 4, background: 'var(--bg-hover)' }}>
-                          {pedido.itens?.map(item => {
-                            const p = pratos.find(x => x.id === item.pratoId)
-                            if (!p) return null
-                            const extras = (item.opcoes || []).reduce((s, o) => s + (Number(o.precoExtra) || 0), 0)
-                            return (
-                              <div key={item.uid || item.pratoId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>×{item.quantidade} {p.nome}</span>
-                                  {item.opcoes?.map((o, i) => (
-                                    <span key={i} style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', paddingLeft: 12 }}>· {o.nome}</span>
-                                  ))}
-                                </div>
-                                {cfg.caixaMostrarPrecos && (
-                                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                                    {((item.precoUnit != null ? item.precoUnit : p.precoVenda + extras) * item.quantidade).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                  </span>
-                                )}
-                              </div>
-                            )
-                          })}
-                          {pedido.obs && <p style={{ fontSize: 11, color: '#d97706', fontStyle: 'italic', margin: '4px 0 0' }}>"{pedido.obs}"</p>}
-                          {/* Botões */}
-                          {!pedido.cancelado && (
-                            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                              {!pedido.pago && (
-                                <button onClick={e => { e.stopPropagation(); cancelarPedido(pedido.id) }}
-                                  style={{ padding: '4px 12px', borderRadius: 7, border: '1px solid #ef4444', background: 'transparent', color: '#ef4444', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-                                  Cancelar
-                                </button>
-                              )}
-                              {!pedido.pago && pedido.status === lastStageId && (
-                                <button onClick={e => { e.stopPropagation(); abrirPagamento(pedido.id, null) }}
-                                  style={{ padding: '4px 12px', borderRadius: 7, border: 'none', background: '#16a34a', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-                                  <Check size={11} style={{ display: 'inline', marginRight: 3 }} />Pago
-                                </button>
-                              )}
-                              {!pedido.pago && cfg.caixaImpressaoAtivo && (
-                                <button onClick={e => { e.stopPropagation(); imprimirPedido(pedido) }}
-                                  style={{ padding: '4px 12px', borderRadius: 7, border: '1px solid #3b82f6', background: 'transparent', color: '#3b82f6', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-                                  🖨 Imprimir
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {pagarMesaConfirm?.pedidoId === pedido.id && mesa && (
-                        <div style={{ borderTop: '1px solid var(--border)', padding: '10px 14px', background: 'rgba(22,163,74,0.06)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: '#16a34a' }}>✓ {mesa.nome} pago!</span>
-                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Liberar a mesa?</span>
-                          <button onClick={() => { setStatusMesa(mesa.id, 'livre'); setPagarMesaConfirm(null) }}
-                            style={{ padding: '3px 10px', borderRadius: 6, border: 'none', background: '#16a34a', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-                            Deixar Livre
-                          </button>
-                          <button onClick={() => {
-                            const temMais = pedidosHoje.some(p => p.mesaId === mesa.id && !p.pago && !p.cancelado)
-                            if (!temMais) setStatusMesa(mesa.id, 'livre')
-                            setPagarMesaConfirm(null)
-                          }} style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-                            Manter Ocupada
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
               </div>
             )
         }

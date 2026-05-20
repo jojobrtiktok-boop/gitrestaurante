@@ -1171,20 +1171,24 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
                       const sessoesHoje = sessoesMesas
                         .filter(s => s.mesaId === mesa.id && s.inicio?.startsWith(h))
                         .sort((a, b) => a.inicio.localeCompare(b.inicio))
+                      const tsMs = p => {
+                        const s = p.timestamps?.novo || (p.data + 'T' + (p.hora || '00:00') + ':00-03:00')
+                        return Date.parse(s) || 0
+                      }
                       const gruposSessao = sessoesHoje.map(sessao => ({
                         sessao,
                         pedidos: pedidosMesa.filter(p => {
-                          const ts = p.timestamps?.novo || (p.data + 'T' + (p.hora || '00:00') + ':00-03:00')
-                          return ts >= sessao.inicio && (!sessao.fim || ts <= sessao.fim)
+                          const t = tsMs(p)
+                          const ini = Date.parse(sessao.inicio) || 0
+                          const fim = sessao.fim ? (Date.parse(sessao.fim) || Infinity) : Infinity
+                          return t >= ini && t <= fim
                         }),
                         isCurrent: false,
                       })).filter(g => g.pedidos.length > 0)
                       // Sessão atual ainda aberta
                       if (mesa.status === 'ocupada' && mesa.inicioSessao) {
-                        const psCurrent = naoPageosMesa.filter(p => {
-                          const ts = p.timestamps?.novo || (p.data + 'T' + (p.hora || '00:00') + ':00-03:00')
-                          return ts >= mesa.inicioSessao
-                        })
+                        const iniMs = Date.parse(mesa.inicioSessao) || 0
+                        const psCurrent = naoPageosMesa.filter(p => tsMs(p) >= iniMs)
                         if (psCurrent.length > 0) {
                           gruposSessao.push({ sessao: { inicio: mesa.inicioSessao, fim: null }, pedidos: psCurrent, isCurrent: true })
                         }

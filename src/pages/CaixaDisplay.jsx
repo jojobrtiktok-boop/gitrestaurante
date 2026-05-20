@@ -632,7 +632,7 @@ function ModalPagamento({ total, cfg, pagamentosConfig, comissaoInfo, itens, onC
 
 export default function CaixaDisplay() {
   const { token } = useParams()
-  const { pedidos, pratos, garcons, mesas, clientes, kanbanConfig, pagamentosConfig, atualizarStatusPedido, aceitarPedidoDelivery, atribuirMotoboy, marcarPedidoPago, pagarMesa, cancelarPedido, adicionarMesa, setStatusMesa, adicionarCliente, authLoading, displayReady, motoboys, registrarComissao, comissoesPagas, registrarCover } = useApp()
+  const { pedidos, pratos, garcons, mesas, clientes, sessoesMesas, kanbanConfig, pagamentosConfig, atualizarStatusPedido, aceitarPedidoDelivery, atribuirMotoboy, marcarPedidoPago, pagarMesa, cancelarPedido, adicionarMesa, setStatusMesa, adicionarCliente, authLoading, displayReady, motoboys, registrarComissao, comissoesPagas, registrarCover } = useApp()
   const cfg = kanbanConfig
 
   const [abaAtiva, setAbaAtiva] = useState('pedidos') // 'pedidos' | 'novo-pedido'
@@ -1258,6 +1258,61 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
                       const selecionada = mesaAberSoPedidos === mesa.id
                       const pedidosMesa = pedidosHoje.filter(p => p.mesaId === mesa.id)
                       const naoPageosMesa = pedidosMesa.filter(p => !p.pago && !p.cancelado)
+
+                      // Agrupa pedidos por sessão
+                      const fmtHora = iso => { try { return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) } catch { return '' } }
+                      const sessoesHoje = sessoesMesas
+                        .filter(s => s.mesaId === mesa.id && s.inicio?.startsWith(h))
+                        .sort((a, b) => a.inicio.localeCompare(b.inicio))
+                      const gruposSessao = sessoesHoje.map(sessao => ({
+                        sessao,
+                        pedidos: pedidosMesa.filter(p => {
+                          const ts = p.timestamps?.novo || (p.data + 'T' + (p.hora || '00:00') + ':00-03:00')
+                          return ts >= sessao.inicio && (!sessao.fim || ts <= sessao.fim)
+                        }),
+                        isCurrent: false,
+                      })).filter(g => g.pedidos.length > 0)
+                      // Sessão atual ainda aberta
+                      if (mesa.status === 'ocupada' && mesa.inicioSessao) {
+                        const psCurrent = naoPageosMesa.filter(p => {
+                          const ts = p.timestamps?.novo || (p.data + 'T' + (p.hora || '00:00') + ':00-03:00')
+                          return ts >= mesa.inicioSessao
+                        })
+                        if (psCurrent.length > 0) {
+                          gruposSessao.push({ sessao: { inicio: mesa.inicioSessao, fim: null }, pedidos: psCurrent, isCurrent: true })
+                        }
+                      }
+                      const matched = new Set(gruposSessao.flatMap(g => g.pedidos.map(p => p.id)))
+                      const semSessao = pedidosMesa.filter(p => !matched.has(p.id))
+
+                      function renderPedidoMesa(pedido) {
+                        const etapaSolida = etapas.find(e => e.id === pedido.status)
+                        const sCor2 = pedido.cancelado ? '#ef4444' : pedido.pago ? '#16a34a' : etapaSolida?.cor || 'var(--text-muted)'
+                        return (
+                          <div key={pedido.id} style={{ borderLeft: `2px solid ${sCor2}`, paddingLeft: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>{pedido.hora}</span>
+                              <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 20, background: `${sCor2}22`, color: sCor2, fontWeight: 700 }}>
+                                {pedido.cancelado ? 'Cancelado' : pedido.pago ? 'Pago' : etapaSolida?.label || pedido.status}
+                              </span>
+                            </div>
+                            {pedido.itens?.map(item => {
+                              const p = pratos.find(x => x.id === item.pratoId)
+                              if (!p) return null
+                              return <span key={item.uid || item.pratoId} style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block' }}>×{item.quantidade} {p.nome}</span>
+                            })}
+                            {!pedido.cancelado && !pedido.pago && (
+                              <div style={{ display: 'flex', gap: 5, marginTop: 4 }}>
+                                <button onClick={() => cancelarPedido(pedido.id)}
+                                  style={{ padding: '2px 8px', borderRadius: 5, border: '1px solid #ef4444', background: 'transparent', color: '#ef4444', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
+                                  Cancelar
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      }
+
                       return (
                         <div key={mesa.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                           <div onClick={() => setMesaAberSoPedidos(selecionada ? null : mesa.id)}
@@ -1290,33 +1345,30 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
                                   </button>
                                 </div>
                               )}
-                              {[...pedidosMesa].sort((a, b) => a.hora.localeCompare(b.hora)).map(pedido => {
-                                const etapaSolida = etapas.find(e => e.id === pedido.status)
-                                const sCor2 = pedido.cancelado ? '#ef4444' : pedido.pago ? '#16a34a' : etapaSolida?.cor || 'var(--text-muted)'
-                                return (
-                                  <div key={pedido.id} style={{ borderLeft: `2px solid ${sCor2}`, paddingLeft: 8 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>{pedido.hora}</span>
-                                      <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 20, background: `${sCor2}22`, color: sCor2, fontWeight: 700 }}>
-                                        {pedido.cancelado ? 'Cancelado' : pedido.pago ? 'Pago' : etapaSolida?.label || pedido.status}
-                                      </span>
+                              {/* Pedidos agrupados por sessão */}
+                              {gruposSessao.length > 0 ? (
+                                gruposSessao.map((grupo, gIdx) => (
+                                  <div key={gIdx} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                                    <div style={{ fontSize: 10, fontWeight: 800, color: grupo.isCurrent ? '#fbbf24' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', paddingBottom: 3, borderBottom: '1px solid var(--border)' }}>
+                                      {fmtHora(grupo.sessao.inicio)}
+                                      {grupo.sessao.fim ? ` — ${fmtHora(grupo.sessao.fim)}` : ' · Em aberto'}
                                     </div>
-                                    {pedido.itens?.map(item => {
-                                      const p = pratos.find(x => x.id === item.pratoId)
-                                      if (!p) return null
-                                      return <span key={item.uid || item.pratoId} style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block' }}>×{item.quantidade} {p.nome}</span>
-                                    })}
-                                    {!pedido.cancelado && !pedido.pago && (
-                                      <div style={{ display: 'flex', gap: 5, marginTop: 4 }}>
-                                        <button onClick={() => cancelarPedido(pedido.id)}
-                                          style={{ padding: '2px 8px', borderRadius: 5, border: '1px solid #ef4444', background: 'transparent', color: '#ef4444', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
-                                          Cancelar
-                                        </button>
-                                      </div>
-                                    )}
+                                    {[...grupo.pedidos].sort((a, b) => a.hora.localeCompare(b.hora)).map(renderPedidoMesa)}
                                   </div>
-                                )
-                              })}
+                                ))
+                              ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                                  {[...pedidosMesa].sort((a, b) => a.hora.localeCompare(b.hora)).map(renderPedidoMesa)}
+                                </div>
+                              )}
+                              {semSessao.length > 0 && gruposSessao.length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                                  <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', paddingBottom: 3, borderBottom: '1px solid var(--border)' }}>
+                                    Outros
+                                  </div>
+                                  {[...semSessao].sort((a, b) => a.hora.localeCompare(b.hora)).map(renderPedidoMesa)}
+                                </div>
+                              )}
                             </div>
                           )}
                           {selecionada && pedidosMesa.length === 0 && (
@@ -1389,8 +1441,6 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
               comissaoInfo = { nome: garcom.nome, taxa: garcom.taxaComissao, valor: (total * garcom.taxaComissao) / 100 }
           }
 
-          const totalComComissao = comissaoInfo ? total + comissaoInfo.valor : total
-
           return (
             <div style={{ borderRadius: 12, border: `1.5px solid ${col.cor}44`, background: 'var(--bg-card)', overflow: 'hidden' }}>
               {/* Header */}
@@ -1426,13 +1476,21 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
               </div>
               {/* Total */}
               {cfg.caixaMostrarPrecos && (
-                <div style={{ padding: '6px 12px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                    Total{comissaoInfo ? <span style={{ fontSize: 10, marginLeft: 4, background: '#f0fdf4', color: '#166534', borderRadius: 4, padding: '1px 5px', fontWeight: 700 }}>c/ comissão</span> : null}
-                  </span>
-                  <span style={{ fontWeight: 800, fontSize: 14, color: '#16a34a' }}>
-                    {totalComComissao.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                  </span>
+                <div style={{ padding: '6px 12px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Total</span>
+                    <span style={{ fontWeight: 800, fontSize: 14, color: '#16a34a' }}>
+                      {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
+                  </div>
+                  {comissaoInfo && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f0fdf4', borderRadius: 6, padding: '3px 6px' }}>
+                      <span style={{ fontSize: 11, color: '#166534' }}>🤝 Comissão {comissaoInfo.nome} ({comissaoInfo.taxa}%)</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#166534' }}>
+                        {comissaoInfo.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
               {/* Botão pagar */}

@@ -730,6 +730,7 @@ export function AppProvider({ children }) {
     if (d.ccs)  setCardapioConfig(rowToCardapioConfig(d.ccs))
     if (d.clis) setClientes(d.clis.map ? d.clis.map(rowToCliente) : d.clis)
     if (d.mbs)  setMotoboys(d.mbs.map ? d.mbs.map(rowToMotoboy) : d.mbs)
+    if (d.sms)  setSessoesMesas(d.sms.map ? d.sms.map(rowToSessaoMesa) : d.sms)
   }
 
   // Inicia realtime + polling para dados ao vivo (pedidos e mesas)
@@ -821,7 +822,7 @@ export function AppProvider({ children }) {
       const uid = kbcRow.user_id
       setDisplayUserId(uid)
 
-      const [{ data: prtsRaw }, { data: garsRaw }, { data: mssRaw }, { data: pdsRaw }, { data: ccsRaw }, { data: clisRaw }, { data: motoboysRaw }] = await Promise.all([
+      const [{ data: prtsRaw }, { data: garsRaw }, { data: mssRaw }, { data: pdsRaw }, { data: ccsRaw }, { data: clisRaw }, { data: motoboysRaw }, { data: smsRaw }] = await Promise.all([
         supabase.from('pratos').select('*').eq('user_id', uid),
         supabase.from('garcons').select('*').eq('user_id', uid),
         supabase.from('mesas').select('*').eq('user_id', uid),
@@ -829,10 +830,11 @@ export function AppProvider({ children }) {
         supabase.from('cardapio_config').select('*').eq('user_id', uid).maybeSingle(),
         supabase.from('clientes').select('*').eq('user_id', uid),
         supabase.from('motoboys').select('*').eq('user_id', uid),
+        supabase.from('sessoes_mesas').select('*').eq('user_id', uid).gte('inicio', desde()),
       ])
       const raw = { prts: prtsRaw || [], gars: garsRaw || [], mss: mssRaw || [],
         pds: pdsRaw || [], ccs: ccsRaw, clis: clisRaw || [], mbs: motoboysRaw || [],
-        kbc: kbcRow.config, uid }
+        sms: smsRaw || [], kbc: kbcRow.config, uid }
       _aplicarDadosDsp(raw, kbcRow.config)
       setDisplayReady(true)
       _saveDspCache(token, raw)
@@ -842,6 +844,8 @@ export function AppProvider({ children }) {
           .then(({ data }) => data && setPedidos(data.map(rowToPedido)))
         supabase.from('mesas').select('*').eq('user_id', uid)
           .then(({ data }) => data && setMesas(data.map(rowToMesa)))
+        supabase.from('sessoes_mesas').select('*').eq('user_id', uid).gte('inicio', desde())
+          .then(({ data }) => data && setSessoesMesas(data.map(rowToSessaoMesa)))
       }
       _iniciarRealtimeDsp(token, uid, fetchFn)
     }

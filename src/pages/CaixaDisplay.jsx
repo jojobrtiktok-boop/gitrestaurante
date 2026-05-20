@@ -967,13 +967,7 @@ ${pedido.obs ? `<hr><div style="font-size:11px"><strong>Obs:</strong> ${pedido.o
 
         // Calcula chave de agrupamento de um pedido
         function chaveGrupo(p) {
-          if (p.mesaId) {
-            // Para histórico, agrupa por sessão se possível
-            const ts = p.timestamps?.novo || (p.data + 'T' + (p.hora || '00:00') + ':00-03:00')
-            const sessao = sessoesMesas.find(s => s.mesaId === p.mesaId && s.inicio <= ts && (!s.fim || ts <= s.fim))
-            if (sessao) return `sessao:${sessao.id}`
-            return `mesa:${p.mesaId}`
-          }
+          if (p.mesaId) return `mesa:${p.mesaId}`
           let cId = p.clienteId
           if (!cId && p.clienteNome) cId = clientes?.find(c => c.nome === p.clienteNome)?.id || null
           if (cId) return `clienteId:${cId}`

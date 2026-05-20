@@ -2138,7 +2138,7 @@ export function AppProvider({ children }) {
         total,
       }
       setSessoesMesas(prev => [...prev, sessao])
-      if (auth.userId) sbWrite(supabase.from('sessoes_mesas').insert(sessaoMesaToRow(sessao, auth.userId)))
+      if (uid) sbWrite(supabase.from('sessoes_mesas').insert(sessaoMesaToRow(sessao, uid)))
     }
     setMesas(prev => prev.map(m => {
       if (m.id !== id) return m

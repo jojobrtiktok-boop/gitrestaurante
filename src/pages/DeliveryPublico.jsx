@@ -1018,9 +1018,9 @@ export default function DeliveryPublico() {
           WebkitOverflowScrolling: 'touch',
           paddingBottom: 90,
         }}>
-          {/* Foto 16/9 */}
+          {/* Foto quadrada */}
           {pratoDetalhe.foto ? (
-            <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', overflow: 'hidden', background: '#000' }}>
+            <div style={{ position: 'relative', width: '100%', aspectRatio: '1/1', overflow: 'hidden', background: '#000' }}>
               <img src={imgSrc(pratoDetalhe.foto, 600)} alt={pratoDetalhe.nome} decoding="async"
                 style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
               <button onClick={fecharModal} style={{

@@ -921,7 +921,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                         return (
                           <tr key={entrada.id || idx}>
                             <td data-label="Data" className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
-                              {entrada.data.slice(5).replace('-', '/')}
+                              {entrada.data.slice(5).split('-').reverse().join('/')}
                             </td>
                             <td data-label="Hora">
                               <div className="flex items-center gap-1.5">
@@ -1194,7 +1194,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                       return (
                         <tr key={entrada.id}>
                           <td data-label="Data" className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
-                            {entrada.data.slice(5).replace('-', '/')}
+                            {entrada.data.slice(5).split('-').reverse().join('/')}
                           </td>
                           <td data-label="Hora">
                             <div className="flex items-center gap-1.5">
@@ -1244,7 +1244,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                     {coversExtrato.map(cov => (
                       <tr key={`cover-${cov.id}`} style={{ background: 'rgba(99,102,241,0.04)' }}>
                         <td data-label="Data" className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
-                          {cov.data.slice(5).replace('-', '/')}
+                          {cov.data.slice(5).split('-').reverse().join('/')}
                         </td>
                         <td data-label="Hora">
                           <div className="flex items-center gap-1.5">
@@ -1311,163 +1311,177 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                 </tr>
               </thead>
               <tbody>
-                {comissoesPeriodo.map(com => (
-                  <tr key={`com-lanc-${com.id}`} style={{ background: 'rgba(22,163,74,0.04)' }}>
-                    {dataInicio !== dataFim && (
-                      <td data-label="Data" className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {com.data.slice(5).replace('-', '/')}
-                      </td>
-                    )}
-                    <td data-label="Hora">
-                      <div className="flex items-center gap-1.5">
-                        <Clock size={12} style={{ color: 'var(--text-muted)' }} />
-                        <span className="font-mono text-sm font-semibold" style={{ color: '#16a34a' }}>
-                          {com.criadoEm ? new Date(com.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                        </span>
-                      </div>
-                    </td>
-                    <td data-label="Produto" className="font-medium text-sm" style={{ color: '#16a34a' }}>
-                      🤝 Comissão {com.garconNome || 'Garçom'}{com.mesaNome ? ` · ${com.mesaNome}` : ''}
-                    </td>
-                    <td data-label="Origem">
-                      <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                        style={{ background: 'rgba(22,163,74,0.1)', color: '#16a34a', border: '1px solid rgba(22,163,74,0.3)' }}>
-                        {com.taxa}%
-                      </span>
-                    </td>
-                    <td data-label="Qtd"><span className="font-bold" style={{ color: 'var(--text-muted)' }}>—</span></td>
-                    <td data-label="Receita" style={{ color: '#16a34a', fontWeight: 600 }}>{formatarMoeda(com.comissaoValor)}</td>
-                    <td data-label="Lucro" style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: 12 }}>R$ 0,00</td>
-                    <td data-label="Status">
-                      <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(22,163,74,0.12)', color: '#16a34a' }}>Comissão</span>
-                    </td>
-                    <td data-label="Ações"><div /></td>
-                  </tr>
-                ))}
-                {coversPeriodo.map(cov => (
-                  <tr key={`cover-lanc-${cov.id}`} style={{ background: 'rgba(99,102,241,0.04)' }}>
-                    {dataInicio !== dataFim && (
-                      <td data-label="Data" className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {cov.data.slice(5).replace('-', '/')}
-                      </td>
-                    )}
-                    <td data-label="Hora">
-                      <div className="flex items-center gap-1.5">
-                        <Clock size={12} style={{ color: 'var(--text-muted)' }} />
-                        <span className="font-mono text-sm font-semibold" style={{ color: '#6366f1' }}>
-                          {cov.criadoEm ? new Date(cov.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                        </span>
-                      </div>
-                    </td>
-                    <td data-label="Produto" className="font-medium text-sm" style={{ color: '#6366f1' }}>
-                      🎟️ Cover/Entrada{cov.quantidade > 1 ? ` (${cov.quantidade} pessoas)` : ''}
-                    </td>
-                    <td data-label="Origem">
-                      <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                        style={{ background: 'var(--bg-hover)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
-                        Balcão
-                      </span>
-                    </td>
-                    <td data-label="Qtd">
-                      <span className="font-bold" style={{ color: 'var(--text-primary)' }}>×{cov.quantidade || 1}</span>
-                    </td>
-                    <td data-label="Receita" style={{ color: '#6366f1', fontWeight: 600 }}>{formatarMoeda(cov.valor)}</td>
-                    <td data-label="Lucro" style={{ color: '#16a34a', fontWeight: 600 }}>{formatarMoeda(cov.valor)}</td>
-                    <td data-label="Status">
-                      <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(99,102,241,0.12)', color: '#6366f1' }}>Cover</span>
-                    </td>
-                    <td data-label="Ações"><div /></td>
-                  </tr>
-                ))}
-                {entradasPagas.map(entrada => {
-                  const prato = pratos.find(p => p.id === entrada.pratoId) // null se apagado
-                  const receita = receitaDaEntrada(entrada, prato)
-                  if (receita === 0 && !prato) return null
-                  const lucro = lucroDaEntrada(entrada, prato)
-                  const garcon = garconDeEntrada(entrada)
-                  const mesa = mesaDeEntrada(entrada)
-                  const pedido = pedidoDeEntrada(entrada)
-                  return (
-                    <tr key={entrada.id}>
-                      {dataInicio !== dataFim && (
-                        <td data-label="Data" className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
-                          {entrada.data.slice(5).replace('-', '/')}
-                        </td>
-                      )}
-                      <td data-label="Hora">
-                        <div className="flex items-center gap-1.5">
-                          <Clock size={12} style={{ color: 'var(--text-muted)' }} />
-                          <span className="font-mono text-sm font-semibold" style={{ color: 'var(--accent)' }}>
-                            {entrada.hora}
-                          </span>
-                        </div>
-                      </td>
-                      <td data-label="Produto">
-                        <button
-                          className="font-medium text-sm text-left hover:underline"
-                          style={{ color: 'var(--text-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                          onClick={() => setEntradaDetalhe({ entrada, prato, garcon, pedido })}
-                        >
-                          {prato?.nome || 'Receita removida'}
-                        </button>
-                      </td>
-                      <td data-label="Origem">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-                          {entrada.canal === 'delivery' ? (
-                            <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                              style={{ background: 'var(--accent-bg)', color: 'var(--accent)', border: '1px solid var(--border-active)', fontWeight: 700, letterSpacing: '0.04em' }}>
-                              Delivery
-                            </span>
-                          ) : (
-                            <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                              style={{
-                                background: garcon ? 'var(--accent-bg)' : 'var(--bg-hover)',
-                                color: garcon ? 'var(--accent)' : 'var(--text-muted)',
-                                border: `1px solid ${garcon ? 'var(--border-active)' : 'var(--border)'}`,
-                              }}>
-                              {garcon ? garcon.nome : 'Balcão'}
-                            </span>
+                {(() => {
+                  const todos = [
+                    ...comissoesPeriodo.map(c => ({ tipo: 'comissao', item: c, sk: c.criadoEm || (c.data + 'T23:59') })),
+                    ...coversPeriodo.map(c => ({ tipo: 'cover', item: c, sk: c.criadoEm || (c.data + 'T23:59') })),
+                    ...entradasPagas.map(e => ({ tipo: 'entrada', item: e, sk: e.data + 'T' + (e.hora || '00:00') })),
+                  ].sort((a, b) => b.sk.localeCompare(a.sk))
+                  return todos.map(({ tipo, item }) => {
+                    if (tipo === 'comissao') {
+                      const com = item
+                      return (
+                        <tr key={`com-lanc-${com.id}`} style={{ background: 'rgba(22,163,74,0.04)' }}>
+                          {dataInicio !== dataFim && (
+                            <td data-label="Data" className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
+                              {com.data.slice(5).split('-').reverse().join('/')}
+                            </td>
                           )}
-                          {mesa && (
-                            <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                              style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.25)' }}>
-                              {mesa.nome}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td data-label="Qtd">
-                        <span className="font-bold" style={{ color: 'var(--text-primary)' }}>×{entrada.quantidade}</span>
-                      </td>
-                      <td data-label="Receita" style={{ color: '#3b82f6', fontWeight: 600 }}>{formatarMoeda(receita)}</td>
-                      <td data-label="Lucro" style={{ color: '#16a34a', fontWeight: 600 }}>{formatarMoeda(lucro)}</td>
-                      <td data-label="Status">
-                        {(() => {
-                          const etapas = kanbanConfig?.etapas
-                          const lastId = etapas?.[etapas.length - 1]?.id || 'completo'
-                          if (!pedido) return <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(59,130,246,0.12)', color: '#3b82f6' }}>Balcão</span>
-                          if (pedido?.cancelado) return <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}>Cancelado</span>
-                          if (pedido?.pago) return <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(22,163,74,0.12)', color: '#16a34a' }}>Pago</span>
-                          if (pedido?.status === lastId) return (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                              <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(22,163,74,0.1)', color: '#16a34a' }}>Entregue</span>
-                              <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 20, background: 'rgba(249,115,22,0.1)', color: '#f97316' }}>Pend. pgto</span>
+                          <td data-label="Hora">
+                            <div className="flex items-center gap-1.5">
+                              <Clock size={12} style={{ color: 'var(--text-muted)' }} />
+                              <span className="font-mono text-sm font-semibold" style={{ color: '#16a34a' }}>
+                                {com.criadoEm ? new Date(com.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                              </span>
                             </div>
-                          )
-                          return <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(249,115,22,0.12)', color: '#f97316' }}>Pendente</span>
-                        })()}
-                      </td>
-                      <td data-label="Ações">
-                        <div className="flex justify-end">
-                          <button className="btn btn-ghost p-1.5" style={{ color: '#ef4444' }}
-                            onClick={() => removerEntradaVenda(entrada.id)} title="Remover lançamento">
-                            <Trash2 size={13} />
+                          </td>
+                          <td data-label="Produto" className="font-medium text-sm" style={{ color: '#16a34a' }}>
+                            🤝 Comissão {com.garconNome || 'Garçom'}{com.mesaNome ? ` · ${com.mesaNome}` : ''}
+                          </td>
+                          <td data-label="Origem">
+                            <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                              style={{ background: 'rgba(22,163,74,0.1)', color: '#16a34a', border: '1px solid rgba(22,163,74,0.3)' }}>
+                              {com.taxa}%
+                            </span>
+                          </td>
+                          <td data-label="Qtd"><span className="font-bold" style={{ color: 'var(--text-muted)' }}>—</span></td>
+                          <td data-label="Receita" style={{ color: '#16a34a', fontWeight: 600 }}>{formatarMoeda(com.comissaoValor)}</td>
+                          <td data-label="Lucro" style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: 12 }}>R$ 0,00</td>
+                          <td data-label="Status">
+                            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(22,163,74,0.12)', color: '#16a34a' }}>Comissão</span>
+                          </td>
+                          <td data-label="Ações"><div /></td>
+                        </tr>
+                      )
+                    }
+                    if (tipo === 'cover') {
+                      const cov = item
+                      return (
+                        <tr key={`cover-lanc-${cov.id}`} style={{ background: 'rgba(99,102,241,0.04)' }}>
+                          {dataInicio !== dataFim && (
+                            <td data-label="Data" className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
+                              {cov.data.slice(5).split('-').reverse().join('/')}
+                            </td>
+                          )}
+                          <td data-label="Hora">
+                            <div className="flex items-center gap-1.5">
+                              <Clock size={12} style={{ color: 'var(--text-muted)' }} />
+                              <span className="font-mono text-sm font-semibold" style={{ color: '#6366f1' }}>
+                                {cov.criadoEm ? new Date(cov.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                              </span>
+                            </div>
+                          </td>
+                          <td data-label="Produto" className="font-medium text-sm" style={{ color: '#6366f1' }}>
+                            🎟️ Cover/Entrada{cov.quantidade > 1 ? ` (${cov.quantidade} pessoas)` : ''}
+                          </td>
+                          <td data-label="Origem">
+                            <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                              style={{ background: 'var(--bg-hover)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                              Balcão
+                            </span>
+                          </td>
+                          <td data-label="Qtd">
+                            <span className="font-bold" style={{ color: 'var(--text-primary)' }}>×{cov.quantidade || 1}</span>
+                          </td>
+                          <td data-label="Receita" style={{ color: '#6366f1', fontWeight: 600 }}>{formatarMoeda(cov.valor)}</td>
+                          <td data-label="Lucro" style={{ color: '#16a34a', fontWeight: 600 }}>{formatarMoeda(cov.valor)}</td>
+                          <td data-label="Status">
+                            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(99,102,241,0.12)', color: '#6366f1' }}>Cover</span>
+                          </td>
+                          <td data-label="Ações"><div /></td>
+                        </tr>
+                      )
+                    }
+                    const entrada = item
+                    const prato = pratos.find(p => p.id === entrada.pratoId)
+                    const receita = receitaDaEntrada(entrada, prato)
+                    if (receita === 0 && !prato) return null
+                    const lucro = lucroDaEntrada(entrada, prato)
+                    const garcon = garconDeEntrada(entrada)
+                    const mesa = mesaDeEntrada(entrada)
+                    const pedido = pedidoDeEntrada(entrada)
+                    return (
+                      <tr key={entrada.id}>
+                        {dataInicio !== dataFim && (
+                          <td data-label="Data" className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
+                            {entrada.data.slice(5).split('-').reverse().join('/')}
+                          </td>
+                        )}
+                        <td data-label="Hora">
+                          <div className="flex items-center gap-1.5">
+                            <Clock size={12} style={{ color: 'var(--text-muted)' }} />
+                            <span className="font-mono text-sm font-semibold" style={{ color: 'var(--accent)' }}>
+                              {entrada.hora}
+                            </span>
+                          </div>
+                        </td>
+                        <td data-label="Produto">
+                          <button
+                            className="font-medium text-sm text-left hover:underline"
+                            style={{ color: 'var(--text-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                            onClick={() => setEntradaDetalhe({ entrada, prato, garcon, pedido })}
+                          >
+                            {prato?.nome || 'Receita removida'}
                           </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
+                        </td>
+                        <td data-label="Origem">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                            {entrada.canal === 'delivery' ? (
+                              <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                                style={{ background: 'var(--accent-bg)', color: 'var(--accent)', border: '1px solid var(--border-active)', fontWeight: 700, letterSpacing: '0.04em' }}>
+                                Delivery
+                              </span>
+                            ) : (
+                              <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                                style={{
+                                  background: garcon ? 'var(--accent-bg)' : 'var(--bg-hover)',
+                                  color: garcon ? 'var(--accent)' : 'var(--text-muted)',
+                                  border: `1px solid ${garcon ? 'var(--border-active)' : 'var(--border)'}`,
+                                }}>
+                                {garcon ? garcon.nome : 'Balcão'}
+                              </span>
+                            )}
+                            {mesa && (
+                              <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                                style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.25)' }}>
+                                {mesa.nome}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td data-label="Qtd">
+                          <span className="font-bold" style={{ color: 'var(--text-primary)' }}>×{entrada.quantidade}</span>
+                        </td>
+                        <td data-label="Receita" style={{ color: '#3b82f6', fontWeight: 600 }}>{formatarMoeda(receita)}</td>
+                        <td data-label="Lucro" style={{ color: '#16a34a', fontWeight: 600 }}>{formatarMoeda(lucro)}</td>
+                        <td data-label="Status">
+                          {(() => {
+                            const etapas = kanbanConfig?.etapas
+                            const lastId = etapas?.[etapas.length - 1]?.id || 'completo'
+                            if (!pedido) return <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(59,130,246,0.12)', color: '#3b82f6' }}>Balcão</span>
+                            if (pedido?.cancelado) return <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}>Cancelado</span>
+                            if (pedido?.pago) return <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(22,163,74,0.12)', color: '#16a34a' }}>Pago</span>
+                            if (pedido?.status === lastId) return (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(22,163,74,0.1)', color: '#16a34a' }}>Entregue</span>
+                                <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 20, background: 'rgba(249,115,22,0.1)', color: '#f97316' }}>Pend. pgto</span>
+                              </div>
+                            )
+                            return <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(249,115,22,0.12)', color: '#f97316' }}>Pendente</span>
+                          })()}
+                        </td>
+                        <td data-label="Ações">
+                          <div className="flex justify-end">
+                            <button className="btn btn-ghost p-1.5" style={{ color: '#ef4444' }}
+                              onClick={() => removerEntradaVenda(entrada.id)} title="Remover lançamento">
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
+                })()}
               </tbody>
             </table>
           </div>
@@ -1510,7 +1524,7 @@ ${linhas.map(l => `<div class="item">${l.data} ${l.hora} — ${l.produto}</div><
                     <tr key={entrada.id}>
                       {dataInicio !== dataFim && (
                         <td data-label="Data" className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
-                          {entrada.data.slice(5).replace('-', '/')}
+                          {entrada.data.slice(5).split('-').reverse().join('/')}
                         </td>
                       )}
                       <td data-label="Hora">

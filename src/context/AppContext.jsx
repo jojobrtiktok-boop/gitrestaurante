@@ -16,6 +16,7 @@ const CONFIG_PADRAO = {
   modoClaro: true,
   logo: null,
   ordemCategorias: [],
+  ordemProdutos: {},
 }
 
 const NOTIF_CONFIG_PADRAO = {

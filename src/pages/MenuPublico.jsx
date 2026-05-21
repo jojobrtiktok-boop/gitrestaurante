@@ -135,9 +135,16 @@ export default function MenuPublico() {
     .filter(p => filtro === 'Todas' || p.categoria === filtro)
     .filter(p => p.nome.toLowerCase().includes(busca.toLowerCase()))
 
+  const ordemProdutos = config.ordemProdutos || {}
+  const sortItens = (cat, itens) => {
+    const ordem = ordemProdutos[cat] || []
+    if (!ordem.length) return itens
+    return [...ordem.map(id => itens.find(p => p.id === id)).filter(Boolean), ...itens.filter(p => !ordem.includes(p.id))]
+  }
+
   const pratosPorCategoria = filtro === 'Todas'
-    ? catsOrdenadas.map(cat => ({ cat, itens: pratosFiltrados.filter(p => p.categoria === cat) })).filter(g => g.itens.length > 0)
-    : [{ cat: filtro, itens: pratosFiltrados }]
+    ? catsOrdenadas.map(cat => ({ cat, itens: sortItens(cat, pratosFiltrados.filter(p => p.categoria === cat)) })).filter(g => g.itens.length > 0)
+    : [{ cat: filtro, itens: sortItens(filtro, pratosFiltrados) }]
 
   const bannerH = config.bannerAltura || 200
   const overlapH = 56

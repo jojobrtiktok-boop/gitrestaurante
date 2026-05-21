@@ -1623,6 +1623,7 @@ function CardapioDigitalConfig() {
   const [erroSlug, setErroSlug] = useState('')
   const [okSlug, setOkSlug] = useState(false)
   const [showQR, setShowQR] = useState(false)
+  const [catSelProd, setCatSelProd] = useState('')
 
   const base = window.location.origin
   const slugAtivo = cardapioConfig.slugCardapio
@@ -2079,6 +2080,56 @@ function CardapioDigitalConfig() {
                     className="btn btn-ghost p-1" style={{ opacity: idx === 0 ? 0.3 : 1 }}>▲</button>
                   <button disabled={idx === ordenadas.length - 1} onClick={() => mover(idx, 1)}
                     className="btn btn-ghost p-1" style={{ opacity: idx === ordenadas.length - 1 ? 0.3 : 1 }}>▼</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
+
+      {(() => {
+        const todasCats = [...new Set(pratos.map(p => p.categoria).filter(Boolean))]
+        if (todasCats.length === 0) return null
+        const catAtiva = todasCats.includes(catSelProd) ? catSelProd : todasCats[0]
+        const ordemProdutos = cardapioConfig.ordemProdutos || {}
+        const itensCat = pratos.filter(p => p.categoria === catAtiva)
+        const ordemCat = ordemProdutos[catAtiva] || []
+        const produtosOrdenados = [
+          ...ordemCat.map(id => itensCat.find(p => p.id === id)).filter(Boolean),
+          ...itensCat.filter(p => !ordemCat.includes(p.id)),
+        ]
+        function moverProduto(idx, dir) {
+          const nova = [...produtosOrdenados]
+          const tmp = nova[idx + dir]; nova[idx + dir] = nova[idx]; nova[idx] = tmp
+          atualizarCardapioConfig({ ordemProdutos: { ...ordemProdutos, [catAtiva]: nova.map(p => p.id) } })
+        }
+        return (
+          <div className="card p-5">
+            <div className="flex items-center gap-2 mb-1">
+              <span style={{ fontSize: 16 }}>☰</span>
+              <h2 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Ordem dos Produtos por Categoria</h2>
+            </div>
+            <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>Escolha a categoria e defina a ordem dos produtos no cardápio digital.</p>
+            <div className="flex gap-2 flex-wrap mb-4">
+              {todasCats.map(cat => (
+                <button key={cat} onClick={() => setCatSelProd(cat)}
+                  className="px-3 py-1 rounded-full text-xs font-medium transition-all"
+                  style={catAtiva === cat
+                    ? { background: 'var(--accent)', color: '#fff' }
+                    : { background: 'var(--bg-hover)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }
+                  }>{cat}</button>
+              ))}
+            </div>
+            <div className="flex flex-col gap-2">
+              {produtosOrdenados.map((p, idx) => (
+                <div key={p.id} className="flex items-center gap-2 p-2 rounded-xl" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+                  <span className="text-xs font-bold w-5 text-center" style={{ color: 'var(--text-muted)' }}>{idx + 1}</span>
+                  {p.foto && <img src={p.foto} alt={p.nome} style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }} />}
+                  <span className="flex-1 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{p.nome}</span>
+                  <button disabled={idx === 0} onClick={() => moverProduto(idx, -1)}
+                    className="btn btn-ghost p-1" style={{ opacity: idx === 0 ? 0.3 : 1 }}>▲</button>
+                  <button disabled={idx === produtosOrdenados.length - 1} onClick={() => moverProduto(idx, 1)}
+                    className="btn btn-ghost p-1" style={{ opacity: idx === produtosOrdenados.length - 1 ? 0.3 : 1 }}>▼</button>
                 </div>
               ))}
             </div>

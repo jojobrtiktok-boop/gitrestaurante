@@ -2092,7 +2092,7 @@ function CardapioDigitalConfig() {
         if (todasCats.length === 0) return null
         const catAtiva = todasCats.includes(catSelProd) ? catSelProd : todasCats[0]
         const ordemProdutos = cardapioConfig.ordemProdutos || {}
-        const itensCat = pratos.filter(p => p.categoria === catAtiva)
+        const itensCat = pratos.filter(p => p.categoria === catAtiva && p.visivelIndividual !== false)
         const ordemCat = ordemProdutos[catAtiva] || []
         const produtosOrdenados = [
           ...ordemCat.map(id => itensCat.find(p => p.id === id)).filter(Boolean),

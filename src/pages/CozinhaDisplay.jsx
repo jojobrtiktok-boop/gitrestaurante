@@ -120,10 +120,14 @@ function CardCozinha({ pedido, coluna, pratos, garcons, mesas, clientes, onAvanc
                   borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
                   flexShrink: 0,
                 }}>×{item.quantidade}</span>
-                <span style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>{p.nome}</span>
+                <span style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
+                  {item.variacoes?.length === 1
+                    ? (() => { const t = item.tamanho?.nome || ''; return t ? item.variacoes[0].nome.replace(new RegExp(`\\s*\\(${t}\\)\\s*$`, 'i'), '').trim() : item.variacoes[0].nome })()
+                    : p.nome}
+                </span>
               </div>
-              {/* Sabores meia a meia / terço */}
-              {item.variacoes?.length > 0 && (
+              {/* Sabores meia a meia / terço (só para 2+ sabores) */}
+              {item.variacoes?.length > 1 && (
                 <div style={{ paddingLeft: 44, marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {item.variacoes.map((v, i) => {
                     const tamanhoNome = item.tamanho?.nome || ''
@@ -174,10 +178,9 @@ function CardCozinha({ pedido, coluna, pratos, garcons, mesas, clientes, onAvanc
         })}
       </div>
 
-      {isDelivery(pedido.canal) && (pedido.clienteNome || pedido.enderecoEntrega) && (
+      {isDelivery(pedido.canal) && pedido.clienteNome && (
         <div style={{ background: 'rgba(240,64,0,0.06)', border: '1px solid rgba(240,64,0,0.2)', borderRadius: 8, padding: '6px 10px' }}>
-          {pedido.clienteNome && <p style={{ fontSize: 13, fontWeight: 700, color: '#f04000', margin: 0 }}>{pedido.clienteNome}</p>}
-          {pedido.enderecoEntrega && <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0', fontStyle: 'italic' }}>{pedido.enderecoEntrega}</p>}
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#f04000', margin: 0 }}>{pedido.clienteNome}</p>
         </div>
       )}
       {pedido.obs && (

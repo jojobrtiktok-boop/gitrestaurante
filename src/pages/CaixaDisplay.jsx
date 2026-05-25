@@ -115,15 +115,20 @@ function CardCaixa({ pedido, coluna, pratos, garcons, mesas, clientes, onAvancar
           return (
             <div key={item.uid || item.pratoId}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>×{item.quantidade} {p.nome}</span>
+                <span style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>
+                  ×{item.quantidade}{' '}
+                  {item.variacoes?.length === 1
+                    ? (() => { const t = item.tamanho?.nome || ''; return t ? item.variacoes[0].nome.replace(new RegExp(`\\s*\\(${t}\\)\\s*$`, 'i'), '').trim() : item.variacoes[0].nome })()
+                    : p.nome}
+                </span>
                 {cfg.caixaMostrarPrecos && (
                   <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                     {((item.precoUnit || p.precoVenda + extras) * item.quantidade).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </span>
                 )}
               </div>
-              {/* Sabores meia a meia / terço */}
-              {item.variacoes?.length > 0 && (
+              {/* Sabores meia a meia / terço (só para 2+ sabores) */}
+              {item.variacoes?.length > 1 && (
                 <div style={{ paddingLeft: 12, marginTop: 3, display: 'flex', flexWrap: 'wrap', gap: 3 }}>
                   {item.variacoes.map((v, i) => {
                     const tamanhoNome = item.tamanho?.nome || ''

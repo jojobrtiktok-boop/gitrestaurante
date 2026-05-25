@@ -125,15 +125,21 @@ function CardCozinha({ pedido, coluna, pratos, garcons, mesas, clientes, onAvanc
               {/* Sabores meia a meia / terço */}
               {item.variacoes?.length > 0 && (
                 <div style={{ paddingLeft: 44, marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                  {item.variacoes.map((v, i) => (
-                    <span key={i} style={{
-                      fontSize: 12, fontWeight: 700, color: coluna.cor,
-                      background: `${coluna.cor}18`, padding: '2px 8px', borderRadius: 20,
-                      border: `1px solid ${coluna.cor}44`,
-                    }}>
-                      {item.variacoes.length === 2 ? '½' : '⅓'} {v.nome}
-                    </span>
-                  ))}
+                  {item.variacoes.map((v, i) => {
+                    const tamanhoNome = item.tamanho?.nome || ''
+                    const nomeClean = tamanhoNome
+                      ? v.nome.replace(new RegExp(`\\s*\\(${tamanhoNome}\\)\\s*$`, 'i'), '').trim()
+                      : v.nome
+                    return (
+                      <span key={i} style={{
+                        fontSize: 12, fontWeight: 700, color: coluna.cor,
+                        background: `${coluna.cor}18`, padding: '2px 8px', borderRadius: 20,
+                        border: `1px solid ${coluna.cor}44`,
+                      }}>
+                        {item.variacoes.length === 2 ? '½' : '⅓'} {nomeClean}
+                      </span>
+                    )
+                  })}
                 </div>
               )}
               {/* Borda */}
@@ -145,6 +151,14 @@ function CardCozinha({ pedido, coluna, pratos, garcons, mesas, clientes, onAvanc
                     border: '1px solid rgba(180,83,9,0.3)',
                   }}>
                     🍕 Borda: {item.borda.nome}
+                  </span>
+                </div>
+              )}
+              {/* Obs do item */}
+              {item.obs && (
+                <div style={{ paddingLeft: 44, marginTop: 4 }}>
+                  <span style={{ fontSize: 12, color: '#d97706', fontStyle: 'italic' }}>
+                    ⚠ Obs: {item.obs}
                   </span>
                 </div>
               )}

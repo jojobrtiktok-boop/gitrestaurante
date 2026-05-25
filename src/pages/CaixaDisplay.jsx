@@ -125,15 +125,21 @@ function CardCaixa({ pedido, coluna, pratos, garcons, mesas, clientes, onAvancar
               {/* Sabores meia a meia / terço */}
               {item.variacoes?.length > 0 && (
                 <div style={{ paddingLeft: 12, marginTop: 3, display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                  {item.variacoes.map((v, i) => (
-                    <span key={i} style={{
-                      fontSize: 10, fontWeight: 700, color: '#7c3aed',
-                      background: 'rgba(124,58,237,0.1)', padding: '1px 7px', borderRadius: 20,
-                      border: '1px solid rgba(124,58,237,0.25)',
-                    }}>
-                      {item.variacoes.length === 2 ? '½' : '⅓'} {v.nome}
-                    </span>
-                  ))}
+                  {item.variacoes.map((v, i) => {
+                    const tamanhoNome = item.tamanho?.nome || ''
+                    const nomeClean = tamanhoNome
+                      ? v.nome.replace(new RegExp(`\\s*\\(${tamanhoNome}\\)\\s*$`, 'i'), '').trim()
+                      : v.nome
+                    return (
+                      <span key={i} style={{
+                        fontSize: 10, fontWeight: 700, color: '#7c3aed',
+                        background: 'rgba(124,58,237,0.1)', padding: '1px 7px', borderRadius: 20,
+                        border: '1px solid rgba(124,58,237,0.25)',
+                      }}>
+                        {item.variacoes.length === 2 ? '½' : '⅓'} {nomeClean}
+                      </span>
+                    )
+                  })}
                 </div>
               )}
               {/* Borda */}
@@ -145,6 +151,14 @@ function CardCaixa({ pedido, coluna, pratos, garcons, mesas, clientes, onAvancar
                     border: '1px solid rgba(180,83,9,0.25)',
                   }}>
                     🍕 Borda: {item.borda.nome}
+                  </span>
+                </div>
+              )}
+              {/* Obs do item */}
+              {item.obs && (
+                <div style={{ paddingLeft: 12, marginTop: 3 }}>
+                  <span style={{ fontSize: 10, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                    Obs: {item.obs}
                   </span>
                 </div>
               )}

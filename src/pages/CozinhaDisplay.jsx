@@ -123,7 +123,7 @@ function CardCozinha({ pedido, coluna, pratos, garcons, mesas, clientes, onAvanc
                 <span style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
                   {item.variacoes?.length === 1
                     ? (() => { const t = item.tamanho?.nome || ''; return t ? item.variacoes[0].nome.replace(new RegExp(`\\s*\\(${t}\\)\\s*$`, 'i'), '').trim() : item.variacoes[0].nome })()
-                    : p.nome}
+                    : item.variacoes?.length > 1 ? p.nome : item.nome}
                 </span>
               </div>
               {/* Sabores meia a meia / terço (só para 2+ sabores) */}

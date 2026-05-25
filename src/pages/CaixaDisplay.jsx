@@ -119,7 +119,7 @@ function CardCaixa({ pedido, coluna, pratos, garcons, mesas, clientes, onAvancar
                   ×{item.quantidade}{' '}
                   {item.variacoes?.length === 1
                     ? (() => { const t = item.tamanho?.nome || ''; return t ? item.variacoes[0].nome.replace(new RegExp(`\\s*\\(${t}\\)\\s*$`, 'i'), '').trim() : item.variacoes[0].nome })()
-                    : p.nome}
+                    : item.variacoes?.length > 1 ? p.nome : item.nome}
                 </span>
                 {cfg.caixaMostrarPrecos && (
                   <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>

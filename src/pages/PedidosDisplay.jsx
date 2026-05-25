@@ -5,12 +5,12 @@ import { hoje } from '../utils/formatacao.js'
 
 const SUPABASE_URL = 'https://api.cheffya.com.br'
 
-async function ifoodAction(ifoodOrderId, action, userId) {
+async function ifoodAction(ifoodOrderId, action, userId, slot = 1) {
   try {
     await fetch(`${SUPABASE_URL}/functions/v1/ifood-action`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ifood_order_id: ifoodOrderId, action, user_id: userId }),
+      body: JSON.stringify({ ifood_order_id: ifoodOrderId, action, user_id: userId, slot }),
     })
   } catch (e) {
     console.warn('ifood-action falhou:', e.message)
@@ -266,9 +266,9 @@ export default function PedidosDisplay() {
                 {/* Nome + pedido */}
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                    {p.canal === 'ifood' && (
+                    {(p.canal === 'ifood' || p.canal === 'ifood2') && (
                       <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 7px', borderRadius: 20, background: '#ea1d2c', color: '#fff', letterSpacing: '0.04em', flexShrink: 0 }}>
-                        iFood
+                        {p.canal === 'ifood2' ? 'iFood 2' : 'iFood'}
                       </span>
                     )}
                     <p style={{ margin: 0, fontSize: 16, fontWeight: 900, color: '#fef08a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -312,8 +312,8 @@ export default function PedidosDisplay() {
                   <button
                     onClick={async () => {
                       atualizarStatusPedido(p.id, 'novo')
-                      if (p.canal === 'ifood' && p.ifoodOrderId) {
-                        await ifoodAction(p.ifoodOrderId, 'confirm', auth.userId)
+                      if ((p.canal === 'ifood' || p.canal === 'ifood2') && p.ifoodOrderId) {
+                        await ifoodAction(p.ifoodOrderId, 'confirm', auth.userId, p.canal === 'ifood2' ? 2 : 1)
                       }
                     }}
                     style={{
@@ -328,8 +328,8 @@ export default function PedidosDisplay() {
                   <button
                     onClick={async () => {
                       cancelarPedido(p.id)
-                      if (p.canal === 'ifood' && p.ifoodOrderId) {
-                        await ifoodAction(p.ifoodOrderId, 'cancel', auth.userId)
+                      if ((p.canal === 'ifood' || p.canal === 'ifood2') && p.ifoodOrderId) {
+                        await ifoodAction(p.ifoodOrderId, 'cancel', auth.userId, p.canal === 'ifood2' ? 2 : 1)
                       }
                     }}
                     style={{
